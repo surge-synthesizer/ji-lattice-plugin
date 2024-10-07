@@ -12,11 +12,11 @@
 #include "PluginEditor.h"
 
 //==============================================================================
-JIMTSSourceEditor::JIMTSSourceEditor(JIMTSSourceProcessor &p)
+LatticesEditor::LatticesEditor(LatticesProcessor &p)
     : juce::AudioProcessorEditor(&p), processor(p)
 {
-    jiComponent = std::make_unique<JIComponent>(p.positionX,p.positionY);
-    addAndMakeVisible(*jiComponent);
+    latticeComponent = std::make_unique<LatticeComponent>(p.coOrds);
+    addAndMakeVisible(*latticeComponent);
     
     startTimer(5);
     
@@ -26,33 +26,28 @@ JIMTSSourceEditor::JIMTSSourceEditor(JIMTSSourceProcessor &p)
     setResizable(true, true);
 }
 
-JIMTSSourceEditor::~JIMTSSourceEditor() {}
+LatticesEditor::~LatticesEditor() {}
 
 //==============================================================================
-void JIMTSSourceEditor::paint(juce::Graphics &g)
+void LatticesEditor::paint(juce::Graphics &g)
 {
     // (Our component is opaque, so we must completely fill the background with a solid colour)
     g.fillAll(juce::Colours::black);
 }
 
-void JIMTSSourceEditor::idle() {}
+void LatticesEditor::idle() {}
 
-void JIMTSSourceEditor::resized()
+void LatticesEditor::resized()
 {
-    jiComponent->setBounds(getLocalBounds());
+    latticeComponent->setBounds(getLocalBounds());
 }
 
-void JIMTSSourceEditor::timerCallback()
+void LatticesEditor::timerCallback()
 {
-    int x = processor.positionX;
-    int y = processor.positionY;
-    
-    if (x != priorX || y != priorY)
+    if (processor.changed)
     {
-        
-        jiComponent->updateLocation(x, y);
-        jiComponent->repaint();
-        priorX = x;
-        priorY = y;
+        latticeComponent->updateLocation(processor.coOrds);
+        latticeComponent->repaint();
+        processor.changed = false;
     }
 }

@@ -18,7 +18,7 @@
 
 
 //==============================================================================
-JIMTSSourceProcessor::JIMTSSourceProcessor()
+LatticesProcessor::LatticesProcessor()
     : juce::AudioProcessor (juce::AudioProcessor::BusesProperties()
                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
         )
@@ -52,73 +52,74 @@ JIMTSSourceProcessor::JIMTSSourceProcessor()
     {
         currentRefFreq = originalRefFreq;
         currentRefNote = originalRefNote;
-        initDuodene();
+        setupPyth12();
+        setupDuodene();
         updateTuning();
     }
 }
 
-JIMTSSourceProcessor::~JIMTSSourceProcessor()
+LatticesProcessor::~LatticesProcessor()
 {
     if (registeredMTS)
         MTS_DeregisterMaster();
 }
 
 //==============================================================================
-const juce::String JIMTSSourceProcessor::getName() const
+const juce::String LatticesProcessor::getName() const
 {
     return JucePlugin_Name;
 }
 
-bool JIMTSSourceProcessor::acceptsMidi() const
+bool LatticesProcessor::acceptsMidi() const
 {
     return true;
 }
 
-bool JIMTSSourceProcessor::producesMidi() const
+bool LatticesProcessor::producesMidi() const
 {
     return false;
 }
 
-bool JIMTSSourceProcessor::isMidiEffect() const
+bool LatticesProcessor::isMidiEffect() const
 {
     return false;
 }
 
-double JIMTSSourceProcessor::getTailLengthSeconds() const
+double LatticesProcessor::getTailLengthSeconds() const
 {
     return 0.0;
 }
 
-int JIMTSSourceProcessor::getNumPrograms()
+int LatticesProcessor::getNumPrograms()
 {
     return 1;   // NB: some hosts don't cope very well if you tell them there are 0 programs,
                 // so this should be at least 1, even if you're not really implementing programs.
 }
 
-int JIMTSSourceProcessor::getCurrentProgram()
+int LatticesProcessor::getCurrentProgram()
 {
     return 0;
 }
 
-void JIMTSSourceProcessor::setCurrentProgram (int index)
+void LatticesProcessor::setCurrentProgram (int index)
 {
 }
 
-const juce::String JIMTSSourceProcessor::getProgramName (int index)
+const juce::String LatticesProcessor::getProgramName (int index)
 {
     return {};
 }
 
-void JIMTSSourceProcessor::changeProgramName (int index, const juce::String& newName)
+void LatticesProcessor::changeProgramName (int index, const juce::String& newName)
 {
 }
 
 //==============================================================================
-void JIMTSSourceProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
+void LatticesProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
 }
 
-void JIMTSSourceProcessor::timerCallback()
+void LatticesProcessor::timerCallback()
 {
     for (int i = 0; i < 4; ++i)
     {
@@ -129,19 +130,21 @@ void JIMTSSourceProcessor::timerCallback()
     }
 }
 
-void JIMTSSourceProcessor::releaseResources()
+void LatticesProcessor::releaseResources()
 {
     // When playback stops, you can use this as an opportunity to free up any
     // spare memory, etc.
 }
 
-bool JIMTSSourceProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
+bool LatticesProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
     return true;
 }
 
-void JIMTSSourceProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
+void LatticesProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
+    buffer.clear();
+    
     if (!registeredMTS)
         return;
     
@@ -153,7 +156,7 @@ void JIMTSSourceProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     }
 }
 
-void JIMTSSourceProcessor::respondToMidi(const juce::MidiMessage &m)
+void LatticesProcessor::respondToMidi(const juce::MidiMessage &m)
 {
     if (m.isController() && m.getChannel() == 1)
     {
@@ -181,23 +184,50 @@ void JIMTSSourceProcessor::respondToMidi(const juce::MidiMessage &m)
 }
 
 //==============================================================================
-bool JIMTSSourceProcessor::hasEditor() const
+bool LatticesProcessor::hasEditor() const
 {
     return true; // (change this to false if you choose to not supply an editor)
 }
 
-juce::AudioProcessorEditor*JIMTSSourceProcessor::createEditor()
+juce::AudioProcessorEditor* LatticesProcessor::createEditor()
 {
-    return new JIMTSSourceEditor(*this);
+    return new LatticesEditor(*this);
 }
 
 //==============================================================================
-void JIMTSSourceProcessor::getStateInformation (juce::MemoryBlock& destData) {}
+void LatticesProcessor::getStateInformation (juce::MemoryBlock& destData) {}
 
-void JIMTSSourceProcessor::setStateInformation (const void* data, int sizeInBytes) {}
+void LatticesProcessor::setStateInformation (const void* data, int sizeInBytes) {}
 
-void JIMTSSourceProcessor::initPythagorean12()
+//==============================================================================
+
+JIMath jim;
+
+
+
+void LatticesProcessor::setupPyth12()
 {
+    if (currentlyDuodene)
+    {
+        for (int i = 0; i < 12; ++i)
+        {
+            if (i == NM[0] || i == NM[1] || i == NM[2] || i==NM[3])
+            {
+                ratios[i] *= jim.comma(jim.syntonic, false);
+                coOrds[i].first -= 4;
+                coOrds[i].second +=1;
+            }
+            if (i == SM[0] || i == SM[1] || i == SM[2] || i == SM[3])
+            {
+                ratios[i] *= jim.comma(jim.syntonic, true);
+                coOrds[i].first += 4;
+                coOrds[i].second -= 1;
+            }
+
+        }
+    }
+    
+    /*
     ratios[0] = 1.0;
     ratios[1] = (double)256/243;
     ratios[2] = (double)9/8;
@@ -210,10 +240,36 @@ void JIMTSSourceProcessor::initPythagorean12()
     ratios[9] = (double)27/16;
     ratios[10] = (double)16/9;
     ratios[11] = (double)243/128;
+    */
 }
 
-void JIMTSSourceProcessor::initDuodene()
+void LatticesProcessor::setupDuodene()
 {
+    if (currentlyDuodene)
+    {
+        return;
+    }
+    
+    for (int i = 0; i < 12; ++i)
+    {
+        if (i == NM[0] || i == NM[1] || i == NM[2] || i==NM[3])
+        {
+            ratios[i] *= jim.comma(jim.syntonic, true);
+            coOrds[i].first -= 4;
+            coOrds[i].second +=1;
+        }
+        if (i == SM[0] || i == SM[1] || i == SM[2] || i == SM[3])
+        {
+            ratios[i] *= jim.comma(jim.syntonic, false);
+            coOrds[i].first += 4;
+            coOrds[i].second -= 1;
+        }
+        int A = coOrds[i].first;
+        int B = coOrds[i].second;
+        
+        std::cout << "(" << A << ", " << B << ")" << std::endl;
+    }
+    /*
     ratios[0] = 1.0;
     ratios[1] = (double)16/15;
     ratios[2] = (double)9/8;
@@ -226,35 +282,38 @@ void JIMTSSourceProcessor::initDuodene()
     ratios[9] = (double)5/3;
     ratios[10] = (double)9/5;
     ratios[11] = (double)15/8;
+     */
 }
-
-
-
-void JIMTSSourceProcessor::shift(int dir) // 0 = east, 1 = west, 2 = north, 3 = south
+/*
+void LatticesProcessor::shiftLegacy(int dir) // 0 = east, 1 = west, 2 = north, 3 = south
 {
 
     switch (dir)
     {
-        case East:
-            positionX++;
-            currentRefNote += 7;
-            currentRefFreq *= ratios[7];
-            std::cout << "I Went East" << std::endl;
-            break;
         case West:
-            positionX--;
+            --positionX;
+            updateCoords();
             currentRefNote += 5;
             currentRefFreq *= ratios[5];
             std::cout << "I Went West" << std::endl;
             break;
+        case East:
+            ++positionX;
+            updateCoords();
+            currentRefNote += 7;
+            currentRefFreq *= ratios[7];
+            std::cout << "I Went East" << std::endl;
+            break;
         case North:
-            positionY++;
+            ++positionY;
+            updateCoords();
             currentRefNote += 4;
             currentRefFreq *= ratios[4];
             std::cout << "I Went North" << std::endl;
             break;
         case South:
-            positionY--;
+            --positionY;
+            updateCoords();
             currentRefNote += 8;
             currentRefFreq *= ratios[8];
             std::cout << "I Went South" << std::endl;
@@ -277,24 +336,162 @@ void JIMTSSourceProcessor::shift(int dir) // 0 = east, 1 = west, 2 = north, 3 = 
     {
         returnToOrigin();
     }
+    changed = true;
+}*/
+
+void LatticesProcessor::shift(int dir) // 0 = east, 1 = west, 2 = north, 3 = south
+{
+    bool mode = false; // for when we eventually do the Duodene modes
+    
+    switch (dir)
+    {
+        case West:
+            for (int i = 0; i < 3; ++i)
+            {
+                if (EM[i] == 0) syntonicDrift--;
+                coOrds[EM[i]].first -= 4;
+                coOrds[EM[i]].second += 1;
+                ratios[EM[i]] *= jim.comma(jim.syntonic, true);
+
+                WM[i] = EM[i];
+                EM[i] = (EM[i] + 5) % 12;
+            }
+
+            
+            
+            rotate(SM);
+            rotate(NM);
+            
+//            if (mode)
+//            {
+//                if (i == 2)
+//                {
+//                    coOrds[EM[i]].second -= 3;
+//                    ratios[EM[i]] *= jim.comma(jim.diesis, false);
+//                }
+//                // rotate somehow?
+//            }
+            
+            std::cout << "I Went West" << std::endl;
+            std::cout << "WM = " << WM[0] << WM[1] << WM[2] << std::endl;
+            std::cout << "EM = " << EM[0] << EM[1] << EM[2] << std::endl;
+            std::cout << "NM = " << NM[0] << NM[1] << NM[2] << NM[3] << std::endl;
+            std::cout << "SM = " << SM[0] << SM[1] << SM[2] << SM[3] << std::endl;
+            break;
+        case East:
+            for (int i = 0; i < 3; ++i)
+            {
+                if (WM[i] == 0) syntonicDrift++;
+                coOrds[WM[i]].first += 4;
+                coOrds[WM[i]].second -= 1;
+                ratios[WM[i]] *= jim.comma(jim.syntonic, false);
+                
+                EM[i] = WM[i];
+                WM[i] = (WM[i] + 7) % 12;
+            }
+            
+            rotate(SM, true);
+            rotate(NM, true);
+            
+//            if (mode)
+//            {
+//
+//                coOrds[WM[i]].second += 3;
+//                ratios[WM[i]] *= jim.comma(jim.diesis, true);
+//                // rotate somehow?
+//            }
+
+            
+            std::cout << "I Went East" << std::endl;
+            std::cout << "WM = " << WM[0] << WM[1] << WM[2] << std::endl;
+            std::cout << "EM = " << EM[0] << EM[1] << EM[2] << std::endl;
+            std::cout << "NM = " << NM[0] << NM[1] << NM[2] << NM[3] << std::endl;
+            std::cout << "SM = " << SM[0] << SM[1] << SM[2] << SM[3] << std::endl;
+            break;
+
+        case North:
+            for (int i = 0; i < 4; ++i)
+            {
+                if (SM[i] == 0) diesisDrift--;
+                coOrds[SM[i]].second += 3;
+                ratios[SM[i]] *= jim.comma(jim.diesis, true);
+                
+                NM[i] = SM[i];
+                SM[i] = (SM[i] + 4) % 12;
+            }
+            rotate(WM, true);
+            rotate(EM, true);
+
+            
+            std::cout << "I Went North" << std::endl;
+            std::cout << "WM = " << WM[0] << WM[1] << WM[2] << std::endl;
+            std::cout << "EM = " << EM[0] << EM[1] << EM[2] << std::endl;
+            std::cout << "NM = " << NM[0] << NM[1] << NM[2] << NM[3] << std::endl;
+            std::cout << "SM = " << SM[0] << SM[1] << SM[2] << SM[3] << std::endl;
+            break;
+        case South:
+            for (int i = 0; i < 4; ++i)
+            {
+                if (NM[i] == 0) diesisDrift++;
+                coOrds[NM[i]].second -= 3;
+                ratios[NM[i]] *= jim.comma(jim.diesis, false);
+                
+                SM[i] = NM[i];
+                NM[i] = (NM[i] + 8) % 12;
+            }
+            rotate(WM);
+            rotate(EM);
+
+            std::cout << "I Went South" << std::endl;
+            std::cout << "WM = " << WM[0] << WM[1] << WM[2] << std::endl;
+            std::cout << "EM = " << EM[0] << EM[1] << EM[2] << std::endl;
+            std::cout << "NM = " << NM[0] << NM[1] << NM[2] << NM[3] << std::endl;
+            std::cout << "SM = " << SM[0] << SM[1] << SM[2] << SM[3] << std::endl;
+            break;
+        case Home:
+            returnToOrigin();
+            break;
+    }
+    updateTuning();
+    changed = true;
 }
 
-void JIMTSSourceProcessor::returnToOrigin()
+
+void LatticesProcessor::returnToOrigin()
 {
-    std::cout << "I Went Home" << std::endl;
-    positionX = 0;
-    positionY = 0;
+    std::cout << "I Went Home or whatever" << std::endl;
     currentRefNote = originalRefNote;
     currentRefFreq = originalRefFreq;
     
-    // initDuodene(); no need for now
+    
+    for (int i = 0; i < 12; ++i)
+    {
+        if (i < 3)
+        {
+            WM[i] = OGWM[i];
+            EM[i] = OGEM[i];
+        }
+        if (i < 4)
+        {
+            NM[i] = OGNM[i];
+            SM[i] = OGSM[i];
+        }
+        ratios[i] = OGratios[i];
+        coOrds[i].first = OGcoOrds[i].first;
+        coOrds[i].second = OGcoOrds[i].second;
+    }
+
+    
+    
+    setupDuodene();
     updateTuning();
+    changed = true;
 }
 
-void JIMTSSourceProcessor::updateTuning()
+void LatticesProcessor::updateTuning()
 {
-    std::cout << "refFreq = " << currentRefFreq << std::endl;
-    std::cout << "refNote = " << currentRefNote << std::endl;
+    // std::cout << "refFreq = " << currentRefFreq << std::endl;
+    // std::cout << "refNote = " << currentRefNote << std::endl;
     int refMidiNote = currentRefNote + 60;
     for (int note = 0; note < 128; ++note)
     {
@@ -310,17 +507,44 @@ void JIMTSSourceProcessor::updateTuning()
     
     // later...
     MTS_SetScaleName("JI is nice yeah?");
+
 }
 
-std::pair<int,int> JIMTSSourceProcessor::checkLocation()
+template<std::size_t S>
+void LatticesProcessor::rotate(std::array<int, S>& arr, bool backwards)
 {
-    std::cout << "I checked the position" << std::endl;
-    return {positionX, positionY};
+    int last = arr.size() - 1;
+    
+    if (backwards)
+    {
+        auto temp = arr[0];
+        
+        for (int i = 0; i < last; ++i)
+        {
+            arr[i] = arr[i + 1];
+        }
+        
+        arr[last] = temp;
+    }
+    else
+    {
+        auto temp = arr[last];
+        
+        for (int i = last; i > 0; --i)
+        {
+            arr[i] = arr[i - 1];
+        }
+        
+        arr[0] = temp;
+    }
 }
+
+
+
 
 //==============================================================================
 // This creates new instances of the plugin..
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
-    return new JIMTSSourceProcessor();
+    return new LatticesProcessor();
 }

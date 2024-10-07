@@ -1,8 +1,8 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.15)
 
-set(CMAKE_OSX_DEPLOYMENT_TARGET 10.14 CACHE STRING "Build for 10.11")
+set(CMAKE_OSX_DEPLOYMENT_TARGET 10.14 CACHE STRING "Build for 10.14")
 
-project(ji-mts-source VERSION 0.9.0 LANGUAGES CXX)
+project(lattices VERSION 0.1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 
 include (cmake/CPM.cmake)
@@ -11,11 +11,11 @@ CPMAddPackage("gh:juce-framework/JUCE#7.0.4")
 
 
 juce_add_plugin(${PROJECT_NAME}
-    PRODUCT_NAME "JI MTS Source"
+    PRODUCT_NAME "Lattices"
     COMPANY_NAME "TBD Tuners"  
-    BUNDLE_ID "org.tbd.tuners.jimts"
-    PLUGIN_MANUFACTURER_CODE TbdT
-    PLUGIN_CODE JImS
+    BUNDLE_ID "org.tbd.tuners.lattices"
+    PLUGIN_MANUFACTURER_CODE TbdL
+    PLUGIN_CODE LatT
 
     IS_SYNTH TRUE
     NEEDS_MIDI_INPUT TRUE

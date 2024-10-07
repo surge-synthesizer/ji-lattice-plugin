@@ -3,23 +3,23 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "PluginProcessor.h"
-#include "JIComponent.h"
+#include "LatticeComponent.h"
 
 //==============================================================================
 /**
 */
-class JIMTSSourceEditor : public juce::AudioProcessorEditor, juce::Timer
+class LatticesEditor : public juce::AudioProcessorEditor, juce::Timer
 {
 public:
-  JIMTSSourceEditor(JIMTSSourceProcessor &);
-    ~JIMTSSourceEditor();
+  LatticesEditor(LatticesProcessor &);
+    ~LatticesEditor();
 
     //==============================================================================
     void paint (juce::Graphics&) override;
     void resized() override;
     void timerCallback() override;
 
-    std::unique_ptr<JIComponent> jiComponent;
+    std::unique_ptr<LatticeComponent> latticeComponent;
 
     // Do this later
     std::unique_ptr<juce::Timer> idleTimer;
@@ -31,7 +31,7 @@ private:
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.
     
-    JIMTSSourceProcessor &processor;
+    LatticesProcessor &processor;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (JIMTSSourceEditor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LatticesEditor)
 };

@@ -5,22 +5,24 @@
 
 
 //==============================================================================
-struct JIComponent : juce::Component
+struct LatticeComponent : juce::Component
 {
-    JIComponent(int px, int py)
+    LatticeComponent(std::pair<int, int> *c)
     {
-        currentX = px;
-        currentY = py;
-        updateLocation(currentX, currentY);
+        updateLocation(c);
     }
     
     
-    void updateLocation(int x, int y)
+    void updateLocation(std::pair<int, int> *c)
     {
-        std::cout << "updated location to " << x << " , " << y << std::endl;
-        currentX = x;
-        currentY = y;
+        for (int i = 0; i < 12; ++i)
+        {
+            CC[i] = c[i];
+        }
     }
+    
+    
+    juce::Colour colour1 { juce::Colours::blue }, colour2 { juce::Colours::green }, colour3 { juce::Colours::red };
     
     void paint(juce::Graphics &g) override
     {
@@ -35,8 +37,7 @@ struct JIComponent : juce::Component
 
         auto nV = std::ceil(getHeight() / vDistance);
         auto nW = std::ceil(getWidth() / hDistance);
-        
-        juce::Colour colour1 { juce::Colours::blue }, colour2 { juce::Colours::green };
+
 
         // this overdoes it a bit
         for (int v = -nV - 1; v < nV + 1; ++v)
@@ -49,30 +50,41 @@ struct JIComponent : juce::Component
             for (int w = -nW-1; w < nW + 1; ++w)
             {
                 float x = w * hDistance + ctrX + off;
-                
-                if (w == -nW-1)
-                {
-                    
-                }
                     
                 if (x < 0 || x > getWidth())
                     continue;
                 
-                auto alpha = 1.f;
-                
-                if (w < currentX - 1 || w > currentX + 2 || v < currentY - 1 || v > currentY + 1)
+                bool lit{false};
+                for (int i = 0; i < 12; ++i) // are we currently lit?
                 {
-                    alpha = .5f;
+                    std::pair<int, int> C = {w,v}; // current sphere
+                    
+//                    std::cout << "current sphere is (" << C.first << ", " << C.second << ")" << std::endl;
+                    if (C == CC[i])
+                    {
+                        lit = true;
+                        break;
+                    }
                 }
                 
-                auto gradient = juce::ColourGradient(colour1, x-(1 * JIRadius), y,
-                                                     colour2, x+(1 * JIRadius), y, false);
-                gradient.multiplyOpacity(alpha);
+                auto alpha = (lit) ? 1.f : .5f;
                 
-                g.setGradientFill(gradient);
-                g.fillEllipse(x-JIRadius,y-JIRadius,2*JIRadius, 2*JIRadius);
-                
+                if ((w + (v * 4)) % 12 == 0)
+                {
+                    auto gradient = juce::ColourGradient(colour3, x-(1 * JIRadius), y,
+                                                         colour1, x+(1 * JIRadius), y, false);
+                    gradient.multiplyOpacity(alpha);
+                    g.setGradientFill(gradient);
+                }
+                else
+                {
+                    auto gradient = juce::ColourGradient(colour1, x-(1 * JIRadius), y,
+                                                         colour2, x+(1 * JIRadius), y, false);
+                    gradient.multiplyOpacity(alpha);
+                    g.setGradientFill(gradient);
+                }
 
+                g.fillEllipse(x-JIRadius,y-JIRadius,2*JIRadius, 2*JIRadius);
                 g.setColour(juce::Colours::white.withAlpha(alpha));
                 g.drawEllipse(x-JIRadius,y-JIRadius,2*JIRadius, 2*JIRadius, 3);
                 
@@ -81,48 +93,66 @@ struct JIComponent : juce::Component
                 
                 auto [n,d] = calculateCell(fifths, thirds);
                 auto s = std::to_string(n) + "/" + std::to_string(d);
-                // auto s = std::to_string(fifths) + "F " + std::to_string(thirds) + "T";
                 g.setFont(20.f);
                 g.drawText(s, x - JIRadius + 3, y - 9, 2 * (JIRadius - 3), 20, juce::Justification::horizontallyCentred, true);
                 
-                if (w == currentX + 2)
+                bool lineLit{false};
+                for (int i = 0; i < 12; ++i) // next horizontal line lit?
                 {
-                    alpha = .5f;
+                    std::pair<int, int> C = {w + 1,v};
+                    if (C == CC[i])
+                    {
+                        lineLit = true;
+                        break;
+                    }
                 }
+                alpha = (lineLit && lit) ? 1.f : .5f;
                 g.setColour(juce::Colours::white.withAlpha(alpha));
                 juce::Line<float> horiz(x + JIRadius, y, x + hDistance - JIRadius, y);
                 g.drawLine(horiz, 3.f);
                 
-                if (w < currentX - 1 || w > currentX + 2 || v < currentY - 1 || v > currentY)
-                {
-                    alpha = .5f;
-                }
-                else
-                {
-                    alpha = 1.f;
-                }
+                
                 // something like sqrt(.1 * slope), sqrt(1 - .1 * slope)
                 float magicNumbers[4] = {0.44721f, 0.89443f, 1.21945f, 2.43891f};
-                // IDK... I just fed around in desmos and found out tbh
+                // tbh I just opened desmos, f'ed around and found out
                 
+                for (int i = 0; i < 12; ++i) // next upward diagonal line lit?
+                {
+                    std::pair<int, int> C = {w,v + 1};
+                    if (C == CC[i])
+                    {
+                        lineLit = true;
+                        break;
+                    }
+                    else if (i == 11)
+                    {
+                        lineLit = false;
+                    }
+                }
+                alpha = (lineLit && lit) ? 1.f : .5f;
                 g.setColour(juce::Colours::white.withAlpha(alpha));
                 juce::Line<float> up(x + JIRadius * magicNumbers[0], y - JIRadius * magicNumbers[1], x + JIRadius * magicNumbers[2], y - JIRadius * magicNumbers[3]);
                 float l[2] = {7.f, 3.f};
                 g.drawDashedLine(up, l, 2, 3.f, 1);
                 
-                if (w < currentX - 1 || w > currentX + 1 || v < currentY || v > currentY + 1)
+                for (int i = 0; i < 12; ++i) // next downward diagonal line lit?
                 {
-                    alpha = .5f;
+                    std::pair<int, int> C = {w + 1,v - 1};
+                    if (C == CC[i])
+                    {
+                        lineLit = true;
+                        break;
+                    }
+                    else if (i == 11)
+                    {
+                        lineLit = false;
+                    }
                 }
-                else
-                {
-                    alpha = 1.f;
-                }
+                alpha = (lineLit && lit) ? 1.f : .5f;
                 g.setColour(juce::Colours::white.withAlpha(alpha));
                 juce::Line<float> down(x + JIRadius * magicNumbers[0], y + JIRadius * magicNumbers[1], x + JIRadius * magicNumbers[2], y + JIRadius * magicNumbers[3]);
                 float le[2] = {2.f, 3.f};
                 g.drawDashedLine(down, le, 2, 3.f, 1);
-                
             }
         }
     }
@@ -171,7 +201,22 @@ struct JIComponent : juce::Component
         return {n,d};
     }
 protected:
-    int currentX{}, currentY{};
+    int currentX{1}, currentY{1};
+    std::pair<int, int> CC[12]
+    {
+        {0,0},
+        {0,0},
+        {0,0},
+        {0,0},
+        {0,0},
+        {0,0},
+        {0,0},
+        {0,0},
+        {0,0},
+        {0,0},
+        {0,0},
+        {0,0},
+    }; // current co-ordinates
 };
 
 
