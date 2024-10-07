@@ -46,7 +46,19 @@ void LatticesEditor::timerCallback()
 {
     if (processor.changed)
     {
-        latticeComponent->updateLocation(processor.coOrds);
+        if (processor.mode == LatticesProcessor::Pyth)
+        {
+            
+        }
+        else if (processor.mode == LatticesProcessor::Syntonic)
+        {
+            latticeComponent->updateLocation(processor.coOrds);
+        }
+        else
+        {
+            latticeComponent->updateLocation(processor.positionX, processor.positionY);
+        }
+        
         latticeComponent->repaint();
         processor.changed = false;
     }

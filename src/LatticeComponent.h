@@ -21,6 +21,44 @@ struct LatticeComponent : juce::Component
         }
     }
     
+    void updateLocation(int x, int y)
+    {
+        CC[0].first = x;
+        CC[0].second = y;
+        
+        CC[1].first = x - 1;
+        CC[1].second = y - 1;
+        
+        CC[2].first = x + 2;
+        CC[2].second = y;
+        
+        CC[3].first = x + 1;
+        CC[3].second = y - 1;
+        
+        CC[4].first = x;
+        CC[4].second = y + 1;
+        
+        CC[5].first = x - 1;
+        CC[5].second = y;
+        
+        CC[6].first = x + 2;
+        CC[6].second = y + 1;
+        
+        CC[7].first = x + 1;
+        CC[7].second = y;
+        
+        CC[8].first = x;
+        CC[8].second = y - 1;
+        
+        CC[9].first = x - 1;
+        CC[9].second = y + 1;
+        
+        CC[10].first = x + 2;
+        CC[10].second = y - 1;
+        
+        CC[11].first = x + 1;
+        CC[11].second = y + 1;
+    }
     
     juce::Colour colour1 { juce::Colours::blue }, colour2 { juce::Colours::green }, colour3 { juce::Colours::red };
     
@@ -59,7 +97,6 @@ struct LatticeComponent : juce::Component
                 {
                     std::pair<int, int> C = {w,v}; // current sphere
                     
-//                    std::cout << "current sphere is (" << C.first << ", " << C.second << ")" << std::endl;
                     if (C == CC[i])
                     {
                         lit = true;
@@ -201,7 +238,6 @@ struct LatticeComponent : juce::Component
         return {n,d};
     }
 protected:
-    int currentX{1}, currentY{1};
     std::pair<int, int> CC[12]
     {
         {0,0},

@@ -58,11 +58,12 @@ public:
     // == tuning support ==
     
     void initCoords();
-    void setupPyth12();
-    void setupDuodene();
+
     template<std::size_t S>
     void rotate(std::array<int, S>& arr, bool backwards = false);
     
+    void shift(int dir);
+
     // useful?
     std::array<int,3> WM = {1,5,9}; // WestMost in Duodene
     std::array<int,3> EM = {10,2,6}; // EastMost in Duodene
@@ -79,34 +80,30 @@ public:
     int OGSM[4] = {1,8,3,10};
     
     
-    void shift(int dir);
+
 
     void returnToOrigin();
     void updateTuning();
     
     int positionX{0};
     int positionY{0};
-
     
-    bool currentlyPythagorean{true};
-    bool currentlyDuodene{false};
-    std::pair<int, int> coOrds[12]
+    enum Mode
     {
-        {0, 0},
-        {-5, 0},
-        {2, 0},
-        {-3, 0},
-        {4, 0},
-        {-1, 0},
-        {6, 0},
-        {1, 0},
-        {-4, 0},
-        {3, 0},
-        {-2, 0},
-        {5, 0}
+        Pyth,
+        Syntonic,
+        Duodene,
     };
+    Mode mode = Pyth;
     
-    std::pair<int, int> OGcoOrds[12]
+    void setup();
+    
+    void shiftPyth(int dir);
+    void shiftDuodene(int dir);
+    void shiftSyntonic(int dir);
+    
+    
+    std::pair<int, int> coOrds[12]
     {
         {0, 0},
         {-5, 0},
@@ -125,9 +122,7 @@ public:
     int syntonicDrift = 0;
     int diesisDrift = 0;
     
-    
     std::atomic<bool> changed{false};
-    
     std::atomic<int> numClients{0};
 private:
     
@@ -174,7 +169,6 @@ private:
     double freqs[128]{};
 
     bool registeredMTS{false};
-    std::atomic<bool> repushTuning{false};
     
     enum Direction
     {
