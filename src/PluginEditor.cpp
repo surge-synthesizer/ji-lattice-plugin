@@ -15,14 +15,31 @@
 LatticesEditor::LatticesEditor(LatticesProcessor &p)
     : juce::AudioProcessorEditor(&p), processor(p)
 {
-    latticeComponent = std::make_unique<LatticeComponent>(p.coOrds);
+    
+    latticeComponent = std::make_unique<LatticeComponent>();
+    if (processor.mode == LatticesProcessor::Pyth)
+    {
+        latticeComponent->update(p.positionX);
+    }
+    else if (processor.mode == LatticesProcessor::Syntonic)
+    {
+        latticeComponent->update(p.coOrds);
+    }
+    else
+    {
+        latticeComponent->update(p.positionX, p.positionY);
+    }
+    
     addAndMakeVisible(*latticeComponent);
+    
+    modeComponent = std::make_unique<ModeComponent>(p.mode);
+    addAndMakeVisible(*modeComponent);
     
     startTimer(5);
     
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
-    setSize(1200, 900);
+    setSize(900, 600);
     setResizable(true, true);
 }
 
@@ -40,6 +57,7 @@ void LatticesEditor::idle() {}
 void LatticesEditor::resized()
 {
     latticeComponent->setBounds(getLocalBounds());
+    modeComponent->setBounds(10, 10, 120, 125);
 }
 
 void LatticesEditor::timerCallback()
@@ -48,18 +66,24 @@ void LatticesEditor::timerCallback()
     {
         if (processor.mode == LatticesProcessor::Pyth)
         {
-            
+            latticeComponent->update(processor.positionX);
         }
         else if (processor.mode == LatticesProcessor::Syntonic)
         {
-            latticeComponent->updateLocation(processor.coOrds);
+            latticeComponent->update(processor.coOrds);
         }
         else
         {
-            latticeComponent->updateLocation(processor.positionX, processor.positionY);
+            latticeComponent->update(processor.positionX, processor.positionY);
         }
         
         latticeComponent->repaint();
         processor.changed = false;
+    }
+    
+    if (modeComponent->modeChanged == true)
+    {
+        processor.modeSwitch(modeComponent->whichMode());
+        modeComponent->modeChanged = false;
     }
 }

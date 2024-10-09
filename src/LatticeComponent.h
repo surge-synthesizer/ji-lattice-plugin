@@ -7,13 +7,33 @@
 //==============================================================================
 struct LatticeComponent : juce::Component
 {
-    LatticeComponent(std::pair<int, int> *c)
+    LatticeComponent()
     {
-        updateLocation(c);
+        update(0,0);
     }
     
+    void update(int x)
+    {
+        CC[0].first = x;
+        CC[1].first = x - 5;
+        CC[2].first = x + 2;
+        CC[3].first = x - 3;
+        CC[4].first = x + 4;
+        CC[5].first = x - 1;
+        CC[6].first = x + 6;
+        CC[7].first = x + 1;
+        CC[8].first = x - 4;
+        CC[9].first = x + 3;
+        CC[10].first = x - 2;
+        CC[11].first = x + 5;
+        
+        for (int i = 0; i < 12; ++i)
+        {
+            CC[i].second = 0;
+        }
+    }
     
-    void updateLocation(std::pair<int, int> *c)
+    void update(std::pair<int, int> *c)
     {
         for (int i = 0; i < 12; ++i)
         {
@@ -21,7 +41,7 @@ struct LatticeComponent : juce::Component
         }
     }
     
-    void updateLocation(int x, int y)
+    void update(int x, int y)
     {
         CC[0].first = x;
         CC[0].second = y;

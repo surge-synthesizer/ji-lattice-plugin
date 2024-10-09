@@ -1,3 +1,11 @@
 [submodule "libs/MTS-ESP"]
 	path = libs/MTS-ESP
 	url = https://github.com/ODDSound/MTS-ESP.git
+[submodule "libs/melatonin_blur"]
+	path = libs/melatonin_blur
+	url = https://github.com/sudara/melatonin_blur.git
+	branch = main
+[submodule "libs/melatonin_inspector"]
+	path = libs/melatonin_inspector
+	url = https://github.com/sudara/melatonin_inspector.git
+	branch = main

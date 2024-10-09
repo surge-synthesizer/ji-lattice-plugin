@@ -120,7 +120,7 @@ void LatticesProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 
 void LatticesProcessor::timerCallback()
 {
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < 5; ++i)
     {
         if (careful[i] > 0)
         {
@@ -168,18 +168,7 @@ void LatticesProcessor::respondToMidi(const juce::MidiMessage &m)
             {
                 if (val == 127 && hold[i] == false)
                 {
-                    if (mode == Pyth)
-                    {
-                        shiftPyth(i);
-                    }
-                    else if (mode == Syntonic)
-                    {
-                        shiftSyntonic(i);
-                    }
-                    else
-                    {
-                        shiftDuodene(i);
-                    }
+                    shift(i);
                     hold[i] = true;
                 }
                 
@@ -217,36 +206,31 @@ JIMath jim;
 
 void LatticesProcessor::setup()
 {
-    ratios[0] = 1.0;
-    ratios[1] = (double)256/243;
-    ratios[2] = (double)9/8;
-    ratios[3] = (double)32/27;
-    ratios[4] = (double)81/64;
-    ratios[5] = (double)4/3;
-    ratios[6] = (double)729/512;
-    ratios[7] = (double)3/2;
-    ratios[8] = (double)128/81;
-    ratios[9] = (double)27/16;
-    ratios[10] = (double)16/9;
-    ratios[11] = (double)243/128;
-    
-    
-    coOrds[0] = {0, 0};
-    coOrds[1] = {-5, 0};
-    coOrds[2] = {2, 0};
-    coOrds[3] =  {-3, 0};
-    coOrds[4] = {4, 0};
-    coOrds[5] =  {-1, 0};
-    coOrds[6] = {6, 0};
-    coOrds[7] =  {1, 0},
-    coOrds[8] =  {-4, 0};
-    coOrds[9] =  {3, 0};
-    coOrds[10] =  {-2, 0};
-    coOrds[11] =  {5, 0};
-    
-    
-    if (mode != Pyth)
+    // Init to pythagorean
+    for (int i = 0; i < 12; ++i)
     {
+        ratios[i] = pyth12[i];
+        coOrds[i] = pythCo[i];
+        if (i < 3)
+        {
+            WM[i] = OGWM[i];
+            EM[i] = OGEM[i];
+        }
+        if (i < 4)
+        {
+            NM[i] = OGNM[i];
+            SM[i] = OGSM[i];
+        }
+    }
+    
+    if (mode == Pyth)
+    {
+        // we're done
+        return;
+    }
+    else
+    {
+        // add prime 5 to taste
         for (int i = 0; i < 12; ++i)
         {
             if (i == NM[0] || i == NM[1] || i == NM[2] || i==NM[3])
@@ -263,28 +247,75 @@ void LatticesProcessor::setup()
             }
         }
     }
-    
-    /*
-    ratios[0] = 1.0;
-    ratios[1] = (double)16/15;
-    ratios[2] = (double)9/8;
-    ratios[3] = (double)6/5;
-    ratios[4] = (double)5/4;
-    ratios[5] = (double)4/3;
-    ratios[6] = (double)45/32;
-    ratios[7] = (double)3/2;
-    ratios[8] = (double)8/5;
-    ratios[9] = (double)5/3;
-    ratios[10] = (double)9/5;
-    ratios[11] = (double)15/8;
-    */
-    
 }
 
+void LatticesProcessor::modeSwitch(int m)
+{
+    switch (m)
+    {
+        case Pyth:
+            mode = Pyth;
+            break;
+        case Syntonic:
+            mode = Syntonic;
+            break;
+        case Duodene:
+            mode = Duodene;
+    }
+    returnToOrigin();
+}
 
+void LatticesProcessor::shift(int dir)
+{
+    if (mode == Pyth)
+    {
+        shiftPyth(dir);
+    }
+    else if (mode == Syntonic)
+    {
+        shiftSyntonic(dir);
+    }
+    else
+    {
+        shiftDuodene(dir);
+    }
+}
 
 void LatticesProcessor::shiftPyth(int dir)
 {
+    switch (dir)
+    {
+        case West:
+            --positionX;
+            currentRefNote += 5;
+            currentRefFreq *= ratios[5];
+            break;
+        case East:
+            ++positionX;
+            currentRefNote += 7;
+            currentRefFreq *= ratios[7];
+            break;
+        case Home:
+            returnToOrigin();
+            break;
+        default:
+            return;
+    }
+    
+    if (positionX != 0)
+    {
+        if (currentRefNote >= originalRefNote + 12)
+        {
+            currentRefNote -= 12;
+            currentRefFreq /= 2.0;
+        }
+        changed = true;
+        updateTuning();
+    }
+    else if (positionX == 0 && positionY == 0)
+    {
+        returnToOrigin();
+    }
 }
 
 void LatticesProcessor::shiftSyntonic(int dir)
@@ -392,36 +423,24 @@ void LatticesProcessor::shiftDuodene(int dir)
             currentRefNote -= 12;
             currentRefFreq /= 2.0;
         }
+        changed = true;
         updateTuning();
     }
     else if (positionX == 0 && positionY == 0)
     {
         returnToOrigin();
     }
-    
-    changed = true;
 }
+
 
 
 void LatticesProcessor::returnToOrigin()
 {
     currentRefNote = originalRefNote;
     currentRefFreq = originalRefFreq;
-    
+    positionX = 0;
+    positionY = 0;
     setup();
-    for (int i = 0; i < 12; ++i)
-    {
-        if (i < 3)
-        {
-            WM[i] = OGWM[i];
-            EM[i] = OGEM[i];
-        }
-        if (i < 4)
-        {
-            NM[i] = OGNM[i];
-            SM[i] = OGSM[i];
-        }
-    }
     
     updateTuning();
     changed = true;
@@ -477,9 +496,6 @@ void LatticesProcessor::rotate(std::array<int, S>& arr, bool backwards)
         arr[0] = temp;
     }
 }
-
-
-
 
 //==============================================================================
 // This creates new instances of the plugin..

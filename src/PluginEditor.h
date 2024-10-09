@@ -2,8 +2,11 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include "melatonin_inspector/melatonin_inspector.h"
 #include "PluginProcessor.h"
 #include "LatticeComponent.h"
+#include "ModeComponent.h"
+
 
 //==============================================================================
 /**
@@ -18,19 +21,18 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
     void timerCallback() override;
-
-    std::unique_ptr<LatticeComponent> latticeComponent;
-
-    // Do this later
+    
     std::unique_ptr<juce::Timer> idleTimer;
     void idle();
 
 private:
-
-    int priorX{0}, priorY{0};
+    melatonin::Inspector inspector { *this };
+    
+    std::unique_ptr<LatticeComponent> latticeComponent;
+    std::unique_ptr<ModeComponent> modeComponent;
+    
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.
-    
     LatticesProcessor &processor;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LatticesEditor)

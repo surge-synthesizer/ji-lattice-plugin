@@ -9,6 +9,8 @@ include (cmake/CPM.cmake)
 
 CPMAddPackage("gh:juce-framework/JUCE#7.0.4")
 
+add_subdirectory (libs/melatonin_inspector)
+juce_add_module("libs/melatonin_blur")
 
 juce_add_plugin(${PROJECT_NAME}
     PRODUCT_NAME "Lattices"
@@ -34,6 +36,8 @@ target_include_directories(${PROJECT_NAME}
 
 add_library(oddsound-mts-source libs/MTS-ESP/Master/libMTSMaster.cpp)
 target_include_directories(oddsound-mts-source PUBLIC libs/MTS-ESP/master)
+target_link_libraries(${PROJECT_NAME} PRIVATE melatonin_inspector)
+target_link_libraries(${PROJECT_NAME} PRIVATE melatonin_blur)
 
 target_sources(${PROJECT_NAME} PRIVATE src/PluginEditor.cpp src/PluginProcessor.cpp)
 
