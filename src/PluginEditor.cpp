@@ -35,6 +35,9 @@ LatticesEditor::LatticesEditor(LatticesProcessor &p)
     modeComponent = std::make_unique<ModeComponent>(p.mode);
     addAndMakeVisible(*modeComponent);
     
+    midiComponent = std::make_unique<MIDIMenuComponent>();
+    addAndMakeVisible(*midiComponent);
+    
     startTimer(5);
     
     // Make sure that before the constructor has finished, you've set the
@@ -58,6 +61,7 @@ void LatticesEditor::resized()
 {
     latticeComponent->setBounds(getLocalBounds());
     modeComponent->setBounds(10, 10, 120, 125);
+    midiComponent->setBounds(10, 445, 90, 155);
 }
 
 void LatticesEditor::timerCallback()
@@ -85,5 +89,15 @@ void LatticesEditor::timerCallback()
     {
         processor.modeSwitch(modeComponent->whichMode());
         modeComponent->modeChanged = false;
+    }
+    
+    if (midiComponent->anyMidiChanged == true)
+    {
+        processor.shiftCCs[0] = midiComponent->westCC;
+        processor.shiftCCs[1] = midiComponent->eastCC;
+        processor.shiftCCs[2] = midiComponent->northCC;
+        processor.shiftCCs[3] = midiComponent->southCC;
+        processor.shiftCCs[4] = midiComponent->homeCC;
+        processor.listenOnChannel = midiComponent->midiChannel;
     }
 }

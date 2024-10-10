@@ -2,8 +2,8 @@
 // Created by Paul Walker on 1/10/23.
 //
 
-#ifndef JI_MTS_SOURCE_JIMATH_H
-#define JI_MTS_SOURCE_JIMATH_H
+#ifndef LATTICES_JIMATH_H
+#define LATTICES_JIMATH_H
 
 #include <utility>
 

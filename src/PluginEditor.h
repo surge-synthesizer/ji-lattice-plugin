@@ -6,7 +6,7 @@
 #include "PluginProcessor.h"
 #include "LatticeComponent.h"
 #include "ModeComponent.h"
-
+#include "MIDIMenuComponent.h"
 
 //==============================================================================
 /**
@@ -30,6 +30,7 @@ private:
     
     std::unique_ptr<LatticeComponent> latticeComponent;
     std::unique_ptr<ModeComponent> modeComponent;
+    std::unique_ptr<MIDIMenuComponent> midiComponent;
     
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.

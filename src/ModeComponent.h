@@ -47,11 +47,12 @@ struct ModeComponent : public juce::ToggleButton
     
     void paint(juce::Graphics &g) override
     {
+        g.setColour(juce::Colours::darkolivegreen);
+        g.fillRect(this->getLocalBounds());
+        
         g.setColour(juce::Colours::chartreuse);
         g.drawRect(this->getLocalBounds());
         
-        g.setColour(juce::Colours::darkolivegreen);
-        g.fillRect(this->getLocalBounds());
         
         // why don't I need to draw these???
 //        pythButton.paintButton(g, false, false);

@@ -80,9 +80,10 @@ public:
     
     
     bool registeredMTS{false};
-private:
     
-
+    int shiftCCs[5] = {6, 5, 7, 8, 9};
+    int listenOnChannel = 1;
+private:
     
     enum Direction
     {
@@ -165,7 +166,6 @@ private:
     int OGSM[4] = {1,8,3,10};
     
     
-    int shiftCCs[5] = {6, 5, 7, 8, 9};
     bool hold[5] = {false, false, false, false, false};
     int careful[5] = {0, 0, 0, 0, 0};
     
