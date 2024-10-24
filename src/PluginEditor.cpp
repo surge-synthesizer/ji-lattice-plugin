@@ -35,7 +35,12 @@ LatticesEditor::LatticesEditor(LatticesProcessor &p)
     modeComponent = std::make_unique<ModeComponent>(p.mode);
     addAndMakeVisible(*modeComponent);
     
-    midiComponent = std::make_unique<MIDIMenuComponent>();
+    midiComponent = std::make_unique<MIDIMenuComponent>(p.shiftCCs[0],
+                                                        p.shiftCCs[1],
+                                                        p.shiftCCs[2],
+                                                        p.shiftCCs[3],
+                                                        p.shiftCCs[4],
+                                                        p.listenOnChannel);
     addAndMakeVisible(*midiComponent);
     
     startTimer(5);
@@ -61,7 +66,7 @@ void LatticesEditor::resized()
 {
     latticeComponent->setBounds(getLocalBounds());
     modeComponent->setBounds(10, 10, 120, 125);
-    midiComponent->setBounds(10, 445, 90, 155);
+    midiComponent->setBounds(10, 135, 120, 155);
 }
 
 void LatticesEditor::timerCallback()
@@ -91,13 +96,13 @@ void LatticesEditor::timerCallback()
         modeComponent->modeChanged = false;
     }
     
-    if (midiComponent->anyMidiChanged == true)
+    if (midiComponent->settingChanged == true)
     {
-        processor.shiftCCs[0] = midiComponent->westCC;
-        processor.shiftCCs[1] = midiComponent->eastCC;
-        processor.shiftCCs[2] = midiComponent->northCC;
-        processor.shiftCCs[3] = midiComponent->southCC;
-        processor.shiftCCs[4] = midiComponent->homeCC;
+        processor.shiftCCs[0] = midiComponent->data[0];
+        processor.shiftCCs[1] = midiComponent->data[1];
+        processor.shiftCCs[2] = midiComponent->data[2];
+        processor.shiftCCs[3] = midiComponent->data[3];
+        processor.shiftCCs[4] = midiComponent->data[4];
         processor.listenOnChannel = midiComponent->midiChannel;
     }
 }

@@ -40,7 +40,7 @@ struct ModeComponent : public juce::ToggleButton
         }
     }
     
-    void updateToggleState (juce::Button* button, juce::String name)
+    void updateToggleState(juce::Button* button, juce::String name)
     {
         modeChanged = true;
     }
@@ -50,14 +50,8 @@ struct ModeComponent : public juce::ToggleButton
         g.setColour(juce::Colours::darkolivegreen);
         g.fillRect(this->getLocalBounds());
         
-        g.setColour(juce::Colours::chartreuse);
+        g.setColour(juce::Colours::thistle);
         g.drawRect(this->getLocalBounds());
-        
-        
-        // why don't I need to draw these???
-//        pythButton.paintButton(g, false, false);
-//        syntonicButton.paintButton(g, false, false);
-//        duodeneButton.paintButton(g, false, false);
     }
     
     int whichMode()

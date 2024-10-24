@@ -45,6 +45,11 @@ LatticesProcessor::LatticesProcessor()
     }
     */
     
+    for (int i = 0; i < 5; ++i)
+    {
+        priorCC[i] = shiftCCs[i];
+    }
+    
     startTimer(10);
     
     if (registeredMTS == true)
@@ -126,6 +131,13 @@ void LatticesProcessor::timerCallback()
         {
             careful[i]--;
         }
+        
+        if (shiftCCs[i] != priorCC[i])
+        {
+            std::cout << "it worked!" << std::endl;
+            priorCC[i] = shiftCCs[i];
+        }
+        
     }
 }
 

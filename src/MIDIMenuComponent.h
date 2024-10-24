@@ -2,102 +2,294 @@
 
 #include <string>
 
-#include "MIDISelectComponent.h"
-
 //==============================================================================
-struct MIDIMenuComponent : public juce::Component, public juce::Timer
+struct MIDIMenuComponent :  public juce::Component
 {
-    MIDIMenuComponent()
+    MIDIMenuComponent(int wCC, int eCC, int nCC, int sCC, int hCC, int C)
     {
-        WestEditor.setTopLeftPosition(5,5);
-        addAndMakeVisible(WestEditor);
+        data[0] = wCC;
+        data[1] = eCC;
+        data[2] = nCC;
+        data[3] = sCC;
+        data[4] = hCC;
+        midiChannel = C;
         
-        EastEditor.setTopLeftPosition(30,5);
-        addAndMakeVisible(EastEditor);
+        addAndMakeVisible(westLabel);
+        westLabel.setJustificationType(juce::Justification::left);
+        westLabel.setColour(juce::Label::backgroundColourId, juce::Colours::black);
         
-        NorthEditor.setTopLeftPosition(55,5);
-        addAndMakeVisible(NorthEditor);
+        addAndMakeVisible(westEditor);
+        westEditor.setMultiLine(false);
+        westEditor.setReturnKeyStartsNewLine(false);
+        westEditor.setInputRestrictions(3, "1234567890");
+        westEditor.setText(std::to_string(wCC), false);
+        westEditor.setJustification(juce::Justification::centred);
+        westEditor.setSelectAllWhenFocused(true);
+        westEditor.setColour(juce::TextEditor::outlineColourId, noColour);
+        westEditor.onReturnKey = [this]{ returnKeyResponse(&westEditor); };
+        westEditor.onEscapeKey = [this]{ escapeKeyResponse(&westEditor); };
+        westEditor.onFocusLost = [this]{ focusLostResponse(&westEditor); };
         
-        SouthEditor.setTopLeftPosition(80,5);
-        addAndMakeVisible(SouthEditor);
         
-        HomeEditor.setTopLeftPosition(105,5);
-        addAndMakeVisible(HomeEditor);
+        addAndMakeVisible(eastLabel);
+        eastLabel.setJustificationType(juce::Justification::left);
+        eastLabel.setColour(juce::Label::backgroundColourId, juce::Colours::black);
         
-        ChannelEditor.setTopLeftPosition(130,5);
-        addAndMakeVisible(ChannelEditor);
+        addAndMakeVisible(eastEditor);
+        eastEditor.setMultiLine(false);
+        eastEditor.setReturnKeyStartsNewLine(false);
+        eastEditor.setInputRestrictions(3, "1234567890");
+        eastEditor.setText(std::to_string(eCC), false);
+        eastEditor.setJustification(juce::Justification::centred);
+        eastEditor.setSelectAllWhenFocused(true);
+        eastEditor.setColour(juce::TextEditor::outlineColourId, noColour);
+        eastEditor.onReturnKey = [this]{ returnKeyResponse(&eastEditor); };
+        eastEditor.onEscapeKey = [this]{ escapeKeyResponse(&eastEditor); };
+        eastEditor.onFocusLost = [this]{ focusLostResponse(&eastEditor); };
         
-        startTimer(5);
+
+        addAndMakeVisible(northLabel);
+        northLabel.setJustificationType(juce::Justification::left);
+        northLabel.setColour(juce::Label::backgroundColourId, juce::Colours::black);
+
+        addAndMakeVisible(northEditor);
+        northEditor.setMultiLine(false);
+        northEditor.setReturnKeyStartsNewLine(false);
+        northEditor.setInputRestrictions(3, "1234567890");
+        northEditor.setText(std::to_string(nCC), false);
+        northEditor.setJustification(juce::Justification::centred);
+        northEditor.setSelectAllWhenFocused(true);
+        northEditor.setColour(juce::TextEditor::outlineColourId, noColour);
+        northEditor.onReturnKey = [this]{ returnKeyResponse(&northEditor); };
+        northEditor.onEscapeKey = [this]{ escapeKeyResponse(&northEditor); };
+        northEditor.onFocusLost = [this]{ focusLostResponse(&northEditor); };
+        
+
+        addAndMakeVisible(southLabel);
+        southLabel.setJustificationType(juce::Justification::left);
+        southLabel.setColour(juce::Label::backgroundColourId, juce::Colours::black);
+
+        addAndMakeVisible(southEditor);
+        southEditor.setMultiLine(false);
+        southEditor.setReturnKeyStartsNewLine(false);
+        southEditor.setInputRestrictions(3, "1234567890");
+        southEditor.setText(std::to_string(sCC), false);
+        southEditor.setJustification(juce::Justification::centred);
+        southEditor.setSelectAllWhenFocused(true);
+        southEditor.setColour(juce::TextEditor::outlineColourId, noColour);
+        southEditor.onReturnKey = [this]{ returnKeyResponse(&southEditor); };
+        southEditor.onEscapeKey = [this]{ escapeKeyResponse(&southEditor); };
+        southEditor.onFocusLost = [this]{ focusLostResponse(&southEditor); };
+        
+
+        addAndMakeVisible(homeLabel);
+        homeLabel.setJustificationType(juce::Justification::left);
+        homeLabel.setColour(juce::Label::backgroundColourId, juce::Colours::black);
+
+        addAndMakeVisible(homeEditor);
+        homeEditor.setMultiLine(false);
+        homeEditor.setReturnKeyStartsNewLine(false);
+        homeEditor.setInputRestrictions(3, "1234567890");
+        homeEditor.setText(std::to_string(hCC), false);
+        homeEditor.setJustification(juce::Justification::centred);
+        homeEditor.setSelectAllWhenFocused(true);
+        homeEditor.setColour(juce::TextEditor::outlineColourId, noColour);
+        homeEditor.onReturnKey = [this]{ returnKeyResponse(&homeEditor); };
+        homeEditor.onEscapeKey = [this]{ escapeKeyResponse(&homeEditor); };
+        homeEditor.onFocusLost = [this]{ focusLostResponse(&homeEditor); };
+
+        addAndMakeVisible(channelLabel);
+        channelLabel.setJustificationType(juce::Justification::left);
+        channelLabel.setColour(juce::Label::backgroundColourId, juce::Colours::black);
+
+        addAndMakeVisible(channelEditor);
+        channelEditor.setMultiLine(false);
+        channelEditor.setReturnKeyStartsNewLine(false);
+        channelEditor.setInputRestrictions(2, "1234567890");
+        channelEditor.setText(std::to_string(C), false);
+        channelEditor.setJustification(juce::Justification::centred);
+        channelEditor.setSelectAllWhenFocused(true);
+        channelEditor.setColour(juce::TextEditor::outlineColourId, noColour);
+        channelEditor.onReturnKey = [this]{ returnKeyResponse(&channelEditor); };
+        channelEditor.onEscapeKey = [this]{ escapeKeyResponse(&channelEditor); };
+        channelEditor.onFocusLost = [this]{ focusLostResponse(&channelEditor); };
     }
+    
+    ~MIDIMenuComponent() {}
     
     void paint(juce::Graphics &g) override
     {
-        g.setColour(juce::Colours::thistle);
+        g.setColour(juce::Colours::darkolivegreen);
         g.fillRect(this->getLocalBounds());
         
-        g.setColour(juce::Colours::royalblue);
+        g.setColour(juce::Colours::thistle);
         g.drawRect(this->getLocalBounds());
     }
     
-    void timerCallback() override
+    void resized() override
     {
-        if (WestEditor.settingChanged == true)
-        {
-            westCC = WestEditor.midiCC;
-            anyMidiChanged = true;
-            WestEditor.settingChanged = false;
-        }
+        westLabel.setBounds(10, 5, 70, 20);
+        eastLabel.setBounds(10, 30, 70, 20);
+        northLabel.setBounds(10, 55, 70, 20);
+        southLabel.setBounds(10, 80, 70, 20);
+        homeLabel.setBounds(10, 105, 70, 20);
+        channelLabel.setBounds(10, 130, 70, 20);
         
-        if (EastEditor.settingChanged == true)
+        westEditor.setBounds(80, 5, 30, 20);
+        eastEditor.setBounds(80, 30, 30, 20);
+        northEditor.setBounds(80, 55, 30, 20);
+        southEditor.setBounds(80, 80, 30, 20);
+        homeEditor.setBounds(80, 105, 30, 20);
+        channelEditor.setBounds(80, 130, 30, 20);
+    }
+    
+    void returnKeyResponse(juce::TextEditor *e)
+    {
+        e->setHighlightedRegion(noRange);
+        this->unfocusAllComponents();
+
+        int digit = e->getText().getIntValue();
+
+        if (e == &westEditor)
         {
-            westCC = EastEditor.midiCC;
-            anyMidiChanged = true;
-            EastEditor.settingChanged = false;
+            if (rejectBadInput(digit))
+            {
+                e->setText(std::to_string(data[0]));
+                return;
+            }
+
+            data[0] = digit;
+            settingChanged = true;
         }
-        
-        if (NorthEditor.settingChanged == true)
+
+        if (e == &eastEditor)
         {
-            westCC = NorthEditor.midiCC;
-            anyMidiChanged = true;
-            NorthEditor.settingChanged = false;
+            if (rejectBadInput(digit))
+            {
+                e->setText(std::to_string(data[1]));
+                return;
+            }
+
+            data[1] = digit;
+            settingChanged = true;
         }
-        
-        if (SouthEditor.settingChanged == true)
+
+        if (e == &northEditor)
         {
-            westCC = SouthEditor.midiCC;
-            anyMidiChanged = true;
-            SouthEditor.settingChanged = false;
+            if (rejectBadInput(digit))
+            {
+                e->setText(std::to_string(data[2]));
+                return;
+            }
+
+            data[2] = digit;
+            settingChanged = true;
         }
-        
-        if (HomeEditor.settingChanged == true)
+
+        if (e == &southEditor)
         {
-            westCC = HomeEditor.midiCC;
-            anyMidiChanged = true;
-            HomeEditor.settingChanged = false;
+            if (rejectBadInput(digit))
+            {
+                e->setText(std::to_string(data[3]));
+                return;
+            }
+
+            data[3] = digit;
+            settingChanged = true;
         }
-        
-        if (ChannelEditor.settingChanged == true)
+
+        if (e == &homeEditor)
         {
-            westCC = ChannelEditor.midiCC;
-            anyMidiChanged = true;
-            ChannelEditor.settingChanged = false;
+            if (rejectBadInput(digit))
+            {
+                e->setText(std::to_string(data[4]));
+                return;
+            }
+
+            data[4] = digit;
+            settingChanged = true;
+        }
+
+        if (e == &channelEditor)
+        {
+            if (rejectBadInput(digit, true))
+            {
+                e->setText(std::to_string(midiChannel));
+                return;
+            }
+
+            midiChannel = digit;
+            settingChanged = true;
         }
     }
     
-    std::atomic<bool> anyMidiChanged = false;
-    int westCC, eastCC, northCC, southCC, homeCC, midiChannel;
+    void escapeKeyResponse(juce::TextEditor *e)
+    {
+        e->setHighlightedRegion(noRange);
+        this->unfocusAllComponents();
+    }
+    
+    
+    void focusLostResponse(juce::TextEditor *e)
+    {
+        e->setHighlightedRegion(noRange);
+        this->unfocusAllComponents();
+    }
+    
+    bool rejectBadInput(int input, bool channel = false)
+    {
+        // if it's midi channel, reject if out of range
+        
+        if (channel)
+        {
+            if (input < 1 || input > 16)
+            {
+                return true;
+            }
+            return false;
+        }
+        
+        
+        // if it's a CC, reject if out of range or if already occupied
+        if (input < 1 || input > 127)
+        {
+            return true;
+        }
+        
+        for (int i = 0; i < 5; ++i)
+        {
+            if (input == data[i])
+            {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    std::atomic<bool> settingChanged = false;
+    int midiChannel;
+    int data[5];
     
 private:
-    //    juce::Label modeLabel{ {}, "Mode" };
+    juce::TextEditor westEditor{"West"};
+    juce::TextEditor eastEditor{"East"};
+    juce::TextEditor northEditor{"North"};
+    juce::TextEditor southEditor{"South"};
+    juce::TextEditor homeEditor{"Home"};
+    juce::TextEditor channelEditor{"Channel"};
     
-    std::unique_ptr<juce::Timer> t;
+    juce::Label westLabel{{}, "West CC"};
+    juce::Label eastLabel{{}, "East CC"};
+    juce::Label northLabel{{}, "North CC"};
+    juce::Label southLabel{{}, "South CC"};
+    juce::Label homeLabel{{}, "Home CC"};
+    juce::Label channelLabel{{}, "Channel"};
+    
+    juce::Colour noColour{};
+    juce::Colour dcb{0xff00200}; //default background colour
+    juce::Range<int> noRange{};
 
-    MIDISelectComponent WestEditor{"West CC"};
-    MIDISelectComponent EastEditor{"East CC"};
-    MIDISelectComponent NorthEditor{"North CC"};
-    MIDISelectComponent SouthEditor{"South CC"};
-    MIDISelectComponent HomeEditor{"Home CC"};
-    MIDISelectComponent ChannelEditor{"Channel", true};
 };
 
 

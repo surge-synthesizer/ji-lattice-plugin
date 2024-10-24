@@ -81,7 +81,7 @@ public:
     
     bool registeredMTS{false};
     
-    int shiftCCs[5] = {6, 5, 7, 8, 9};
+    int shiftCCs[5] = {5, 6, 7, 8, 9};
     int listenOnChannel = 1;
 private:
     
@@ -168,6 +168,7 @@ private:
     
     bool hold[5] = {false, false, false, false, false};
     int careful[5] = {0, 0, 0, 0, 0};
+    int priorCC[5]{};
     
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LatticesProcessor)
