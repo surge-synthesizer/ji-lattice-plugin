@@ -14,7 +14,7 @@
 #include "JIMath.h"
 
 #include <cmath>
-
+#include <iostream>
 
 
 //==============================================================================
@@ -27,6 +27,7 @@ LatticesProcessor::LatticesProcessor()
     {
         registeredMTS = true;
         MTS_RegisterMaster();
+        std::cout << "Registered ok" << std::endl;
     }
     /*
     else
@@ -44,11 +45,6 @@ LatticesProcessor::LatticesProcessor()
            Warn user another master is already connected, do not provide an option to reinitialize MTS-ESP;
     }
     */
-    
-    for (int i = 0; i < 5; ++i)
-    {
-        priorCC[i] = shiftCCs[i];
-    }
     
     startTimer(10);
     
@@ -131,13 +127,11 @@ void LatticesProcessor::timerCallback()
         {
             careful[i]--;
         }
-        
-        if (shiftCCs[i] != priorCC[i])
-        {
-            std::cout << "it worked!" << std::endl;
-            priorCC[i] = shiftCCs[i];
-        }
-        
+    }
+    
+    if (updateOrigin)
+    {
+        returnToOrigin();
     }
 }
 
@@ -169,10 +163,12 @@ void LatticesProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
 
 void LatticesProcessor::respondToMidi(const juce::MidiMessage &m)
 {
-    if (m.isController() && m.getChannel() == 1)
+    if (m.isController() && m.getChannel() == listenOnChannel)
     {
         auto num = m.getControllerNumber();
         auto val = m.getControllerValue();
+        
+
         
         for (int i = 0; i < 5; ++i)
         {
@@ -445,7 +441,6 @@ void LatticesProcessor::shiftDuodene(int dir)
 }
 
 
-
 void LatticesProcessor::returnToOrigin()
 {
     currentRefNote = originalRefNote;
@@ -460,8 +455,8 @@ void LatticesProcessor::returnToOrigin()
 
 void LatticesProcessor::updateTuning()
 {
-    // std::cout << "refFreq = " << currentRefFreq << std::endl;
-    // std::cout << "refNote = " << currentRefNote << std::endl;
+//    std::cout << "refFreq = " << currentRefFreq << std::endl;
+//    std::cout << "refNote = " << currentRefNote << std::endl;
     int refMidiNote = currentRefNote + 60;
     for (int note = 0; note < 128; ++note)
     {

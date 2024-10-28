@@ -83,7 +83,15 @@ public:
     
     int shiftCCs[5] = {5, 6, 7, 8, 9};
     int listenOnChannel = 1;
+    
+    int originalRefNote{2}; // C = 0, C# = 1, D = 2 etc
+    double originalRefFreq{293.3333333333333};
+    bool updateOrigin{false};
+    
 private:
+    
+    int currentRefNote{-12};
+    double currentRefFreq{1.00000000};
     
     enum Direction
     {
@@ -112,10 +120,6 @@ private:
     int defaultRefNote{0};
     double defaultRefFreq{261.6255653005986}; // overkill precision
     
-    int originalRefNote{2}; // C = 0, C# = 1, D = 2 etc
-    int currentRefNote{-12};
-    double originalRefFreq{293.3333333333333};
-    double currentRefFreq{1.00000000};
     double ratios[12] = {};
     double pyth12[12]
     {
@@ -168,7 +172,9 @@ private:
     
     bool hold[5] = {false, false, false, false, false};
     int careful[5] = {0, 0, 0, 0, 0};
-    int priorCC[5]{};
+//    int priorCC[5]{};
+//    int priorChannel{};
+    bool first = true;
     
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LatticesProcessor)

@@ -12,7 +12,7 @@ struct LatticeComponent : juce::Component
         update(0,0);
     }
     
-    void update(int x)
+    void update(int x) // Pyth mode
     {
         CC[0].first = x;
         CC[1].first = x - 5;
@@ -33,7 +33,7 @@ struct LatticeComponent : juce::Component
         }
     }
     
-    void update(std::pair<int, int> *c)
+    void update(std::pair<int, int> *c) // Syntonic mode
     {
         for (int i = 0; i < 12; ++i)
         {
@@ -41,7 +41,7 @@ struct LatticeComponent : juce::Component
         }
     }
     
-    void update(int x, int y)
+    void update(int x, int y) // Duodene mode
     {
         CC[0].first = x;
         CC[0].second = y;
@@ -84,7 +84,7 @@ struct LatticeComponent : juce::Component
     
     void paint(juce::Graphics &g) override
     {
-        int JIRadius{30};
+        int JIRadius{26};
         float ctrDistance{JIRadius * (5.f / 3.f)};
         
         float vDistance = 2.0f * ctrDistance;
@@ -150,7 +150,7 @@ struct LatticeComponent : juce::Component
                 
                 auto [n,d] = calculateCell(fifths, thirds);
                 auto s = std::to_string(n) + "/" + std::to_string(d);
-                g.setFont(20.f);
+                g.setFont(JIRadius * (2.f / 3.f));
                 g.drawText(s, x - JIRadius + 3, y - 9, 2 * (JIRadius - 3), 20, juce::Justification::horizontallyCentred, true);
                 
                 bool lineLit{false};

@@ -5,21 +5,18 @@ struct ModeComponent : public juce::ToggleButton
 {
     ModeComponent(int m)
     {
-        pythButton.setBounds(5,5,110,35);
         addAndMakeVisible(pythButton);
-        pythButton.onClick = [this]{ updateToggleState(&pythButton, "Pythagorean"); };
+        pythButton.onClick = [this]{ updateToggleState(); };
         pythButton.setClickingTogglesState(true);
         pythButton.setRadioGroupId(1);
-        
-        syntonicButton.setBounds(5,45,110,35);
+
         addAndMakeVisible(syntonicButton);
-        syntonicButton.onClick = [this]{ updateToggleState(&syntonicButton, "Syntonic"); };
+        syntonicButton.onClick = [this]{ updateToggleState(); };
         syntonicButton.setClickingTogglesState(true);
         syntonicButton.setRadioGroupId(1);
         
-        duodeneButton.setBounds(5,85,110,35);
         addAndMakeVisible(duodeneButton);
-        duodeneButton.onClick = [this]{ updateToggleState(&duodeneButton, "Duodene"); };
+        duodeneButton.onClick = [this]{ updateToggleState(); };
         duodeneButton.setClickingTogglesState(true);
         duodeneButton.setRadioGroupId(1);
         
@@ -40,18 +37,25 @@ struct ModeComponent : public juce::ToggleButton
         }
     }
     
-    void updateToggleState(juce::Button* button, juce::String name)
+    void resized() override
+    {
+        pythButton.setBounds(5,5,110,35);
+        syntonicButton.setBounds(5,45,110,35);
+        duodeneButton.setBounds(5,85,110,35);
+    }
+    
+    void updateToggleState()
     {
         modeChanged = true;
     }
     
     void paint(juce::Graphics &g) override
     {
-        g.setColour(juce::Colours::darkolivegreen);
+        g.setColour(bg);
         g.fillRect(this->getLocalBounds());
         
-        g.setColour(juce::Colours::thistle);
-        g.drawRect(this->getLocalBounds());
+//        g.setColour(juce::Colours::thistle);
+//        g.drawRect(this->getLocalBounds());
     }
     
     int whichMode()
@@ -75,7 +79,8 @@ struct ModeComponent : public juce::ToggleButton
     bool modeChanged = false;
     
 private:
-    //    juce::Label modeLabel{ {}, "Mode" };
+    juce::Colour bg = findColour(juce::TextEditor::backgroundColourId);
+    
     juce::TextButton pythButton { "Pythagorean" };
     juce::TextButton syntonicButton { "Syntonic" };
     juce::TextButton duodeneButton { "Duodene" };

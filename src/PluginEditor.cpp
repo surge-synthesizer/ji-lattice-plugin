@@ -10,6 +10,7 @@
 
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include <memory>
 
 //==============================================================================
 LatticesEditor::LatticesEditor(LatticesProcessor &p)
@@ -29,11 +30,25 @@ LatticesEditor::LatticesEditor(LatticesProcessor &p)
     {
         latticeComponent->update(p.positionX, p.positionY);
     }
-    
     addAndMakeVisible(*latticeComponent);
+    
+    
+    modeButton = std::make_unique<juce::TextButton>("Mode");
+    addAndMakeVisible(*modeButton);
+    modeButton->onClick = [this]{ showModeMenu(); };
+    modeButton->setClickingTogglesState(true);
+    modeButton->setToggleState(false, juce::dontSendNotification);
     
     modeComponent = std::make_unique<ModeComponent>(p.mode);
     addAndMakeVisible(*modeComponent);
+    modeComponent->setVisible(false);
+    
+    
+    midiButton = std::make_unique<juce::TextButton>("MIDI Settings");
+    addAndMakeVisible(*midiButton);
+    midiButton->onClick = [this]{ showMidiMenu(); };
+    midiButton->setClickingTogglesState(true);
+    midiButton->setToggleState(false, juce::dontSendNotification);
     
     midiComponent = std::make_unique<MIDIMenuComponent>(p.shiftCCs[0],
                                                         p.shiftCCs[1],
@@ -42,12 +57,25 @@ LatticesEditor::LatticesEditor(LatticesProcessor &p)
                                                         p.shiftCCs[4],
                                                         p.listenOnChannel);
     addAndMakeVisible(*midiComponent);
+    midiComponent->setVisible(false);
+    
+    
+    originButton = std::make_unique<juce::TextButton>("Origin");
+    addAndMakeVisible(*originButton);
+    originButton->onClick = [this]{ showOriginMenu(); };
+    originButton->setClickingTogglesState(true);
+    originButton->setToggleState(false, juce::dontSendNotification);
+    
+    originComponent = std::make_unique<OriginComponent>(p.originalRefNote,
+                                                        p.originalRefFreq);
+    addAndMakeVisible(*originComponent);
+    originComponent->setVisible(false);
     
     startTimer(5);
     
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
-    setSize(900, 600);
+    setSize(width, height);
     setResizable(true, true);
 }
 
@@ -64,9 +92,62 @@ void LatticesEditor::idle() {}
 
 void LatticesEditor::resized()
 {
-    latticeComponent->setBounds(getLocalBounds());
-    modeComponent->setBounds(10, 10, 120, 125);
-    midiComponent->setBounds(10, 135, 120, 155);
+    auto b = this->getLocalBounds();
+    
+    latticeComponent->setBounds(b);
+    
+    
+    modeButton->setBounds(10, 10, 120, 30);
+    modeComponent->setBounds(10, 40, 120, 125);
+    
+    midiButton->setBounds(10, b.getBottom() - 40, 120, 30);
+    midiComponent->setBounds(10, b.getBottom() - 155 - 30 - 10, 120, 155);
+    
+    originButton->setBounds(b.getRight() - 216 - 10, b.getBottom() - 40, 216, 30);
+    originComponent->setBounds(b.getRight() - 216 - 10, b.getBottom() - 95 - 40, 216, 95);
+}
+
+void LatticesEditor::showModeMenu()
+{
+    
+    if (modeButton->getToggleState())
+    {
+        modeComponent->setVisible(true);
+        modeButton->setConnectedEdges(8);
+    }
+    else
+    {
+        modeComponent->setVisible(false);
+        modeButton->setConnectedEdges(!8);
+    }
+}
+
+void LatticesEditor::showMidiMenu()
+{
+    if (midiButton->getToggleState())
+    {
+        midiComponent->setVisible(true);
+        midiButton->setConnectedEdges(4);
+    }
+    else
+    {
+        midiComponent->setVisible(false);
+        midiButton->setConnectedEdges(!4);
+    }
+}
+
+void LatticesEditor::showOriginMenu()
+{
+    if (originButton->getToggleState())
+    {
+        originComponent->setVisible(true);
+        originButton->setConnectedEdges(4);
+    }
+    else
+    {
+        originComponent->setVisible(false);
+        originButton->setConnectedEdges(!4);
+    }
 }
 
 void LatticesEditor::timerCallback()
@@ -90,13 +171,13 @@ void LatticesEditor::timerCallback()
         processor.changed = false;
     }
     
-    if (modeComponent->modeChanged == true)
+    if (modeComponent->modeChanged)
     {
         processor.modeSwitch(modeComponent->whichMode());
         modeComponent->modeChanged = false;
     }
     
-    if (midiComponent->settingChanged == true)
+    if (midiComponent->settingChanged)
     {
         processor.shiftCCs[0] = midiComponent->data[0];
         processor.shiftCCs[1] = midiComponent->data[1];
@@ -104,5 +185,12 @@ void LatticesEditor::timerCallback()
         processor.shiftCCs[3] = midiComponent->data[3];
         processor.shiftCCs[4] = midiComponent->data[4];
         processor.listenOnChannel = midiComponent->midiChannel;
+    }
+    
+    if (originComponent->originChanged)
+    {
+        processor.originalRefNote = originComponent->whichNote();
+        processor.originalRefFreq = originComponent->whatFreq;
+        processor.updateOrigin = true;
     }
 }
