@@ -10,6 +10,10 @@ struct LatticeComponent : juce::Component
     LatticeComponent()
     {
         update(0,0);
+    
+        
+//        theFont.setHeightWithoutChangingWidth(JIRadius * 1.15f);
+//        theFont.setBold(true);
     }
     
     void update(int x) // Pyth mode
@@ -82,9 +86,10 @@ struct LatticeComponent : juce::Component
     
     juce::Colour colour1 { juce::Colours::blue }, colour2 { juce::Colours::green }, colour3 { juce::Colours::red };
     
+    
+    
     void paint(juce::Graphics &g) override
     {
-        int JIRadius{26};
         float ctrDistance{JIRadius * (5.f / 3.f)};
         
         float vDistance = 2.0f * ctrDistance;
@@ -128,18 +133,47 @@ struct LatticeComponent : juce::Component
                 
                 if ((w + (v * 4)) % 12 == 0)
                 {
-                    auto gradient = juce::ColourGradient(colour3, x-(1 * JIRadius), y,
-                                                         colour1, x+(1 * JIRadius), y, false);
+                    auto gradient = juce::ColourGradient(com1, x-(1 * JIRadius), y,
+                                                         com2, x+(1 * JIRadius), y, false);
+                    gradient.multiplyOpacity(alpha);
+                    g.setGradientFill(gradient);
+                }
+                else if (v == 0)
+                {
+                    auto gradient = juce::ColourGradient(p1, x-(1 * JIRadius), y,
+                                                         p2, x+(1 * JIRadius), y, false);
+                    gradient.multiplyOpacity(alpha);
+                    g.setGradientFill(gradient);
+                }
+                else if (v == 1 || v == - 1)
+                {
+                    auto gradient = juce::ColourGradient(l1c1, x-(1 * JIRadius), y,
+                                                         l1c2, x+(1 * JIRadius), y, false);
+                    gradient.multiplyOpacity(alpha);
+                    g.setGradientFill(gradient);
+                }
+                else if (v == 2 || v == - 2)
+                {
+                    auto gradient = juce::ColourGradient(l2c1, x-(1 * JIRadius), y,
+                                                         l2c2, x+(1 * JIRadius), y, false);
+                    gradient.multiplyOpacity(alpha);
+                    g.setGradientFill(gradient);
+                }
+                else if (v == 3 || v == - 3)
+                {
+                    auto gradient = juce::ColourGradient(l3c1, x-(1 * JIRadius), y,
+                                                         l3c2, x+(1 * JIRadius), y, false);
                     gradient.multiplyOpacity(alpha);
                     g.setGradientFill(gradient);
                 }
                 else
                 {
-                    auto gradient = juce::ColourGradient(colour1, x-(1 * JIRadius), y,
-                                                         colour2, x+(1 * JIRadius), y, false);
+                    auto gradient = juce::ColourGradient(l4c1, x-(1 * JIRadius), y,
+                                                         l4c2, x+(1 * JIRadius), y, false);
                     gradient.multiplyOpacity(alpha);
                     g.setGradientFill(gradient);
                 }
+                
 
                 g.fillEllipse(x-JIRadius,y-JIRadius,2*JIRadius, 2*JIRadius);
                 g.setColour(juce::Colours::white.withAlpha(alpha));
@@ -150,8 +184,8 @@ struct LatticeComponent : juce::Component
                 
                 auto [n,d] = calculateCell(fifths, thirds);
                 auto s = std::to_string(n) + "/" + std::to_string(d);
-                g.setFont(JIRadius * (2.f / 3.f));
-                g.drawText(s, x - JIRadius + 3, y - 9, 2 * (JIRadius - 3), 20, juce::Justification::horizontallyCentred, true);
+                g.setFont(theFont);
+                g.drawFittedText(s, x - JIRadius + 3, y - 9, 2 * (JIRadius - 3), 20, juce::Justification::horizontallyCentred, 1, 0.05f);
                 
                 bool lineLit{false};
                 for (int i = 0; i < 12; ++i) // next horizontal line lit?
@@ -258,6 +292,30 @@ struct LatticeComponent : juce::Component
         return {n,d};
     }
 protected:
+    
+    static constexpr int JIRadius{26};
+    
+    juce::FontOptions fo{"Stoke", JIRadius, juce::Font::plain};
+    juce::Font theFont{fo};
+
+    juce::Colour com1{0.f, .84f, 1.f, 1.f};
+    juce::Colour com2{.961111f, .79f, .41f, .25f};
+    
+    juce::Colour p1{.5f, .51f, .3f, 1.f};
+    juce::Colour p2{.5277778f, .79f, .41f, .25f};
+    
+    juce::Colour l1c1{.35f, .75f, .98f, 1.f};
+    juce::Colour l1c2{.5277778f, .79f, .41f, .25f};
+    
+    juce::Colour l2c1{.2888889f, .97f, .67f, 1.f};
+    juce::Colour l2c2{.6194444f, .71f, 1.f, .25f};
+    
+    juce::Colour l3c1{.6916667f, .97f, .76f, 1.f};
+    juce::Colour l3c2{.4361111f, 1.f, .59f, .61f};
+    
+    juce::Colour l4c1{.5777778f, .97f, .94f, 58.f};
+    juce::Colour l4c2{.8666667f, 1.f, .36f, 1.f};
+    
     std::pair<int, int> CC[12]
     {
         {0,0},

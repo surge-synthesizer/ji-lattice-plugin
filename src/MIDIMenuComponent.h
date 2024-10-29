@@ -177,7 +177,7 @@ private:
     juce::Label channelLabel{{}, "Channel"};
 
     
-    juce::Colour noColour{};
+//    juce::Colour noColour{};
     juce::Colour bg = findColour(juce::TextEditor::backgroundColourId);
     juce::Colour ol = findColour(juce::TextEditor::outlineColourId);
     juce::Range<int> noRange{};
