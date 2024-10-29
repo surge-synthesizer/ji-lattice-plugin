@@ -122,62 +122,61 @@ struct LatticeComponent : juce::Component
                     }
                 }
                 
+                auto ewr = JIRadius * 1.25;
+                auto ew = JIRadius * 2.5;
+                
                 auto alpha = (lit) ? 1.f : .5f;
                 if ((w + (v * 4)) % 12 == 0)
                 {
-                    auto gradient = juce::ColourGradient(com1, x-(1 * JIRadius), y,
-                                                         com2, x+(1 * JIRadius), y, false);
+                    auto gradient = juce::ColourGradient(com1, x-(ewr), y,
+                                                         com2, x+(ewr), y, false);
                     gradient.multiplyOpacity(alpha);
                     g.setGradientFill(gradient);
                 }
                 else if (v == 0)
                 {
-                    auto gradient = juce::ColourGradient(p1, x-(1 * JIRadius), y,
-                                                         p2, x+(1 * JIRadius), y, false);
+                    auto gradient = juce::ColourGradient(p1, x-(ewr), y,
+                                                         p2, x+(ewr), y, false);
                     gradient.multiplyOpacity(alpha);
                     g.setGradientFill(gradient);
                 }
                 else if (v == 1 || v == - 1)
                 {
-                    auto gradient = juce::ColourGradient(l1c1, x-(1 * JIRadius), y,
-                                                         l1c2, x+(1 * JIRadius), y, false);
+                    auto gradient = juce::ColourGradient(l1c1, x-(ewr), y,
+                                                         l1c2, x+(ewr), y, false);
                     gradient.multiplyOpacity(alpha);
                     g.setGradientFill(gradient);
                 }
                 else if (v == 2 || v == - 2)
                 {
-                    auto gradient = juce::ColourGradient(l2c1, x-(1 * JIRadius), y,
-                                                         l2c2, x+(1 * JIRadius), y, false);
+                    auto gradient = juce::ColourGradient(l2c1, x-(ewr), y,
+                                                         l2c2, x+(ewr), y, false);
                     gradient.multiplyOpacity(alpha);
                     g.setGradientFill(gradient);
                 }
                 else if (v == 3 || v == - 3)
                 {
-                    auto gradient = juce::ColourGradient(l3c1, x-(1 * JIRadius), y,
-                                                         l3c2, x+(1 * JIRadius), y, false);
+                    auto gradient = juce::ColourGradient(l3c1, x-(ewr), y,
+                                                         l3c2, x+(ewr), y, false);
                     gradient.multiplyOpacity(alpha);
                     g.setGradientFill(gradient);
                 }
                 else
                 {
-                    auto gradient = juce::ColourGradient(l4c1, x-(1 * JIRadius), y,
-                                                         l4c2, x+(1 * JIRadius), y, false);
+                    auto gradient = juce::ColourGradient(l4c1, x-(ewr), y,
+                                                         l4c2, x+(ewr), y, false);
                     gradient.multiplyOpacity(alpha);
                     g.setGradientFill(gradient);
                 }
-
-
-                g.fillEllipse(x - (JIRadius * 1.25),y - JIRadius, 2.5 * JIRadius, 2 * JIRadius);
+                g.fillEllipse(x - (ewr),y - JIRadius, ew, 2 * JIRadius);
+                
                 g.setColour(juce::Colours::white.withAlpha(alpha));
-                g.drawEllipse(x - (JIRadius * 1.25),y - JIRadius, 2.5 * JIRadius, 2 * JIRadius, 3);
+                g.drawEllipse(x - ewr,y - JIRadius, ew, 2 * JIRadius, 3);
 
-                auto fifths = w;
-                auto thirds = v;
-
-                auto [n,d] = calculateCell(fifths, thirds);
+                auto [n,d] = calculateCell(w, v);
                 auto s = std::to_string(n) + "/" + std::to_string(d);
                 g.setFont(stoke);
-                g.drawFittedText(s, x - JIRadius + 3, y - 9, 2 * (JIRadius - 3), 20, juce::Justification::horizontallyCentred, 1, 0.05f);
+                g.drawFittedText(s, x - (1.25f * JIRadius) + 4, y - (JIRadius / 3.f) , 2.5f * (JIRadius - 3), .66667f * JIRadius, juce::Justification::horizontallyCentred, 1, 0.05f);
             }
         }
     }
@@ -291,7 +290,7 @@ struct LatticeComponent : juce::Component
                  continue;
                 
                 g.setColour(juce::Colours::black.withAlpha(1.f));
-                g.fillEllipse(x - (JIRadius * 1.25),y - (JIRadius), 2.5 * JIRadius, 2*JIRadius);
+                g.fillEllipse(x - (JIRadius * 1.25) - 1.5, y - (JIRadius) - 1.5, 2.5 * JIRadius + 3, 2*JIRadius + 3);
             }
         }
     }
