@@ -128,11 +128,6 @@ void LatticesProcessor::timerCallback()
             careful[i]--;
         }
     }
-    
-    if (updateOrigin)
-    {
-        returnToOrigin();
-    }
 }
 
 void LatticesProcessor::releaseResources()
@@ -438,6 +433,32 @@ void LatticesProcessor::shiftDuodene(int dir)
     {
         returnToOrigin();
     }
+}
+
+void LatticesProcessor::updateFreq(double f)
+{
+    originalRefFreq = f;
+    returnToOrigin();
+}
+
+
+double LatticesProcessor::updateRoot(int r)
+{
+    int i = r - originalRefNote;
+    double o = 1.0;
+    if (i < 0)
+    {
+        i += 12;
+        o = 0.5;
+    }
+    
+    double nf = originalRefFreq * ratios[i] * o;
+    
+    originalRefNote = r;
+    originalRefFreq = nf;
+    returnToOrigin();
+    
+    return nf;
 }
 
 

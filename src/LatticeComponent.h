@@ -10,10 +10,6 @@ struct LatticeComponent : juce::Component
     LatticeComponent()
     {
         update(0,0);
-    
-        
-//        theFont.setHeightWithoutChangingWidth(JIRadius * 1.15f);
-//        theFont.setBold(true);
     }
     
     void update(int x) // Pyth mode
@@ -84,10 +80,6 @@ struct LatticeComponent : juce::Component
         CC[11].second = y + 1;
     }
     
-    juce::Colour colour1 { juce::Colours::blue }, colour2 { juce::Colours::green }, colour3 { juce::Colours::red };
-    
-    
-    
     void paint(juce::Graphics &g) override
     {
         float ctrDistance{JIRadius * (5.f / 3.f)};
@@ -97,31 +89,32 @@ struct LatticeComponent : juce::Component
         
         auto ctrX = getWidth() / 2;
         auto ctrH = getHeight() / 2;
+        
+        grid(g, ctrDistance, vDistance, hDistance,ctrX, ctrH);
+        sphereBackgrounds(g, ctrDistance, vDistance, hDistance,ctrX, ctrH);
 
         auto nV = std::ceil(getHeight() / vDistance);
         auto nW = std::ceil(getWidth() / hDistance);
-
-
-        // this overdoes it a bit
+        
         for (int v = -nV - 1; v < nV + 1; ++v)
         {
-            float off = (v * hDistance * 0.5f);
+            float off = v * hDistance * 0.5f;
             float y = -v * vDistance + ctrH;
             if (y < 0 || y > getHeight())
                 continue;
-            
+
             for (int w = -nW-1; w < nW + 1; ++w)
             {
                 float x = w * hDistance + ctrX + off;
-                    
+
                 if (x < 0 || x > getWidth())
                     continue;
-                
+
                 bool lit{false};
                 for (int i = 0; i < 12; ++i) // are we currently lit?
                 {
                     std::pair<int, int> C = {w,v}; // current sphere
-                    
+
                     if (C == CC[i])
                     {
                         lit = true;
@@ -130,7 +123,6 @@ struct LatticeComponent : juce::Component
                 }
                 
                 auto alpha = (lit) ? 1.f : .5f;
-                
                 if ((w + (v * 4)) % 12 == 0)
                 {
                     auto gradient = juce::ColourGradient(com1, x-(1 * JIRadius), y,
@@ -173,19 +165,53 @@ struct LatticeComponent : juce::Component
                     gradient.multiplyOpacity(alpha);
                     g.setGradientFill(gradient);
                 }
-                
 
-                g.fillEllipse(x-JIRadius,y-JIRadius,2*JIRadius, 2*JIRadius);
+
+                g.fillEllipse(x - (JIRadius * 1.25),y - JIRadius, 2.5 * JIRadius, 2 * JIRadius);
                 g.setColour(juce::Colours::white.withAlpha(alpha));
-                g.drawEllipse(x-JIRadius,y-JIRadius,2*JIRadius, 2*JIRadius, 3);
-                
+                g.drawEllipse(x - (JIRadius * 1.25),y - JIRadius, 2.5 * JIRadius, 2 * JIRadius, 3);
+
                 auto fifths = w;
                 auto thirds = v;
-                
+
                 auto [n,d] = calculateCell(fifths, thirds);
                 auto s = std::to_string(n) + "/" + std::to_string(d);
-                g.setFont(theFont);
+                g.setFont(stoke);
                 g.drawFittedText(s, x - JIRadius + 3, y - 9, 2 * (JIRadius - 3), 20, juce::Justification::horizontallyCentred, 1, 0.05f);
+            }
+        }
+    }
+    
+    void grid(juce::Graphics &g, float ctrDistance, float vDistance, float hDistance, float ctrX, float ctrH)
+    {
+        auto nV = std::ceil(getHeight() / vDistance);
+        auto nW = std::ceil(getWidth() / hDistance);
+        
+        for (int v = -nV - 1; v < nV + 1; ++v)
+        {
+            float off = v * hDistance * 0.5f;
+            float y = -v * vDistance + ctrH;
+            if (y < 0 || y > getHeight())
+                continue;
+            
+            for (int w = -nW-1; w < nW + 1; ++w)
+            {
+                float x = w * hDistance + ctrX + off;
+                    
+                if (x < 0 || x > getWidth())
+                    continue;
+                
+                bool lit{false};
+                for (int i = 0; i < 12; ++i) // are we currently lit?
+                {
+                    std::pair<int, int> C = {w,v}; // current sphere
+                    
+                    if (C == CC[i])
+                    {
+                        lit = true;
+                        break;
+                    }
+                }
                 
                 bool lineLit{false};
                 for (int i = 0; i < 12; ++i) // next horizontal line lit?
@@ -197,15 +223,11 @@ struct LatticeComponent : juce::Component
                         break;
                     }
                 }
-                alpha = (lineLit && lit) ? 1.f : .5f;
+                
+                auto alpha = (lineLit && lit) ? 1.f : .5f;
                 g.setColour(juce::Colours::white.withAlpha(alpha));
-                juce::Line<float> horiz(x + JIRadius, y, x + hDistance - JIRadius, y);
+                juce::Line<float> horiz(x, y, x + hDistance, y);
                 g.drawLine(horiz, 3.f);
-                
-                
-                // something like sqrt(.1 * slope), sqrt(1 - .1 * slope)
-                float magicNumbers[4] = {0.44721f, 0.89443f, 1.21945f, 2.43891f};
-                // tbh I just opened desmos, f'ed around and found out
                 
                 for (int i = 0; i < 12; ++i) // next upward diagonal line lit?
                 {
@@ -220,9 +242,10 @@ struct LatticeComponent : juce::Component
                         lineLit = false;
                     }
                 }
+                
                 alpha = (lineLit && lit) ? 1.f : .5f;
                 g.setColour(juce::Colours::white.withAlpha(alpha));
-                juce::Line<float> up(x + JIRadius * magicNumbers[0], y - JIRadius * magicNumbers[1], x + JIRadius * magicNumbers[2], y - JIRadius * magicNumbers[3]);
+                juce::Line<float> up(x, y, x + (hDistance * .5f), y - vDistance);
                 float l[2] = {7.f, 3.f};
                 g.drawDashedLine(up, l, 2, 3.f, 1);
                 
@@ -241,9 +264,34 @@ struct LatticeComponent : juce::Component
                 }
                 alpha = (lineLit && lit) ? 1.f : .5f;
                 g.setColour(juce::Colours::white.withAlpha(alpha));
-                juce::Line<float> down(x + JIRadius * magicNumbers[0], y + JIRadius * magicNumbers[1], x + JIRadius * magicNumbers[2], y + JIRadius * magicNumbers[3]);
+                juce::Line<float> down(x, y, x + (hDistance * .5f), y + vDistance);
                 float le[2] = {2.f, 3.f};
                 g.drawDashedLine(down, le, 2, 3.f, 1);
+            }
+        }
+    }
+    
+    void sphereBackgrounds(juce::Graphics &g, float ctrDistance, float vDistance, float hDistance, float ctrX, float ctrH)
+    {
+        auto nV = std::ceil(getHeight() / vDistance);
+        auto nW = std::ceil(getWidth() / hDistance);
+        
+        for (int v = -nV - 1; v < nV + 1; ++v)
+        {
+            float off = v * hDistance * 0.5f;
+            float y = -v * vDistance + ctrH;
+            if (y < 0 || y > getHeight())
+                continue;
+            
+            for (int w = -nW-1; w < nW + 1; ++w)
+            {
+                float x = w * hDistance + ctrX + off;
+                
+                if (x < 0 || x > getWidth())
+                 continue;
+                
+                g.setColour(juce::Colours::black.withAlpha(1.f));
+                g.fillEllipse(x - (JIRadius * 1.25),y - (JIRadius), 2.5 * JIRadius, 2*JIRadius);
             }
         }
     }
@@ -296,7 +344,7 @@ protected:
     static constexpr int JIRadius{26};
     
     juce::FontOptions fo{"Stoke", JIRadius, juce::Font::plain};
-    juce::Font theFont{fo};
+    juce::Font stoke{fo};
 
     juce::Colour com1{0.f, .84f, 1.f, 1.f};
     juce::Colour com2{.961111f, .79f, .41f, .25f};

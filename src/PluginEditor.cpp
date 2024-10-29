@@ -187,10 +187,15 @@ void LatticesEditor::timerCallback()
         processor.listenOnChannel = midiComponent->midiChannel;
     }
     
-    if (originComponent->originChanged)
+    if (originComponent->freqChanged)
     {
-        processor.originalRefNote = originComponent->whichNote();
-        processor.originalRefFreq = originComponent->whatFreq;
-        processor.updateOrigin = true;
+        processor.updateFreq(originComponent->whatFreq);
+        originComponent->freqChanged = false;
+    }
+    
+    if (originComponent->rootChanged)
+    {
+        int r = originComponent->whichNote();
+        originComponent->resetFreqOnRootChange(processor.updateRoot(r));
     }
 }

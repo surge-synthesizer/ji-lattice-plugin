@@ -86,7 +86,10 @@ public:
     
     int originalRefNote{2}; // C = 0, C# = 1, D = 2 etc
     double originalRefFreq{293.3333333333333};
-    bool updateOrigin{false};
+    
+    
+    void updateFreq(double f);
+    double updateRoot(int r);
     
 private:
     

@@ -23,7 +23,7 @@ struct OriginComponent : public juce::Component
             key[i]->setShape(keyshape,true,true,false);
             addAndMakeVisible(key[i]);
             key[i]->setRadioGroupId(1);
-            key[i]->onClick = [this]{ updateOrigin(); };
+            key[i]->onClick = [this]{ updateRoot(); };
             key[i]->setClickingTogglesState(true);
             key[i]->setOutline(juce::Colours::lightgrey, 1.5f);
             key[i]->shouldUseOnColours(true);
@@ -69,18 +69,15 @@ struct OriginComponent : public juce::Component
         freqEditor.setBounds(kw * 6, kh, 108, 30);
     }
     
-    void updateOrigin()
+    void updateRoot()
     {
-        originChanged = true;
+        rootChanged = true;
     }
     
     void paint(juce::Graphics &g) override
     {
         g.setColour(findColour(juce::TextEditor::backgroundColourId));
         g.fillRect(this->getLocalBounds());
-        
-//        g.setColour(juce::Colours::thistle);
-//        g.drawRect(this->getLocalBounds());
     }
     
     int whichNote()
@@ -89,17 +86,22 @@ struct OriginComponent : public juce::Component
         {
             if (key[i]->getToggleState() == true)
             {
-                originChanged = false;
                 return i;
             }
         }
-        originChanged = false;
         return 0;
     }
     
-    bool originChanged = false;
+    bool rootChanged = false;
+    bool freqChanged = false;
     
     double whatFreq{293.3333333333333};
+    
+    void resetFreqOnRootChange(double f)
+    {
+        freqEditor.setText(std::to_string(f), false);
+        rootChanged = false;
+    }
     
 private:
     static constexpr int kw = 18;
@@ -137,8 +139,8 @@ private:
             e->setText(std::to_string(whatFreq));
             return;
         }
-        
         whatFreq = input;
+        freqChanged = true;
     }
     
     void escapeKeyResponse(juce::TextEditor *e)
@@ -155,7 +157,12 @@ private:
     
     bool rejectBadInput(double input)
     {
-        if (input == 0)
+        if (input <= 0)
+        {
+            return true;
+        }
+        
+        if (input >= 10000)
         {
             return true;
         }
