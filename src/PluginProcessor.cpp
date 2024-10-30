@@ -11,7 +11,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "libMTSMaster.h"
-#include "JIMath.h"
 
 #include <cmath>
 #include <iostream>
@@ -23,6 +22,10 @@ LatticesProcessor::LatticesProcessor()
                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
         )
 {
+//    addParameter(positionX = new juce::AudioParameterInt{"posX", "PositionX", -128, 128, 0});
+//    addParameter(positionY = new juce::AudioParameterInt{"posY", "PositionY", -128, 128, 0});
+    
+    
     if (MTS_CanRegisterMaster())
     {
         registeredMTS = true;
@@ -30,6 +33,7 @@ LatticesProcessor::LatticesProcessor()
         std::cout << "Registered ok" << std::endl;
     }
     /*
+     TODO:
     else
     {
         if (MTS_HasIPC())
@@ -46,15 +50,60 @@ LatticesProcessor::LatticesProcessor()
     }
     */
     
-    startTimer(10);
-    
-    if (registeredMTS == true)
+    if (registeredMTS == true) //TODO: State loading
     {
         mode = Duodene;
         currentRefFreq = originalRefFreq;
         currentRefNote = originalRefNote;
         setup();
         updateTuning();
+        startTimer(50);
+    }
+}
+
+void LatticesProcessor::setup()
+{
+    // Init to pythagorean
+    // I could do that programmatically instead but whatever...
+    for (int i = 0; i < 12; ++i)
+    {
+        ratios[i] = pyth12[i];
+        coOrds[i] = pythCo[i];
+        if (i < 3)
+        {
+            WM[i] = OGWM[i];
+            EM[i] = OGEM[i];
+        }
+        if (i < 4)
+        {
+            NM[i] = OGNM[i];
+            SM[i] = OGSM[i];
+        }
+    }
+    
+    if (mode == Pyth)
+    {
+        // we're done
+        return;
+    }
+    
+    {
+        // else add prime 5 to taste
+        for (int i = 0; i < 12; ++i)
+        {
+            if (i == NM[0] || i == NM[1] || i == NM[2] || i==NM[3])
+            {
+                ratios[i] *= jim.comma(jim.syntonic, true);
+                coOrds[i].first -= 4;
+                coOrds[i].second += 1;
+            }
+            if (i == SM[0] || i == SM[1] || i == SM[2] || i == SM[3])
+            {
+                ratios[i] *= jim.comma(jim.syntonic, false);
+                coOrds[i].first += 4;
+                coOrds[i].second -= 1;
+            }
+        }
     }
 }
 
@@ -65,81 +114,37 @@ LatticesProcessor::~LatticesProcessor()
 }
 
 //==============================================================================
-const juce::String LatticesProcessor::getName() const
+void LatticesProcessor::prepareToPlay(double sampleRate, int samplesPerBlock){}
+void LatticesProcessor::releaseResources() {}
+bool LatticesProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {return true;}
+const juce::String LatticesProcessor::getName() const {return JucePlugin_Name;}
+bool LatticesProcessor::acceptsMidi() const {return true;}
+bool LatticesProcessor::producesMidi() const {return false;}
+bool LatticesProcessor::isMidiEffect() const {return false;}
+double LatticesProcessor::getTailLengthSeconds() const {return 0.0;}
+int LatticesProcessor::getNumPrograms() {return 1;}
+int LatticesProcessor::getCurrentProgram() {return 0;}
+void LatticesProcessor::setCurrentProgram(int index) {}
+const juce::String LatticesProcessor::getProgramName(int index){return {};}
+void LatticesProcessor::changeProgramName(int index, const juce::String& newName){}
+bool LatticesProcessor::hasEditor() const {return true;}
+juce::AudioProcessorEditor* LatticesProcessor::createEditor()
 {
-    return JucePlugin_Name;
+    return new LatticesEditor(*this);
+}
+//==============================================================================
+
+void LatticesProcessor::getStateInformation(juce::MemoryBlock& destData)
+{
+    
 }
 
-bool LatticesProcessor::acceptsMidi() const
+void LatticesProcessor::setStateInformation(const void* data, int sizeInBytes)
 {
-    return true;
-}
-
-bool LatticesProcessor::producesMidi() const
-{
-    return false;
-}
-
-bool LatticesProcessor::isMidiEffect() const
-{
-    return false;
-}
-
-double LatticesProcessor::getTailLengthSeconds() const
-{
-    return 0.0;
-}
-
-int LatticesProcessor::getNumPrograms()
-{
-    return 1;   // NB: some hosts don't cope very well if you tell them there are 0 programs,
-                // so this should be at least 1, even if you're not really implementing programs.
-}
-
-int LatticesProcessor::getCurrentProgram()
-{
-    return 0;
-}
-
-void LatticesProcessor::setCurrentProgram (int index)
-{
-}
-
-const juce::String LatticesProcessor::getProgramName (int index)
-{
-    return {};
-}
-
-void LatticesProcessor::changeProgramName (int index, const juce::String& newName)
-{
+    
 }
 
 //==============================================================================
-void LatticesProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
-{
-}
-
-void LatticesProcessor::timerCallback()
-{
-    for (int i = 0; i < 5; ++i)
-    {
-        if (careful[i] > 0)
-        {
-            careful[i]--;
-        }
-    }
-}
-
-void LatticesProcessor::releaseResources()
-{
-    // When playback stops, you can use this as an opportunity to free up any
-    // spare memory, etc.
-}
-
-bool LatticesProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
-{
-    return true;
-}
 
 void LatticesProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
@@ -177,80 +182,26 @@ void LatticesProcessor::respondToMidi(const juce::MidiMessage &m)
                 
                 if (val < 127 && hold[i] == true)
                 {
-                    hold[i] = false;
-                    careful[i] = 5;
+                    wait[i] = true;
                 }
             }
         }
     }
 }
 
-
-
-//==============================================================================
-bool LatticesProcessor::hasEditor() const
+void LatticesProcessor::timerCallback()
 {
-    return true; // (change this to false if you choose to not supply an editor)
-}
-
-juce::AudioProcessorEditor* LatticesProcessor::createEditor()
-{
-    return new LatticesEditor(*this);
-}
-
-//==============================================================================
-void LatticesProcessor::getStateInformation (juce::MemoryBlock& destData) {}
-
-void LatticesProcessor::setStateInformation (const void* data, int sizeInBytes) {}
-
-//==============================================================================
-
-JIMath jim;
-
-void LatticesProcessor::setup()
-{
-    // Init to pythagorean
-    for (int i = 0; i < 12; ++i)
+    for (int i = 0; i < 5; ++i)
     {
-        ratios[i] = pyth12[i];
-        coOrds[i] = pythCo[i];
-        if (i < 3)
+        if (wait[i])
         {
-            WM[i] = OGWM[i];
-            EM[i] = OGEM[i];
-        }
-        if (i < 4)
-        {
-            NM[i] = OGNM[i];
-            SM[i] = OGSM[i];
-        }
-    }
-    
-    if (mode == Pyth)
-    {
-        // we're done
-        return;
-    }
-    else
-    {
-        // add prime 5 to taste
-        for (int i = 0; i < 12; ++i)
-        {
-            if (i == NM[0] || i == NM[1] || i == NM[2] || i==NM[3])
-            {
-                ratios[i] *= jim.comma(jim.syntonic, true);
-                coOrds[i].first -= 4;
-                coOrds[i].second +=1;
-            }
-            if (i == SM[0] || i == SM[1] || i == SM[2] || i == SM[3])
-            {
-                ratios[i] *= jim.comma(jim.syntonic, false);
-                coOrds[i].first += 4;
-                coOrds[i].second -= 1;
-            }
+            wait[i] = false;
+            hold[i] = false;
         }
     }
 }
+
+
 
 void LatticesProcessor::modeSwitch(int m)
 {
@@ -270,6 +221,7 @@ void LatticesProcessor::modeSwitch(int m)
 
 void LatticesProcessor::shift(int dir)
 {
+    
     if (mode == Pyth)
     {
         shiftPyth(dir);
@@ -286,17 +238,42 @@ void LatticesProcessor::shift(int dir)
 
 void LatticesProcessor::shiftPyth(int dir)
 {
+    int d = coOrds[0].first;
+    int w = 0;
+    
     switch (dir)
     {
         case West:
-            --positionX;
+            positionX--;
             currentRefNote += 5;
             currentRefFreq *= ratios[5];
+            
+            for (int i = 0; i < 12; ++i)
+            {
+                if (coOrds[i].first > d)
+                {
+                    d = coOrds[i].first;
+                    w = i;
+                }
+            }
+            coOrds[w].first -= 12;
+            
             break;
         case East:
-            ++positionX;
+            positionX++;
             currentRefNote += 7;
             currentRefFreq *= ratios[7];
+            
+            for (int i = 0; i < 12; ++i)
+            {
+                if (coOrds[i].first < d)
+                {
+                    d = coOrds[i].first;
+                    w = i;
+                }
+            }
+            coOrds[w].first += 12;
+            
             break;
         case Home:
             returnToOrigin();
@@ -396,21 +373,25 @@ void LatticesProcessor::shiftDuodene(int dir)
     {
         case West:
             --positionX;
+            duodeneCoords();
             currentRefNote += 5;
             currentRefFreq *= ratios[5];
             break;
         case East:
             ++positionX;
+            duodeneCoords();
             currentRefNote += 7;
             currentRefFreq *= ratios[7];
             break;
         case North:
             ++positionY;
+            duodeneCoords();
             currentRefNote += 4;
             currentRefFreq *= ratios[4];
             break;
         case South:
             --positionY;
+            duodeneCoords();
             currentRefNote += 8;
             currentRefFreq *= ratios[8];
             break;
@@ -441,18 +422,9 @@ void LatticesProcessor::updateFreq(double f)
     returnToOrigin();
 }
 
-
 double LatticesProcessor::updateRoot(int r)
 {
-    int i = r - originalRefNote;
-    double o = 1.0;
-    if (i < 0)
-    {
-        i += 12;
-        o = 0.5;
-    }
-    
-    double nf = originalRefFreq * ratios[i] * o;
+    double nf = freqs[60 + r];
     
     originalRefNote = r;
     originalRefFreq = nf;
@@ -460,7 +432,6 @@ double LatticesProcessor::updateRoot(int r)
     
     return nf;
 }
-
 
 void LatticesProcessor::returnToOrigin()
 {
@@ -496,8 +467,29 @@ void LatticesProcessor::updateTuning()
 
 }
 
+//void LatticesProcessor::pythCoords()
+//{
+//    coOrds[0].first = positionX;
+//    coOrds[1].first = positionX - 5;
+//    coOrds[2].first = positionX + 2;
+//    coOrds[3].first = positionX - 3;
+//    coOrds[4].first = positionX + 4;
+//    coOrds[5].first = positionX - 1;
+//    coOrds[6].first = positionX + 6;
+//    coOrds[7].first = positionX + 1;
+//    coOrds[8].first = positionX - 4;
+//    coOrds[9].first = positionX + 3;
+//    coOrds[10].first = positionX - 2;
+//    coOrds[11].first = positionX + 5;
+//
+//    for (int i = 0; i < 12; ++i)
+//    {
+//        coOrds[i].second = 0;
+//    }
+//}
+
 template<std::size_t S>
-void LatticesProcessor::rotate(std::array<int, S>& arr, bool backwards)
+inline void LatticesProcessor::rotate(std::array<int, S>& arr, bool backwards)
 {
     int last = arr.size() - 1;
     
@@ -523,6 +515,45 @@ void LatticesProcessor::rotate(std::array<int, S>& arr, bool backwards)
         
         arr[0] = temp;
     }
+}
+
+inline void LatticesProcessor::duodeneCoords()
+{
+    coOrds[0].first = positionX;
+    coOrds[0].second = positionY;
+
+    coOrds[1].first = positionX - 1;
+    coOrds[1].second = positionY - 1;
+
+    coOrds[2].first = positionX + 2;
+    coOrds[2].second = positionY;
+
+    coOrds[3].first = positionX + 1;
+    coOrds[3].second = positionY - 1;
+
+    coOrds[4].first = positionX;
+    coOrds[4].second = positionY + 1;
+
+    coOrds[5].first = positionX - 1;
+    coOrds[5].second = positionY;
+
+    coOrds[6].first = positionX + 2;
+    coOrds[6].second = positionY + 1;
+
+    coOrds[7].first = positionX + 1;
+    coOrds[7].second = positionY;
+
+    coOrds[8].first = positionX;
+    coOrds[8].second = positionY - 1;
+
+    coOrds[9].first = positionX - 1;
+    coOrds[9].second = positionY + 1;
+
+    coOrds[10].first = positionX + 2;
+    coOrds[10].second = positionY - 1;
+
+    coOrds[11].first = positionX + 1;
+    coOrds[11].second = positionY + 1;
 }
 
 //==============================================================================

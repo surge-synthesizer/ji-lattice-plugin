@@ -7,77 +7,20 @@
 //==============================================================================
 struct LatticeComponent : juce::Component
 {
-    LatticeComponent()
-    {
-        update(0,0);
-    }
-    
-    void update(int x) // Pyth mode
-    {
-        CC[0].first = x;
-        CC[1].first = x - 5;
-        CC[2].first = x + 2;
-        CC[3].first = x - 3;
-        CC[4].first = x + 4;
-        CC[5].first = x - 1;
-        CC[6].first = x + 6;
-        CC[7].first = x + 1;
-        CC[8].first = x - 4;
-        CC[9].first = x + 3;
-        CC[10].first = x - 2;
-        CC[11].first = x + 5;
-        
-        for (int i = 0; i < 12; ++i)
-        {
-            CC[i].second = 0;
-        }
-    }
-    
-    void update(std::pair<int, int> *c) // Syntonic mode
+    LatticeComponent(std::pair<int, int> *c)
     {
         for (int i = 0; i < 12; ++i)
         {
-            CC[i] = c[i];
+            CoO[i] = c[i];
         }
     }
     
-    void update(int x, int y) // Duodene mode
+    void update(std::pair<int, int> *c)
     {
-        CC[0].first = x;
-        CC[0].second = y;
-        
-        CC[1].first = x - 1;
-        CC[1].second = y - 1;
-        
-        CC[2].first = x + 2;
-        CC[2].second = y;
-        
-        CC[3].first = x + 1;
-        CC[3].second = y - 1;
-        
-        CC[4].first = x;
-        CC[4].second = y + 1;
-        
-        CC[5].first = x - 1;
-        CC[5].second = y;
-        
-        CC[6].first = x + 2;
-        CC[6].second = y + 1;
-        
-        CC[7].first = x + 1;
-        CC[7].second = y;
-        
-        CC[8].first = x;
-        CC[8].second = y - 1;
-        
-        CC[9].first = x - 1;
-        CC[9].second = y + 1;
-        
-        CC[10].first = x + 2;
-        CC[10].second = y - 1;
-        
-        CC[11].first = x + 1;
-        CC[11].second = y + 1;
+        for (int i = 0; i < 12; ++i)
+        {
+            CoO[i] = c[i];
+        }
     }
     
     void paint(juce::Graphics &g) override
@@ -115,7 +58,7 @@ struct LatticeComponent : juce::Component
                 {
                     std::pair<int, int> C = {w,v}; // current sphere
 
-                    if (C == CC[i])
+                    if (C == CoO[i])
                     {
                         lit = true;
                         break;
@@ -205,7 +148,7 @@ struct LatticeComponent : juce::Component
                 {
                     std::pair<int, int> C = {w,v}; // current sphere
                     
-                    if (C == CC[i])
+                    if (C == CoO[i])
                     {
                         lit = true;
                         break;
@@ -216,7 +159,7 @@ struct LatticeComponent : juce::Component
                 for (int i = 0; i < 12; ++i) // next horizontal line lit?
                 {
                     std::pair<int, int> C = {w + 1,v};
-                    if (C == CC[i])
+                    if (C == CoO[i])
                     {
                         lineLit = true;
                         break;
@@ -231,7 +174,7 @@ struct LatticeComponent : juce::Component
                 for (int i = 0; i < 12; ++i) // next upward diagonal line lit?
                 {
                     std::pair<int, int> C = {w,v + 1};
-                    if (C == CC[i])
+                    if (C == CoO[i])
                     {
                         lineLit = true;
                         break;
@@ -251,7 +194,7 @@ struct LatticeComponent : juce::Component
                 for (int i = 0; i < 12; ++i) // next downward diagonal line lit?
                 {
                     std::pair<int, int> C = {w + 1,v - 1};
-                    if (C == CC[i])
+                    if (C == CoO[i])
                     {
                         lineLit = true;
                         break;
@@ -340,6 +283,8 @@ struct LatticeComponent : juce::Component
     }
 protected:
     
+    
+    
     static constexpr int JIRadius{26};
     
     juce::FontOptions fo{"Stoke", JIRadius, juce::Font::plain};
@@ -363,7 +308,7 @@ protected:
     juce::Colour l4c1{.5777778f, .97f, .94f, 58.f};
     juce::Colour l4c2{.8666667f, 1.f, .36f, 1.f};
     
-    std::pair<int, int> CC[12]
+    std::pair<int, int> CoO[12]
     {
         {0,0},
         {0,0},

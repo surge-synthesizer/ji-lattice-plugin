@@ -17,21 +17,8 @@ LatticesEditor::LatticesEditor(LatticesProcessor &p)
     : juce::AudioProcessorEditor(&p), processor(p)
 {
     
-    latticeComponent = std::make_unique<LatticeComponent>();
-    if (processor.mode == LatticesProcessor::Pyth)
-    {
-        latticeComponent->update(p.positionX);
-    }
-    else if (processor.mode == LatticesProcessor::Syntonic)
-    {
-        latticeComponent->update(p.coOrds);
-    }
-    else
-    {
-        latticeComponent->update(p.positionX, p.positionY);
-    }
+    latticeComponent = std::make_unique<LatticeComponent>(p.coOrds);
     addAndMakeVisible(*latticeComponent);
-    
     
     modeButton = std::make_unique<juce::TextButton>("Mode");
     addAndMakeVisible(*modeButton);
@@ -109,43 +96,44 @@ void LatticesEditor::resized()
 
 void LatticesEditor::showModeMenu()
 {
+    bool show = modeButton->getToggleState();
     
-    if (modeButton->getToggleState())
+    modeComponent->setVisible(show);
+    
+    if (show)
     {
-        modeComponent->setVisible(true);
         modeButton->setConnectedEdges(8);
     }
     else
     {
-        modeComponent->setVisible(false);
         modeButton->setConnectedEdges(!8);
     }
 }
 
 void LatticesEditor::showMidiMenu()
 {
-    if (midiButton->getToggleState())
+    bool show = midiButton->getToggleState();
+    midiComponent->setVisible(true);
+    if (show)
     {
-        midiComponent->setVisible(true);
         midiButton->setConnectedEdges(4);
     }
     else
     {
-        midiComponent->setVisible(false);
         midiButton->setConnectedEdges(!4);
     }
 }
 
 void LatticesEditor::showOriginMenu()
 {
-    if (originButton->getToggleState())
+    bool show = originButton->getToggleState();
+    originComponent->setVisible(show);
+    if (show)
     {
-        originComponent->setVisible(true);
         originButton->setConnectedEdges(4);
     }
     else
     {
-        originComponent->setVisible(false);
         originButton->setConnectedEdges(!4);
     }
 }
@@ -154,19 +142,7 @@ void LatticesEditor::timerCallback()
 {
     if (processor.changed)
     {
-        if (processor.mode == LatticesProcessor::Pyth)
-        {
-            latticeComponent->update(processor.positionX);
-        }
-        else if (processor.mode == LatticesProcessor::Syntonic)
-        {
-            latticeComponent->update(processor.coOrds);
-        }
-        else
-        {
-            latticeComponent->update(processor.positionX, processor.positionY);
-        }
-        
+        latticeComponent->update(processor.coOrds);
         latticeComponent->repaint();
         processor.changed = false;
     }

@@ -13,6 +13,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <set>
 
+#include "JIMath.h"
 
 class LatticesProcessor : public juce::AudioProcessor, juce::Timer
 {
@@ -24,44 +25,39 @@ public:
     //==============================================================================
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
     void releaseResources() override;
-
     bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
-
-    void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
-    
-    void timerCallback() override;
-
-    //==============================================================================
-    juce::AudioProcessorEditor* createEditor() override;
-    bool hasEditor() const override;
-
-    //==============================================================================
     const juce::String getName() const override;
-
     bool acceptsMidi() const override;
     bool producesMidi() const override;
     bool isMidiEffect() const override;
     double getTailLengthSeconds() const override;
-    void respondToMidi(const juce::MidiMessage &m);
-
-    //==============================================================================
     int getNumPrograms() override;
     int getCurrentProgram() override;
     void setCurrentProgram (int index) override;
     const juce::String getProgramName (int index) override;
     void changeProgramName (int index, const juce::String& newName) override;
+    juce::AudioProcessorEditor* createEditor() override;
+    bool hasEditor() const override;
 
     //==============================================================================
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
-
-    // == tuning support ==
+    //==============================================================================
+    
+    void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
+    void respondToMidi(const juce::MidiMessage &m);
+    void timerCallback() override;
     
     int positionX{0};
     int positionY{0};
     
+    
+//    juce::AudioParameterInt* positionX;
+//    juce::AudioParameterInt* positionY;
+    
     int syntonicDrift = 0;
     int diesisDrift = 0;
+    int pythDrift = 0;
     
     std::pair<int, int> coOrds[12]{};
     
@@ -78,7 +74,6 @@ public:
     std::atomic<bool> changed{false};
     std::atomic<int> numClients{0};
     
-    
     bool registeredMTS{false};
     
     int shiftCCs[5] = {5, 6, 7, 8, 9};
@@ -87,11 +82,12 @@ public:
     int originalRefNote{2}; // C = 0, C# = 1, D = 2 etc
     double originalRefFreq{293.3333333333333};
     
-    
     void updateFreq(double f);
     double updateRoot(int r);
     
 private:
+    
+    JIMath jim;
     
     int currentRefNote{-12};
     double currentRefFreq{1.00000000};
@@ -106,9 +102,6 @@ private:
     };
     
     void setup();
-    
-
-    
     void shift(int dir);
     void shiftPyth(int dir);
     void shiftDuodene(int dir);
@@ -117,8 +110,12 @@ private:
     void returnToOrigin();
     void updateTuning();
     
+    // void pythCoords();
+    
     template<std::size_t S>
     void rotate(std::array<int, S>& arr, bool backwards = false);
+    
+    inline void duodeneCoords();
     
     int defaultRefNote{0};
     double defaultRefFreq{261.6255653005986}; // overkill precision
@@ -154,6 +151,7 @@ private:
         {-2, 0},
         {5, 0}
     };
+    
     double freqs[128]{};
     
     // These ints refer to 0-indexed scale degrees
@@ -161,23 +159,18 @@ private:
     // We need that in Syntonic mode, see shiftSyntonic() for implementation
     std::array<int,3> WM = {1,5,9}; // WestMost
     std::array<int,3> EM = {10,2,6}; // EastMost
-    std::array<int,4> NM = {9,4,11,6}; // Northmost in Duodene
-    std::array<int,4> SM = {1,8,3,10}; // Southmost in Duodene
-    
-    int W[5] = {1,3,5,8,10}; // West side in Pyth
-    int E[6] = {2,4,6,7,9,11}; // East side in Pyth
+    std::array<int,4> NM = {9,4,11,6}; // Northmost
+    std::array<int,4> SM = {1,8,3,10}; // Southmost
     
     int OGWM[3] = {1,5,9};
     int OGEM[3] = {10,2,6};
     int OGNM[4] = {9,4,11,6};
     int OGSM[4] = {1,8,3,10};
     
-    
     bool hold[5] = {false, false, false, false, false};
-    int careful[5] = {0, 0, 0, 0, 0};
-//    int priorCC[5]{};
-//    int priorChannel{};
-    bool first = true;
+    bool wait[5] = {false, false, false, false, false};
+    
+//    juce::AudioProcessorValueTreeState state;
     
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LatticesProcessor)
