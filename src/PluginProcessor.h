@@ -103,18 +103,14 @@ private:
     
     void setup();
     void shift(int dir);
-    void shiftPyth(int dir);
-    void shiftDuodene(int dir);
-    void shiftSyntonic(int dir);
+    void shiftPyth();
+    void shiftDuodene();
+    void shiftSyntonic();
     
     void returnToOrigin();
     void updateTuning();
     
-    // void pythCoords();
-    
-    template<std::size_t S>
-    void rotate(std::array<int, S>& arr, bool backwards = false);
-    
+    inline void pythCoords();
     inline void duodeneCoords();
     
     int defaultRefNote{0};
@@ -136,6 +132,67 @@ private:
         (double)16/9,
         (double)243/128,
     };
+    double duodene[12]
+    {
+        1.0,
+        (double)16/15,
+        (double)9/8,
+        (double)6/5,
+        (double)5/4,
+        (double)4/3,
+        (double)45/32,
+        (double)3/2,
+        (double)8/5,
+        (double)5/3,
+        (double)9/5,
+        (double)15/8,
+    };
+    double synt1[12]
+    {
+        1.0,
+        (double)16/15,
+        (double)9/8,
+        (double)6/5,
+        (double)5/4,
+        (double)4/3,
+        (double)36/25,
+        (double)3/2,
+        (double)8/5,
+        (double)5/3,
+        (double)9/5,
+        (double)15/8,
+    };
+    double synt2[12]
+    {
+        1.0,
+        (double)16/15,
+        (double)9/8,
+        (double)6/5,
+        (double)5/4,
+        (double)4/3,
+        (double)36/25,
+        (double)3/2,
+        (double)8/5,
+        (double)5/3,
+        (double)9/5,
+        (double)48/25,
+    };
+    double synt3[12]
+    {
+        1.0,
+        (double)16/15,
+        (double)9/8,
+        (double)6/5,
+        (double)32/25,
+        (double)4/3,
+        (double)36/25,
+        (double)3/2,
+        (double)8/5,
+        (double)5/3,
+        (double)9/5,
+        (double)48/25,
+    };
+
     std::pair<int, int> pythCo[12]
     {
         {0, 0},
@@ -162,10 +219,10 @@ private:
     std::array<int,4> NM = {9,4,11,6}; // Northmost
     std::array<int,4> SM = {1,8,3,10}; // Southmost
     
-    int OGWM[3] = {1,5,9};
-    int OGEM[3] = {10,2,6};
-    int OGNM[4] = {9,4,11,6};
-    int OGSM[4] = {1,8,3,10};
+    int syntShape{0};
+    
+    int shapeChange[3] = {6,11,4};
+    void setShape();
     
     bool hold[5] = {false, false, false, false, false};
     bool wait[5] = {false, false, false, false, false};

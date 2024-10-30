@@ -22,8 +22,6 @@ LatticesProcessor::LatticesProcessor()
                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
         )
 {
-//    addParameter(positionX = new juce::AudioParameterInt{"posX", "PositionX", -128, 128, 0});
-//    addParameter(positionY = new juce::AudioParameterInt{"posY", "PositionY", -128, 128, 0});
     
     
     if (MTS_CanRegisterMaster())
@@ -69,16 +67,6 @@ void LatticesProcessor::setup()
     {
         ratios[i] = pyth12[i];
         coOrds[i] = pythCo[i];
-        if (i < 3)
-        {
-            WM[i] = OGWM[i];
-            EM[i] = OGEM[i];
-        }
-        if (i < 4)
-        {
-            NM[i] = OGNM[i];
-            SM[i] = OGSM[i];
-        }
     }
     
     if (mode == Pyth)
@@ -87,22 +75,20 @@ void LatticesProcessor::setup()
         return;
     }
     
+    // else add prime 5 to taste
+    for (int i = 0; i < 12; ++i)
     {
-        // else add prime 5 to taste
-        for (int i = 0; i < 12; ++i)
+        if (i == NM[0] || i == NM[1] || i == NM[2] || i==NM[3])
         {
-            if (i == NM[0] || i == NM[1] || i == NM[2] || i==NM[3])
-            {
-                ratios[i] *= jim.comma(jim.syntonic, true);
-                coOrds[i].first -= 4;
-                coOrds[i].second += 1;
-            }
-            if (i == SM[0] || i == SM[1] || i == SM[2] || i == SM[3])
-            {
-                ratios[i] *= jim.comma(jim.syntonic, false);
-                coOrds[i].first += 4;
-                coOrds[i].second -= 1;
-            }
+            ratios[i] *= jim.comma(jim.syntonic, true);
+            coOrds[i].first -= 4;
+            coOrds[i].second += 1;
+        }
+        if (i == SM[0] || i == SM[1] || i == SM[2] || i == SM[3])
+        {
+            ratios[i] *= jim.comma(jim.syntonic, false);
+            coOrds[i].first += 4;
+            coOrds[i].second -= 1;
         }
     }
 }
@@ -201,8 +187,6 @@ void LatticesProcessor::timerCallback()
     }
 }
 
-
-
 void LatticesProcessor::modeSwitch(int m)
 {
     switch (m)
@@ -221,198 +205,152 @@ void LatticesProcessor::modeSwitch(int m)
 
 void LatticesProcessor::shift(int dir)
 {
-    
-    if (mode == Pyth)
-    {
-        shiftPyth(dir);
-    }
-    else if (mode == Syntonic)
-    {
-        shiftSyntonic(dir);
-    }
-    else
-    {
-        shiftDuodene(dir);
-    }
-}
-
-void LatticesProcessor::shiftPyth(int dir)
-{
-    int d = coOrds[0].first;
-    int w = 0;
-    
     switch (dir)
     {
         case West:
-            positionX--;
-            currentRefNote += 5;
-            currentRefFreq *= ratios[5];
+            --positionX;
             
-            for (int i = 0; i < 12; ++i)
+            if (mode == Syntonic)
             {
-                if (coOrds[i].first > d)
+                syntShape = ((positionX % 4) + 4) % 4;
+                
+                if (syntShape == 3)
                 {
-                    d = coOrds[i].first;
-                    w = i;
+                    ++positionY;
                 }
             }
-            coOrds[w].first -= 12;
-            
             break;
         case East:
-            positionX++;
-            currentRefNote += 7;
-            currentRefFreq *= ratios[7];
-            
-            for (int i = 0; i < 12; ++i)
+            ++positionX;
+            if (mode == Syntonic)
             {
-                if (coOrds[i].first < d)
+                syntShape = ((positionX % 4) + 4) % 4;
+                if (syntShape == 0)
                 {
-                    d = coOrds[i].first;
-                    w = i;
+                    --positionY;
                 }
             }
-            coOrds[w].first += 12;
-            
+            break;
+        case North:
+            if (mode == Pyth) return;
+            ++positionY;
+            break;
+        case South:
+            if (mode == Pyth) return;
+            --positionY;
             break;
         case Home:
             returnToOrigin();
             break;
         default:
             return;
+    };
+    
+    
+    if (mode == Pyth)
+    {
+        shiftPyth();
+    }
+    else
+    {
+        shiftDuodene();
     }
     
-    if (positionX != 0)
-    {
-        if (currentRefNote >= originalRefNote + 12)
-        {
-            currentRefNote -= 12;
-            currentRefFreq /= 2.0;
-        }
-        changed = true;
-        updateTuning();
-    }
-    else if (positionX == 0 && positionY == 0)
-    {
-        returnToOrigin();
-    }
-}
-
-void LatticesProcessor::shiftSyntonic(int dir)
-{
-    switch (dir)
-    {
-        case West:
-            for (int i = 0; i < 3; ++i)
-            {
-                if (EM[i] == 0) syntonicDrift--;
-                coOrds[EM[i]].first -= 4;
-                coOrds[EM[i]].second += 1;
-                ratios[EM[i]] *= jim.comma(jim.syntonic, true);
-
-                WM[i] = EM[i];
-                EM[i] = (EM[i] + 5) % 12;
-            }
-            rotate(SM);
-            rotate(NM);
-            break;
-            
-        case East:
-            for (int i = 0; i < 3; ++i)
-            {
-                if (WM[i] == 0) syntonicDrift++;
-                coOrds[WM[i]].first += 4;
-                coOrds[WM[i]].second -= 1;
-                ratios[WM[i]] *= jim.comma(jim.syntonic, false);
-                
-                EM[i] = WM[i];
-                WM[i] = (WM[i] + 7) % 12;
-            }
-            rotate(SM, true);
-            rotate(NM, true);
-            break;
-
-        case North:
-            for (int i = 0; i < 4; ++i)
-            {
-                if (SM[i] == 0) diesisDrift--;
-                coOrds[SM[i]].second += 3;
-                ratios[SM[i]] *= jim.comma(jim.diesis, true);
-                
-                NM[i] = SM[i];
-                SM[i] = (SM[i] + 4) % 12;
-            }
-            rotate(WM, true);
-            rotate(EM, true);
-            break;
-            
-        case South:
-            for (int i = 0; i < 4; ++i)
-            {
-                if (NM[i] == 0) diesisDrift++;
-                coOrds[NM[i]].second -= 3;
-                ratios[NM[i]] *= jim.comma(jim.diesis, false);
-                
-                SM[i] = NM[i];
-                NM[i] = (NM[i] + 8) % 12;
-            }
-            rotate(WM);
-            rotate(EM);
-            break;
-        case Home:
-            returnToOrigin();
-            break;
-    }
     updateTuning();
-    changed = true;
 }
 
-void LatticesProcessor::shiftDuodene(int dir)
+void LatticesProcessor::shiftPyth()
 {
-    switch (dir)
-    {
-        case West:
-            --positionX;
-            duodeneCoords();
-            currentRefNote += 5;
-            currentRefFreq *= ratios[5];
-            break;
-        case East:
-            ++positionX;
-            duodeneCoords();
-            currentRefNote += 7;
-            currentRefFreq *= ratios[7];
-            break;
-        case North:
-            ++positionY;
-            duodeneCoords();
-            currentRefNote += 4;
-            currentRefFreq *= ratios[4];
-            break;
-        case South:
-            --positionY;
-            duodeneCoords();
-            currentRefNote += 8;
-            currentRefFreq *= ratios[8];
-            break;
-        case Home:
-            returnToOrigin();
-            break;
-    }
-    
-    if (positionX != 0 || positionY != 0)
-    {
-        if (currentRefNote >= originalRefNote + 12)
-        {
-            currentRefNote -= 12;
-            currentRefFreq /= 2.0;
-        }
-        changed = true;
-        updateTuning();
-    }
-    else if (positionX == 0 && positionY == 0)
+    if (positionX == 0)
     {
         returnToOrigin();
+    }
+
+    int nn = originalRefNote;
+    double nf = 1.0;
+    
+    int absx = std::abs(positionX);
+    double mul = positionX < 0 ? 1 / ratios[7] : ratios[7];
+    int add = positionX < 0 ? -7 : 7;
+    for (int i = 0; i < absx; ++i)
+    {
+        nn += add;
+        nf *= mul;
+    }
+    
+    while (nn < 0)
+    {
+        nn += 12;
+        nf *= 2.0;
+    }
+    while (nn > 12)
+    {
+        nn -= 12;
+        nf *= 0.5;
+    }
+    
+    currentRefNote = nn;
+    currentRefFreq = originalRefFreq * nf;
+    pythCoords();
+}
+
+void LatticesProcessor::shiftDuodene()
+{
+    if (positionX == 0 && positionY == 0)
+    {
+       returnToOrigin();
+       return;
+    }
+    
+    int nn = originalRefNote;
+    double nf = 1.0;
+    
+    int absx = std::abs(positionX);
+    double mul = positionX < 0 ? 1 / ratios[7] : ratios[7];
+    int add = positionX < 0 ? -7 : 7;
+    for (int i = 0; i < absx; ++i)
+    {
+        nn += add;
+        nf *= mul;
+    }
+    double third = 1.25;
+    
+    int absy = std::abs(positionY);
+    mul = positionY < 0 ? 1 / third : third;
+    add = positionY < 0 ? -4 : 4;
+    for (int i = 0; i < absy; ++i)
+    {
+        nn += add;
+        nf *= mul;
+    }
+    
+    while (nn < 0)
+    {
+        nn += 12;
+        nf *= 2.0;
+    }
+    while (nn > 12)
+    {
+        nn -= 12;
+        nf *= 0.5;
+    }
+    
+    currentRefNote = nn;
+    currentRefFreq = originalRefFreq * nf;
+    
+    if (mode == Syntonic)
+        setShape();
+    
+    duodeneCoords();
+}
+void LatticesProcessor::setShape()
+{
+    for (int i = 0; i < 12; ++i)
+    {
+        if (syntShape == 1) ratios[i] = synt1[i];
+        else if (syntShape == 2) ratios[i] = synt2[i];
+        else if (syntShape == 3) ratios[i] = synt3[i];
+        else ratios[i] = duodene[i];
     }
 }
 
@@ -435,6 +373,7 @@ double LatticesProcessor::updateRoot(int r)
 
 void LatticesProcessor::returnToOrigin()
 {
+    syntShape = 0;
     currentRefNote = originalRefNote;
     currentRefFreq = originalRefFreq;
     positionX = 0;
@@ -442,11 +381,11 @@ void LatticesProcessor::returnToOrigin()
     setup();
     
     updateTuning();
-    changed = true;
 }
 
 void LatticesProcessor::updateTuning()
 {
+    changed = true;
 //    std::cout << "refFreq = " << currentRefFreq << std::endl;
 //    std::cout << "refNote = " << currentRefNote << std::endl;
     int refMidiNote = currentRefNote + 60;
@@ -467,53 +406,24 @@ void LatticesProcessor::updateTuning()
 
 }
 
-//void LatticesProcessor::pythCoords()
-//{
-//    coOrds[0].first = positionX;
-//    coOrds[1].first = positionX - 5;
-//    coOrds[2].first = positionX + 2;
-//    coOrds[3].first = positionX - 3;
-//    coOrds[4].first = positionX + 4;
-//    coOrds[5].first = positionX - 1;
-//    coOrds[6].first = positionX + 6;
-//    coOrds[7].first = positionX + 1;
-//    coOrds[8].first = positionX - 4;
-//    coOrds[9].first = positionX + 3;
-//    coOrds[10].first = positionX - 2;
-//    coOrds[11].first = positionX + 5;
-//
-//    for (int i = 0; i < 12; ++i)
-//    {
-//        coOrds[i].second = 0;
-//    }
-//}
-
-template<std::size_t S>
-inline void LatticesProcessor::rotate(std::array<int, S>& arr, bool backwards)
+void LatticesProcessor::pythCoords()
 {
-    int last = arr.size() - 1;
-    
-    if (backwards)
+    coOrds[0].first = positionX;
+    coOrds[1].first = positionX - 5;
+    coOrds[2].first = positionX + 2;
+    coOrds[3].first = positionX - 3;
+    coOrds[4].first = positionX + 4;
+    coOrds[5].first = positionX - 1;
+    coOrds[6].first = positionX + 6;
+    coOrds[7].first = positionX + 1;
+    coOrds[8].first = positionX - 4;
+    coOrds[9].first = positionX + 3;
+    coOrds[10].first = positionX - 2;
+    coOrds[11].first = positionX + 5;
+
+    for (int i = 0; i < 12; ++i)
     {
-        auto temp = arr[0];
-        
-        for (int i = 0; i < last; ++i)
-        {
-            arr[i] = arr[i + 1];
-        }
-        
-        arr[last] = temp;
-    }
-    else
-    {
-        auto temp = arr[last];
-        
-        for (int i = last; i > 0; --i)
-        {
-            arr[i] = arr[i - 1];
-        }
-        
-        arr[0] = temp;
+        coOrds[i].second = 0;
     }
 }
 
@@ -554,6 +464,14 @@ inline void LatticesProcessor::duodeneCoords()
 
     coOrds[11].first = positionX + 1;
     coOrds[11].second = positionY + 1;
+    
+    if (mode == Syntonic)
+    {
+        for (int i = 0; i < syntShape; ++i)
+        {
+            coOrds[shapeChange[i]].second -= 3;
+        }
+    }
 }
 
 //==============================================================================
