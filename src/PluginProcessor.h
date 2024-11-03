@@ -12,10 +12,12 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <set>
+#include <atomic>
 
 #include "JIMath.h"
 
-class LatticesProcessor : public juce::AudioProcessor, juce::Timer
+
+class LatticesProcessor : public juce::AudioProcessor, juce::Timer, private juce::AudioProcessorParameter::Listener
 {
 public:
     //==============================================================================
@@ -38,6 +40,7 @@ public:
     void changeProgramName (int index, const juce::String& newName) override;
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override;
+    void parameterGestureChanged(int parameterIndex, bool gestureIsStarting) override;
 
     //==============================================================================
     void getStateInformation (juce::MemoryBlock& destData) override;
@@ -45,15 +48,15 @@ public:
     //==============================================================================
     
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
-    void respondToMidi(const juce::MidiMessage &m);
     void timerCallback() override;
     
-    int positionX{0};
-    int positionY{0};
+    void modeSwitch(int m);
+    void updateFreq(double f);
+    double updateRoot(int r);
+    void parameterValueChanged(int parameterIndex, float newValue) override;
     
-    
-//    juce::AudioParameterInt* positionX;
-//    juce::AudioParameterInt* positionY;
+    std::atomic<int> positionX{0};
+    std::atomic<int> positionY{0};
     
     int syntonicDrift = 0;
     int diesisDrift = 0;
@@ -69,7 +72,7 @@ public:
     };
     std::atomic<Mode> mode = Duodene;
     
-    void modeSwitch(int m);
+
     
     std::atomic<bool> changed{false};
     std::atomic<int> numClients{0};
@@ -82,10 +85,10 @@ public:
     int originalRefNote{2}; // C = 0, C# = 1, D = 2 etc
     double originalRefFreq{293.3333333333333};
     
-    void updateFreq(double f);
-    double updateRoot(int r);
-    
 private:
+    
+    juce::AudioParameterInt* xParam;
+    juce::AudioParameterInt* yParam;
     
     JIMath jim;
     
@@ -101,22 +104,23 @@ private:
         Home
     };
     
-    void setup();
-    void shift(int dir);
-    void shiftPyth();
-    void shiftDuodene();
-    void shiftSyntonic();
-    
     void returnToOrigin();
-    void updateTuning();
     
-    inline void pythCoords();
-    inline void duodeneCoords();
+    void respondToMidi(const juce::MidiMessage &m);
+    void shift(int dir);
+    void locate();
+    
+    void locatePyth();
+    void locateDuodene();
+    
+    void updateTuning();
     
     int defaultRefNote{0};
     double defaultRefFreq{261.6255653005986}; // overkill precision
     
     double ratios[12] = {};
+    double freqs[128]{};
+    
     double pyth12[12]
     {
         1.0,
@@ -132,10 +136,25 @@ private:
         (double)16/9,
         (double)243/128,
     };
-    double duodene[12]
+    int pythCo[12]
+    {
+        0,
+        -5,
+        2,
+        -3,
+        4,
+        -1,
+        6,
+        1,
+        -4,
+        3,
+        -2,
+        5
+    };
+    double duo12[12]
     {
         1.0,
-        (double)16/15,
+        (double)15/16,
         (double)9/8,
         (double)6/5,
         (double)5/4,
@@ -147,83 +166,23 @@ private:
         (double)9/5,
         (double)15/8,
     };
-    double synt1[12]
-    {
-        1.0,
-        (double)16/15,
-        (double)9/8,
-        (double)6/5,
-        (double)5/4,
-        (double)4/3,
-        (double)36/25,
-        (double)3/2,
-        (double)8/5,
-        (double)5/3,
-        (double)9/5,
-        (double)15/8,
-    };
-    double synt2[12]
-    {
-        1.0,
-        (double)16/15,
-        (double)9/8,
-        (double)6/5,
-        (double)5/4,
-        (double)4/3,
-        (double)36/25,
-        (double)3/2,
-        (double)8/5,
-        (double)5/3,
-        (double)9/5,
-        (double)48/25,
-    };
-    double synt3[12]
-    {
-        1.0,
-        (double)16/15,
-        (double)9/8,
-        (double)6/5,
-        (double)32/25,
-        (double)4/3,
-        (double)36/25,
-        (double)3/2,
-        (double)8/5,
-        (double)5/3,
-        (double)9/5,
-        (double)48/25,
-    };
-
-    std::pair<int, int> pythCo[12]
+    std::pair<int, int> duoCo[12]
     {
         {0, 0},
-        {-5, 0},
+        {-1, -1},
         {2, 0},
-        {-3, 0},
-        {4, 0},
+        {1, -1},
+        {0, 1},
         {-1, 0},
-        {6, 0},
+        {2, 1},
         {1, 0},
-        {-4, 0},
-        {3, 0},
-        {-2, 0},
-        {5, 0}
+        {0, -1},
+        {-1, 1},
+        {2, -1},
+        {1, 1}
     };
     
-    double freqs[128]{};
-    
-    // These ints refer to 0-indexed scale degrees
-    // They specify which notes are on the edges of the Duodene scale
-    // We need that in Syntonic mode, see shiftSyntonic() for implementation
-    std::array<int,3> WM = {1,5,9}; // WestMost
-    std::array<int,3> EM = {10,2,6}; // EastMost
-    std::array<int,4> NM = {9,4,11,6}; // Northmost
-    std::array<int,4> SM = {1,8,3,10}; // Southmost
-    
-    int syntShape{0};
-    
-    int shapeChange[3] = {6,11,4};
-    void setShape();
-    
+
     bool hold[5] = {false, false, false, false, false};
     bool wait[5] = {false, false, false, false, false};
     

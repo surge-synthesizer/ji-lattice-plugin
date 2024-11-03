@@ -18,10 +18,14 @@
 
 //==============================================================================
 LatticesProcessor::LatticesProcessor()
-    : juce::AudioProcessor (juce::AudioProcessor::BusesProperties()
-                      .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
-        )
+    : juce::AudioProcessor(juce::AudioProcessor::BusesProperties().withOutput ("Output", juce::AudioChannelSet::stereo(), true))
 {
+    addParameter(xParam = new juce::AudioParameterInt("px", "X Position", -8, 8, 0));
+    addParameter(yParam = new juce::AudioParameterInt("py", "Y Position", -8, 8, 0));
+    
+    xParam->addListener(this);
+    yParam->addListener(this);
+    
     
     
     if (MTS_CanRegisterMaster())
@@ -53,48 +57,16 @@ LatticesProcessor::LatticesProcessor()
         mode = Duodene;
         currentRefFreq = originalRefFreq;
         currentRefNote = originalRefNote;
-        setup();
-        updateTuning();
+        returnToOrigin();
         startTimer(50);
-    }
-}
-
-void LatticesProcessor::setup()
-{
-    // Init to pythagorean
-    // I could do that programmatically instead but whatever...
-    for (int i = 0; i < 12; ++i)
-    {
-        ratios[i] = pyth12[i];
-        coOrds[i] = pythCo[i];
-    }
-    
-    if (mode == Pyth)
-    {
-        // we're done
-        return;
-    }
-    
-    // else add prime 5 to taste
-    for (int i = 0; i < 12; ++i)
-    {
-        if (i == NM[0] || i == NM[1] || i == NM[2] || i==NM[3])
-        {
-            ratios[i] *= jim.comma(jim.syntonic, true);
-            coOrds[i].first -= 4;
-            coOrds[i].second += 1;
-        }
-        if (i == SM[0] || i == SM[1] || i == SM[2] || i == SM[3])
-        {
-            ratios[i] *= jim.comma(jim.syntonic, false);
-            coOrds[i].first += 4;
-            coOrds[i].second -= 1;
-        }
     }
 }
 
 LatticesProcessor::~LatticesProcessor()
 {
+    xParam->removeListener(this);
+    yParam->removeListener(this);
+    
     if (registeredMTS)
         MTS_DeregisterMaster();
 }
@@ -118,11 +90,19 @@ juce::AudioProcessorEditor* LatticesProcessor::createEditor()
 {
     return new LatticesEditor(*this);
 }
+void LatticesProcessor::parameterGestureChanged(int parameterIndex, bool gestureIsStarting){}
 //==============================================================================
 
 void LatticesProcessor::getStateInformation(juce::MemoryBlock& destData)
 {
-    
+//    std::unique_ptr<juce::XmlElement> xml(new juce::XmlElement("Lattices"));
+//   xml->setAttribute("streamingVersion", (int)8524);
+//
+//    xml->setAttribute("Mode", mode);
+//    xml->setAttribute("X", positionX);
+//    xml->setAttribute("Y", positionY);
+//
+//    copyXmlToBinary(*xml, destData);
 }
 
 void LatticesProcessor::setStateInformation(const void* data, int sizeInBytes)
@@ -144,34 +124,6 @@ void LatticesProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     for (const auto metadata : midiMessages)
     {
         respondToMidi(metadata.getMessage());
-    }
-}
-
-void LatticesProcessor::respondToMidi(const juce::MidiMessage &m)
-{
-    if (m.isController() && m.getChannel() == listenOnChannel)
-    {
-        auto num = m.getControllerNumber();
-        auto val = m.getControllerValue();
-        
-
-        
-        for (int i = 0; i < 5; ++i)
-        {
-            if (num == shiftCCs[i])
-            {
-                if (val == 127 && hold[i] == false)
-                {
-                    shift(i);
-                    hold[i] = true;
-                }
-                
-                if (val < 127 && hold[i] == true)
-                {
-                    wait[i] = true;
-                }
-            }
-        }
     }
 }
 
@@ -203,157 +155,6 @@ void LatticesProcessor::modeSwitch(int m)
     returnToOrigin();
 }
 
-void LatticesProcessor::shift(int dir)
-{
-    switch (dir)
-    {
-        case West:
-            --positionX;
-            
-            if (mode == Syntonic)
-            {
-                syntShape = ((positionX % 4) + 4) % 4;
-                
-                if (syntShape == 3)
-                {
-                    ++positionY;
-                }
-            }
-            break;
-        case East:
-            ++positionX;
-            if (mode == Syntonic)
-            {
-                syntShape = ((positionX % 4) + 4) % 4;
-                if (syntShape == 0)
-                {
-                    --positionY;
-                }
-            }
-            break;
-        case North:
-            if (mode == Pyth) return;
-            ++positionY;
-            break;
-        case South:
-            if (mode == Pyth) return;
-            --positionY;
-            break;
-        case Home:
-            returnToOrigin();
-            break;
-        default:
-            return;
-    };
-    
-    
-    if (mode == Pyth)
-    {
-        shiftPyth();
-    }
-    else
-    {
-        shiftDuodene();
-    }
-    
-    updateTuning();
-}
-
-void LatticesProcessor::shiftPyth()
-{
-    if (positionX == 0)
-    {
-        returnToOrigin();
-    }
-
-    int nn = originalRefNote;
-    double nf = 1.0;
-    
-    int absx = std::abs(positionX);
-    double mul = positionX < 0 ? 1 / ratios[7] : ratios[7];
-    int add = positionX < 0 ? -7 : 7;
-    for (int i = 0; i < absx; ++i)
-    {
-        nn += add;
-        nf *= mul;
-    }
-    
-    while (nn < 0)
-    {
-        nn += 12;
-        nf *= 2.0;
-    }
-    while (nn > 12)
-    {
-        nn -= 12;
-        nf *= 0.5;
-    }
-    
-    currentRefNote = nn;
-    currentRefFreq = originalRefFreq * nf;
-    pythCoords();
-}
-
-void LatticesProcessor::shiftDuodene()
-{
-    if (positionX == 0 && positionY == 0)
-    {
-       returnToOrigin();
-       return;
-    }
-    
-    int nn = originalRefNote;
-    double nf = 1.0;
-    
-    int absx = std::abs(positionX);
-    double mul = positionX < 0 ? 1 / ratios[7] : ratios[7];
-    int add = positionX < 0 ? -7 : 7;
-    for (int i = 0; i < absx; ++i)
-    {
-        nn += add;
-        nf *= mul;
-    }
-    double third = 1.25;
-    
-    int absy = std::abs(positionY);
-    mul = positionY < 0 ? 1 / third : third;
-    add = positionY < 0 ? -4 : 4;
-    for (int i = 0; i < absy; ++i)
-    {
-        nn += add;
-        nf *= mul;
-    }
-    
-    while (nn < 0)
-    {
-        nn += 12;
-        nf *= 2.0;
-    }
-    while (nn > 12)
-    {
-        nn -= 12;
-        nf *= 0.5;
-    }
-    
-    currentRefNote = nn;
-    currentRefFreq = originalRefFreq * nf;
-    
-    if (mode == Syntonic)
-        setShape();
-    
-    duodeneCoords();
-}
-void LatticesProcessor::setShape()
-{
-    for (int i = 0; i < 12; ++i)
-    {
-        if (syntShape == 1) ratios[i] = synt1[i];
-        else if (syntShape == 2) ratios[i] = synt2[i];
-        else if (syntShape == 3) ratios[i] = synt3[i];
-        else ratios[i] = duodene[i];
-    }
-}
-
 void LatticesProcessor::updateFreq(double f)
 {
     originalRefFreq = f;
@@ -373,14 +174,231 @@ double LatticesProcessor::updateRoot(int r)
 
 void LatticesProcessor::returnToOrigin()
 {
-    syntShape = 0;
     currentRefNote = originalRefNote;
     currentRefFreq = originalRefFreq;
     positionX = 0;
     positionY = 0;
-    setup();
+    
+    xParam->beginChangeGesture();
+    xParam->setValueNotifyingHost(0.5);
+    xParam->endChangeGesture();
+    yParam->beginChangeGesture();
+    yParam->setValueNotifyingHost(0.5);
+    yParam->endChangeGesture();
+
+    if (mode == Pyth)
+    {
+        for (int i = 0; i < 12; ++i)
+        {
+            ratios[i] = pyth12[i];
+            coOrds[i].first = pythCo[i];
+            coOrds[i].second = 0;
+        }
+    }
+    else
+    {
+        for (int i = 0; i < 12; ++i)
+        {
+            ratios[i] = duo12[i];
+            coOrds[i] = duoCo[i];
+        }
+    }
     
     updateTuning();
+}
+
+void LatticesProcessor::respondToMidi(const juce::MidiMessage &m)
+{
+    if (m.isController() && m.getChannel() == listenOnChannel)
+    {
+        auto num = m.getControllerNumber();
+        auto val = m.getControllerValue();
+        
+        for (int i = 0; i < 5; ++i)
+        {
+            if (num == shiftCCs[i])
+            {
+                if (val == 127 && hold[i] == false)
+                {
+                    shift(i);
+                    hold[i] = true;
+                }
+                
+                if (val < 127 && hold[i] == true)
+                {
+                    wait[i] = true;
+                }
+            }
+        }
+    }
+}
+
+void LatticesProcessor::parameterValueChanged(int parameterIndex, float newValue)
+{
+    locate();
+}
+
+void LatticesProcessor::shift(int dir)
+{
+    float X = xParam->get();
+    float Y = yParam->get();
+    
+    switch (dir)
+    {
+        case West:
+            xParam->beginChangeGesture();
+            --X;
+            X += 8;
+            X /= 16;
+            xParam->setValueNotifyingHost(X);
+            xParam->endChangeGesture();
+            locate();
+            break;
+        case East:
+            xParam->beginChangeGesture();
+            ++X;
+            X += 8;
+            X /= 16;
+            xParam->setValueNotifyingHost(X);
+            xParam->endChangeGesture();
+            locate();
+            break;
+        case North:
+            if (mode == Pyth) return;
+            yParam->beginChangeGesture();
+            ++Y;
+            Y += 8;
+            Y /= 16;
+            yParam->setValueNotifyingHost(Y);
+            yParam->endChangeGesture();
+            locate();
+            break;
+        case South:
+            if (mode == Pyth) return;
+            yParam->beginChangeGesture();
+            --Y;
+            Y += 8;
+            Y /= 16;
+            yParam->setValueNotifyingHost(Y);
+            yParam->endChangeGesture();
+            locate();
+            break;
+        case Home:
+            returnToOrigin();
+            break;
+    };
+}
+    
+void LatticesProcessor::locate()
+{
+    positionX = xParam->get();
+    positionY = yParam->get();
+    
+    if (mode == Pyth)
+    {
+
+        int nn = originalRefNote;
+        double nf = 1.0;
+        
+        int absx = std::abs(positionX);
+        double mul = positionX < 0 ? 1 / 1.5 : 1.5; // fifth down : fifth up
+        int add = positionX < 0 ? -7 : 7;
+        for (int i = 0; i < absx; ++i)
+        {
+            nn += add;
+            nf *= mul;
+        }
+        
+        while (nn < 0)
+        {
+            nn += 12;
+            nf *= 2.0;
+        }
+        while (nn > 12)
+        {
+            nn -= 12;
+            nf *= 0.5;
+        }
+        
+        currentRefNote = nn;
+        currentRefFreq = originalRefFreq * nf;
+        
+        for (int i = 0; i < 12; ++i)
+        {
+            coOrds[i].first = positionX + pythCo[i];
+            coOrds[i].second = 0;
+        }
+        
+        updateTuning();
+        return;
+    }
+    
+    if (mode == Duodene || mode == Syntonic)
+    {
+        if (mode == Syntonic)
+        {
+            float quarter = static_cast<float>(positionX) / 4;
+            int syntYOff = std::floor(quarter);
+            syntYOff *= -1;
+
+            positionY = yParam->get() + syntYOff;
+        }
+        
+        int nn = originalRefNote;
+        double nf = 1.0;
+        
+        int absx = std::abs(positionX);
+        double mul = positionX < 0 ? 1 / 1.5 : 1.5; // fifth down : fifth up
+        int add = positionX < 0 ? -7 : 7;
+        for (int i = 0; i < absx; ++i)
+        {
+            nn += add;
+            nf *= mul;
+        }
+        
+        int absy = std::abs(positionY);
+        mul = positionY < 0 ? 1 / 1.25 : 1.25; // third down : third up
+        add = positionY < 0 ? -4 : 4;
+        for (int i = 0; i < absy; ++i)
+        {
+            nn += add;
+            nf *= mul;
+        }
+        
+        while (nn < 0)
+        {
+            nn += 12;
+            nf *= 2.0;
+        }
+        while (nn > 12)
+        {
+            nn -= 12;
+            nf *= 0.5;
+        }
+        
+        currentRefNote = nn;
+        currentRefFreq = originalRefFreq * nf;
+        
+        for (int i = 0; i < 12; ++i)
+        {
+            coOrds[i].first = duoCo[i].first + positionX;
+            coOrds[i].second = duoCo[i].second + positionY;
+        }
+        
+        if (mode == Syntonic)
+        {
+            int syntShape = ((positionX % 4) + 4) % 4;
+            
+            ratios[6] = (syntShape > 0) ? (double)36/25 : (double)45/32;
+            ratios[11] = (syntShape > 1) ? (double)48/25 : (double)15/8;
+            ratios[4] = (syntShape == 3) ? (double)32/25 : (double)5/4;
+            
+            coOrds[6].second = (syntShape > 0) ? positionY - 2 : positionY + 1;
+            coOrds[11].second =  (syntShape > 1) ? positionY - 2 : positionY + 1;
+            coOrds[4].second = (syntShape == 3) ? positionY - 2 : positionY + 1;
+        }
+        updateTuning();
+    }
 }
 
 void LatticesProcessor::updateTuning()
@@ -406,73 +424,6 @@ void LatticesProcessor::updateTuning()
 
 }
 
-void LatticesProcessor::pythCoords()
-{
-    coOrds[0].first = positionX;
-    coOrds[1].first = positionX - 5;
-    coOrds[2].first = positionX + 2;
-    coOrds[3].first = positionX - 3;
-    coOrds[4].first = positionX + 4;
-    coOrds[5].first = positionX - 1;
-    coOrds[6].first = positionX + 6;
-    coOrds[7].first = positionX + 1;
-    coOrds[8].first = positionX - 4;
-    coOrds[9].first = positionX + 3;
-    coOrds[10].first = positionX - 2;
-    coOrds[11].first = positionX + 5;
-
-    for (int i = 0; i < 12; ++i)
-    {
-        coOrds[i].second = 0;
-    }
-}
-
-inline void LatticesProcessor::duodeneCoords()
-{
-    coOrds[0].first = positionX;
-    coOrds[0].second = positionY;
-
-    coOrds[1].first = positionX - 1;
-    coOrds[1].second = positionY - 1;
-
-    coOrds[2].first = positionX + 2;
-    coOrds[2].second = positionY;
-
-    coOrds[3].first = positionX + 1;
-    coOrds[3].second = positionY - 1;
-
-    coOrds[4].first = positionX;
-    coOrds[4].second = positionY + 1;
-
-    coOrds[5].first = positionX - 1;
-    coOrds[5].second = positionY;
-
-    coOrds[6].first = positionX + 2;
-    coOrds[6].second = positionY + 1;
-
-    coOrds[7].first = positionX + 1;
-    coOrds[7].second = positionY;
-
-    coOrds[8].first = positionX;
-    coOrds[8].second = positionY - 1;
-
-    coOrds[9].first = positionX - 1;
-    coOrds[9].second = positionY + 1;
-
-    coOrds[10].first = positionX + 2;
-    coOrds[10].second = positionY - 1;
-
-    coOrds[11].first = positionX + 1;
-    coOrds[11].second = positionY + 1;
-    
-    if (mode == Syntonic)
-    {
-        for (int i = 0; i < syntShape; ++i)
-        {
-            coOrds[shapeChange[i]].second -= 3;
-        }
-    }
-}
 
 //==============================================================================
 // This creates new instances of the plugin..
