@@ -1,7 +1,7 @@
-
 #pragma once
 
 #include "JIMath.h"
+#include "LatticesBinary.h"
 
 
 //==============================================================================
@@ -283,13 +283,11 @@ struct LatticeComponent : juce::Component
         return {n,d};
     }
 protected:
-    
-    
-    
     static constexpr int JIRadius{26};
     
-    juce::FontOptions fo{"Stoke", JIRadius, juce::Font::plain};
-    juce::Font stoke{fo};
+    juce::ReferenceCountedObjectPtr<juce::Typeface> Stoke{ juce::Typeface::createSystemTypefaceFor(LatticesBinary::Stoke_otf, LatticesBinary::Stoke_otfSize)};
+    
+    juce::Font stoke{juce::FontOptions(Stoke).withPointHeight(JIRadius)};
 
     juce::Colour com1{0.f, .84f, 1.f, 1.f};
     juce::Colour com2{.961111f, .79f, .41f, .25f};

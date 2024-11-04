@@ -26,6 +26,12 @@ juce_add_plugin(${PROJECT_NAME}
     COPY_PLUGIN_AFTER_BUILD TRUE
 )
 
+juce_add_binary_data(lattices-binary
+  NAMESPACE LatticesBinary
+  HEADER_NAME LatticesBinary.h
+  SOURCES ${CMAKE_SOURCE_DIR}/resources/fonts/Stoke.otf
+)
+
 target_include_directories(${PROJECT_NAME}
   PRIVATE
   src/
@@ -60,4 +66,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
         juce::juce_audio_devices
         oddsound-mts-source
         )
+        
+target_link_libraries(${PROJECT_NAME} PRIVATE lattices-binary)
 
