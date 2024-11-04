@@ -1,18 +1,23 @@
 /*
-  ==============================================================================
-
-    This file was auto-generated!
-
-    It contains the basic framework code for a JUCE plugin processor.
-
-  ==============================================================================
+ Lattices - A Just-Intonation graphical MTS-ESP Source
+ 
+ Copyright 2023-2024 Andreya Ek Frisk and Paul Walker.
+ 
+ This code is released under the MIT licence, but do note that it depends
+ on the JUCE library, see licence for more details.
+ 
+ Source available at https://github.com/Andreya-Autumn/lattices
 */
 
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <memory>
 #include <set>
 #include <atomic>
+#include <cmath>
+#include <iostream>
+#include <string>
 
 #include "JIMath.h"
 
@@ -114,8 +119,7 @@ private:
     void updateTuning();
     
     inline float GNV(int input);
-    
-
+    // GetNormValue... I was getting nonsense from JUCE param one
     
     double ratios[12] = {};
     double freqs[128]{};

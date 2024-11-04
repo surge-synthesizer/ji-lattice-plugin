@@ -1,15 +1,16 @@
 /*
-  ==============================================================================
-
-    This file was auto-generated!
-
-    It contains the basic framework code for a JUCE plugin editor.
-
-  ==============================================================================
+  Lattices - A Just-Intonation graphical MTS-ESP Source
+  
+  Copyright 2023-2024 Andreya Ek Frisk and Paul Walker.
+  
+  This code is released under the MIT licence, but do note that it depends
+  on the JUCE library, see licence for more details.
+  
+  Source available at https://github.com/Andreya-Autumn/lattices
 */
 
-#include "PluginProcessor.h"
-#include "PluginEditor.h"
+#include "LatticesProcessor.h"
+#include "LatticesEditor.h"
 #include <memory>
 
 //==============================================================================

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.15)
 
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.14 CACHE STRING "Build for 10.14")
 
-project(lattices VERSION 0.2.0)
+project(lattices VERSION 0.3.0(alpha))
 set(CMAKE_CXX_STANDARD 17)
 
 include (cmake/CPM.cmake)

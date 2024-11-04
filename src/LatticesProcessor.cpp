@@ -1,20 +1,18 @@
 /*
-  ==============================================================================
-
-    This file was auto-generated!
-
-    It contains the basic framework code for a JUCE plugin processor.
-
-  ==============================================================================
+  Lattices - A Just-Intonation graphical MTS-ESP Source
+  
+  Copyright 2023-2024 Andreya Ek Frisk and Paul Walker.
+  
+  This code is released under the MIT licence, but do note that it depends
+  on the JUCE library, see licence for more details.
+  
+  Source available at https://github.com/Andreya-Autumn/lattices
 */
 
-#include "PluginProcessor.h"
-#include "PluginEditor.h"
-#include "libMTSMaster.h"
 
-#include <cmath>
-#include <iostream>
-#include <string>
+#include "LatticesProcessor.h"
+#include "LatticesEditor.h"
+#include "libMTSMaster.h"
 
 
 //==============================================================================
@@ -149,10 +147,10 @@ LatticesProcessor::LatticesProcessor()
     {
         registeredMTS = true;
         MTS_RegisterMaster();
-        std::cout << "Registered ok" << std::endl;
     }
+    
+    // TODO: Implement this:
     /*
-     TODO:
     else
     {
         if (MTS_HasIPC())
@@ -169,7 +167,7 @@ LatticesProcessor::LatticesProcessor()
     }
     */
     
-    if (registeredMTS == true) //TODO: State loading
+    if (registeredMTS == true)
     {
         mode = Duodene;
         originalRefFreq = defaultRefFreq;
@@ -341,6 +339,8 @@ void LatticesProcessor::modeSwitch(int m)
 
 void LatticesProcessor::updateMIDI(int wCC, int eCC, int nCC, int sCC, int hCC, int C)
 {
+    // TODO: This doesn't set project dirty flags, investigate
+    
     shiftCCs[0] = wCC;
     shiftCCs[1] = eCC;
     shiftCCs[2] = nCC;
@@ -598,8 +598,6 @@ void LatticesProcessor::locate()
 void LatticesProcessor::updateTuning()
 {
     changed = true;
-    std::cout << "refFreq = " << currentRefFreq << std::endl;
-    std::cout << "refNote = " << currentRefNote << std::endl;
     
     int refMidiNote = currentRefNote + 60;
     for (int note = 0; note < 128; ++note)
