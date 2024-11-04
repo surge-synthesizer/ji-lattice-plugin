@@ -1,7 +1,5 @@
 # Lattices: A JI MTS Source
 
-![Example pic](https://github.com/Andreya-Autumn/lattices/tree/main/assets/LE.png)
-
 The code in this repo builds a microtonal control plugin which makes extended Just Intonation easy to explore on regular 12-note interfaces. A baseline was put down by BaconPaul in early 2023, which I (Andreya) have been building on in the second half of 2024. It is currently in Alpha. More on that below.
 
 
