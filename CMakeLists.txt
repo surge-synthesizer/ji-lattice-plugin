@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.15)
 
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.14 CACHE STRING "Build for 10.14")
 
-project(lattices VERSION 0.3.0(alpha))
+project(lattices VERSION 0.3.0)
 set(CMAKE_CXX_STANDARD 17)
 
 include (cmake/CPM.cmake)
@@ -44,7 +44,7 @@ target_include_directories(oddsound-mts-source PUBLIC libs/MTS-ESP/master)
 target_link_libraries(${PROJECT_NAME} PRIVATE melatonin_inspector)
 target_link_libraries(${PROJECT_NAME} PRIVATE melatonin_blur)
 
-target_sources(${PROJECT_NAME} PRIVATE src/PluginEditor.cpp src/PluginProcessor.cpp)
+target_sources(${PROJECT_NAME} PRIVATE src/LatticesEditor.cpp src/LatticesProcessor.cpp)
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC
     JUCE_ALLOW_STATIC_NULL_VARIABLES=0
