@@ -97,7 +97,6 @@ void LatticesEditor::resized()
 void LatticesEditor::showModeMenu()
 {
     bool show = modeButton->getToggleState();
-    
     modeComponent->setVisible(show);
     
     if (show)
@@ -113,7 +112,8 @@ void LatticesEditor::showModeMenu()
 void LatticesEditor::showMidiMenu()
 {
     bool show = midiButton->getToggleState();
-    midiComponent->setVisible(true);
+    midiComponent->setVisible(show);
+    
     if (show)
     {
         midiButton->setConnectedEdges(4);
@@ -128,6 +128,7 @@ void LatticesEditor::showOriginMenu()
 {
     bool show = originButton->getToggleState();
     originComponent->setVisible(show);
+    
     if (show)
     {
         originButton->setConnectedEdges(4);
@@ -155,12 +156,12 @@ void LatticesEditor::timerCallback()
     
     if (midiComponent->settingChanged)
     {
-        processor.shiftCCs[0] = midiComponent->data[0];
-        processor.shiftCCs[1] = midiComponent->data[1];
-        processor.shiftCCs[2] = midiComponent->data[2];
-        processor.shiftCCs[3] = midiComponent->data[3];
-        processor.shiftCCs[4] = midiComponent->data[4];
-        processor.listenOnChannel = midiComponent->midiChannel;
+        processor.updateMIDI(midiComponent->data[0],
+                             midiComponent->data[1],
+                             midiComponent->data[2],
+                             midiComponent->data[3],
+                             midiComponent->data[4],
+                             midiComponent->midiChannel);
     }
     
     if (originComponent->freqChanged)

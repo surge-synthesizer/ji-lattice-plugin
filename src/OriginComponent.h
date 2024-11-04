@@ -33,11 +33,6 @@ struct OriginComponent : public juce::Component
             {
                 key[i]->setToggleState(true, juce::dontSendNotification);
             }
-            // prob not needed?
-//            else
-//            {
-//                key[i]setToggleState(false, juce::dontSendNotification);
-//            }
         }
         
         addAndMakeVisible(freqEditor);

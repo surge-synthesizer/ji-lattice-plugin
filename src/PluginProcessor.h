@@ -51,18 +51,15 @@ public:
     void timerCallback() override;
     
     void modeSwitch(int m);
+    void updateMIDI(int wCC, int eCC, int nCC, int sCC, int hCC, int C);
     void updateFreq(double f);
     double updateRoot(int r);
     void parameterValueChanged(int parameterIndex, float newValue) override;
     
+    bool registeredMTS{false};
+    
     std::atomic<int> positionX{0};
     std::atomic<int> positionY{0};
-    
-    int syntonicDrift = 0;
-    int diesisDrift = 0;
-    int pythDrift = 0;
-    
-    std::pair<int, int> coOrds[12]{};
     
     enum Mode
     {
@@ -71,29 +68,33 @@ public:
         Duodene,
     };
     std::atomic<Mode> mode = Duodene;
-    
-
-    
     std::atomic<bool> changed{false};
     std::atomic<int> numClients{0};
     
-    bool registeredMTS{false};
+    std::pair<int, int> coOrds[12]{};
+    
+    int syntonicDrift = 0;
+    int diesisDrift = 0;
+    int pythDrift = 0;
     
     int shiftCCs[5] = {5, 6, 7, 8, 9};
     int listenOnChannel = 1;
     
-    int originalRefNote{2}; // C = 0, C# = 1, D = 2 etc
-    double originalRefFreq{293.3333333333333};
+    int originalRefNote{-12};
+    double originalRefFreq{-1};
     
 private:
+    static constexpr int maxDistance{24};
+    static constexpr int defaultRefNote{0};
+    static constexpr double defaultRefFreq{261.6255653005986};
     
     juce::AudioParameterInt* xParam;
     juce::AudioParameterInt* yParam;
     
     JIMath jim;
     
-    int currentRefNote{-12};
-    double currentRefFreq{1.00000000};
+    int currentRefNote{};
+    double currentRefFreq{};
     
     enum Direction
     {
@@ -110,13 +111,11 @@ private:
     void shift(int dir);
     void locate();
     
-    void locatePyth();
-    void locateDuodene();
-    
     void updateTuning();
     
-    int defaultRefNote{0};
-    double defaultRefFreq{261.6255653005986}; // overkill precision
+    inline float GNV(int input);
+    
+
     
     double ratios[12] = {};
     double freqs[128]{};
@@ -154,7 +153,7 @@ private:
     double duo12[12]
     {
         1.0,
-        (double)15/16,
+        (double)16/15,
         (double)9/8,
         (double)6/5,
         (double)5/4,
@@ -164,7 +163,7 @@ private:
         (double)8/5,
         (double)5/3,
         (double)9/5,
-        (double)15/8,
+        (double)15/8
     };
     std::pair<int, int> duoCo[12]
     {
