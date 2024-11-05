@@ -4,6 +4,9 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET 10.14 CACHE STRING "Build for 10.14")
 
 project(lattices VERSION 0.3.0)
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 
 include (cmake/CPM.cmake)
 
@@ -40,7 +43,7 @@ target_include_directories(${PROJECT_NAME}
 add_subdirectory (libs/melatonin_inspector)
 juce_add_module("libs/melatonin_blur")
 add_library(oddsound-mts-source libs/MTS-ESP/Master/libMTSMaster.cpp)
-target_include_directories(oddsound-mts-source PUBLIC libs/MTS-ESP/master)
+target_include_directories(oddsound-mts-source PUBLIC libs/MTS-ESP/Master)
 target_link_libraries(${PROJECT_NAME} PRIVATE melatonin_inspector)
 target_link_libraries(${PROJECT_NAME} PRIVATE melatonin_blur)
 

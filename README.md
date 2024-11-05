@@ -45,10 +45,11 @@ This project may soon become a Surge Synth Team product (should the team consent
 
 ## Building
 
-This works on Mac, dunno about Windows and Linux! Help appreciated.
+This works on Mac and Linux! No idea about Windows. Help appreciated!
 
 ```
-git clone
+git clone https://github.com/Andreya-Autumn/lattices.git
+cd lattices
 git submodule update --init --recursive
 cmake -Bignore/build -DCMAKE_BUILD_TYPE=RELEASE
 cmake --build ignore/build
