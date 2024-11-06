@@ -59,7 +59,7 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC
     
     JUCE_REPORT_APP_USAGE=0
 
-    JUCE_ALSA=0
+    JUCE_ALSA=1
     JUCE_JACK=0
 )
 
