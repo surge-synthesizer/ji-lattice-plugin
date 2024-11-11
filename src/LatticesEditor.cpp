@@ -86,7 +86,7 @@ void LatticesEditor::resized()
     
     
     modeButton->setBounds(10, 10, 120, 30);
-    modeComponent->setBounds(10, 40, 120, 125);
+    modeComponent->setBounds(10, 40, 120, 90);
     
     midiButton->setBounds(10, b.getBottom() - 40, 120, 30);
     midiComponent->setBounds(10, b.getBottom() - 155 - 30 - 10, 120, 155);

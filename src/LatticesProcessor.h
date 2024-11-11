@@ -68,9 +68,8 @@ public:
     
     enum Mode
     {
-        Pyth,
-        Syntonic,
         Duodene,
+        Syntonic,
     };
     std::atomic<Mode> mode = Duodene;
     std::atomic<bool> changed{false};
@@ -80,7 +79,6 @@ public:
     
     int syntonicDrift = 0;
     int diesisDrift = 0;
-    int pythDrift = 0;
     
     int shiftCCs[5] = {5, 6, 7, 8, 9};
     int listenOnChannel = 1;
@@ -124,36 +122,6 @@ private:
     double ratios[12] = {};
     double freqs[128]{};
     
-    double pyth12[12]
-    {
-        1.0,
-        (double)256/243,
-        (double)9/8,
-        (double)32/27,
-        (double)81/64,
-        (double)4/3,
-        (double)729/512,
-        (double)3/2,
-        (double)128/81,
-        (double)27/16,
-        (double)16/9,
-        (double)243/128,
-    };
-    int pythCo[12]
-    {
-        0,
-        -5,
-        2,
-        -3,
-        4,
-        -1,
-        6,
-        1,
-        -4,
-        3,
-        -2,
-        5
-    };
     double duo12[12]
     {
         1.0,

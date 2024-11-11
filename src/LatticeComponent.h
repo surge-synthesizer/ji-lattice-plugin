@@ -14,6 +14,7 @@
 #include "JIMath.h"
 #include "LatticesBinary.h"
 
+#include <melatonin_blur/melatonin_blur.h>
 
 //==============================================================================
 struct LatticeComponent : juce::Component

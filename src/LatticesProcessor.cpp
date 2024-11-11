@@ -252,9 +252,6 @@ void LatticesProcessor::setStateInformation(const void* data, int sizeInBytes)
             
             switch (m)
             {
-                case Pyth:
-                    mode = Pyth;
-                    break;
                 case Syntonic:
                     mode = Syntonic;
                     break;
@@ -322,9 +319,6 @@ void LatticesProcessor::modeSwitch(int m)
 {
     switch (m)
     {
-        case Pyth:
-            mode = Pyth;
-            break;
         case Syntonic:
             mode = Syntonic;
             break;
@@ -385,23 +379,11 @@ void LatticesProcessor::returnToOrigin()
     yParam->beginChangeGesture();
     yParam->setValueNotifyingHost(0.5);
     yParam->endChangeGesture();
-
-    if (mode == Pyth)
+            
+    for (int i = 0; i < 12; ++i)
     {
-        for (int i = 0; i < 12; ++i)
-        {
-            ratios[i] = pyth12[i];
-            coOrds[i].first = pythCo[i];
-            coOrds[i].second = 0;
-        }
-    }
-    else
-    {
-        for (int i = 0; i < 12; ++i)
-        {
-            ratios[i] = duo12[i];
-            coOrds[i] = duoCo[i];
-        }
+        ratios[i] = duo12[i];
+        coOrds[i] = duoCo[i];
     }
     
     updateTuning();
@@ -461,14 +443,12 @@ void LatticesProcessor::shift(int dir)
             xParam->endChangeGesture();
             break;
         case North:
-            if (mode == Pyth) return;
             yParam->beginChangeGesture();
             Y = GNV(Y + 1);
             yParam->setValueNotifyingHost(Y);
             yParam->endChangeGesture();
             break;
         case South:
-            if (mode == Pyth) return;
             yParam->beginChangeGesture();
             Y = GNV(Y - 1);
             yParam->setValueNotifyingHost(Y);
@@ -484,115 +464,72 @@ void LatticesProcessor::shift(int dir)
     
 void LatticesProcessor::locate()
 {
-    if (mode == Pyth)
+    positionX = xParam->get();
+    positionY = yParam->get();
+    
+    if (mode == Syntonic)
     {
-        positionX = xParam->get();
-        
-        int nn = originalRefNote;
-        double nf = 1.0;
-        
-        int absx = std::abs(positionX);
-        double mul = positionX < 0 ? 1 / 1.5 : 1.5; // fifth down : fifth up
-        int add = positionX < 0 ? -7 : 7;
-        for (int i = 0; i < absx; ++i)
-        {
-            nn += add;
-            nf *= mul;
-        }
-        
-        while (nn < 0)
-        {
-            nn += 12;
-            nf *= 2.0;
-        }
-        while (nn > 12)
-        {
-            nn -= 12;
-            nf *= 0.5;
-        }
-        
-        currentRefNote = nn;
-        currentRefFreq = originalRefFreq * nf;
-        
-        for (int i = 0; i < 12; ++i)
-        {
-            coOrds[i].first = positionX + pythCo[i];
-            coOrds[i].second = 0;
-        }
-        
-        updateTuning();
-        return;
+        float quarter = static_cast<float>(positionX) / 4;
+        int syntYOff = std::floor(quarter);
+        syntYOff *= -1;
+
+        positionY = yParam->get() + syntYOff;
     }
     
-    if (mode == Duodene || mode == Syntonic)
+    int nn = originalRefNote;
+    double nf = 1.0;
+    
+    int absx = std::abs(positionX);
+    double mul = positionX < 0 ? 1 / 1.5 : 1.5; // fifth down : fifth up
+    int add = positionX < 0 ? -7 : 7;
+    for (int i = 0; i < absx; ++i)
     {
-        positionX = xParam->get();
-        positionY = yParam->get();
-        
-        if (mode == Syntonic)
-        {
-            float quarter = static_cast<float>(positionX) / 4;
-            int syntYOff = std::floor(quarter);
-            syntYOff *= -1;
-
-            positionY = yParam->get() + syntYOff;
-        }
-        
-        int nn = originalRefNote;
-        double nf = 1.0;
-        
-        int absx = std::abs(positionX);
-        double mul = positionX < 0 ? 1 / 1.5 : 1.5; // fifth down : fifth up
-        int add = positionX < 0 ? -7 : 7;
-        for (int i = 0; i < absx; ++i)
-        {
-            nn += add;
-            nf *= mul;
-        }
-        
-        int absy = std::abs(positionY);
-        mul = positionY < 0 ? 1 / 1.25 : 1.25; // third down : third up
-        add = positionY < 0 ? -4 : 4;
-        for (int i = 0; i < absy; ++i)
-        {
-            nn += add;
-            nf *= mul;
-        }
-        
-        while (nn < 0)
-        {
-            nn += 12;
-            nf *= 2.0;
-        }
-        while (nn >= 12)
-        {
-            nn -= 12;
-            nf *= 0.5;
-        }
-        
-        currentRefNote = nn;
-        currentRefFreq = originalRefFreq * nf;
-        
-        for (int i = 0; i < 12; ++i)
-        {
-            coOrds[i].first = duoCo[i].first + positionX;
-            coOrds[i].second = duoCo[i].second + positionY;
-        }
-        
-        if (mode == Syntonic)
-        {
-            int syntShape = ((positionX % 4) + 4) % 4;
-
-            ratios[6] = (syntShape > 0) ? (double)36/25 : (double)45/32;
-            ratios[11] = (syntShape > 1) ? (double)48/25 : (double)15/8;
-            ratios[4] = (syntShape == 3) ? (double)32/25 : (double)5/4;
-
-            coOrds[6].second = (syntShape > 0) ? positionY - 2 : positionY + 1;
-            coOrds[11].second =  (syntShape > 1) ? positionY - 2 : positionY + 1;
-            coOrds[4].second = (syntShape == 3) ? positionY - 2 : positionY + 1;
-        }
-        updateTuning();
+        nn += add;
+        nf *= mul;
     }
+    
+    int absy = std::abs(positionY);
+    mul = positionY < 0 ? 1 / 1.25 : 1.25; // third down : third up
+    add = positionY < 0 ? -4 : 4;
+    for (int i = 0; i < absy; ++i)
+    {
+        nn += add;
+        nf *= mul;
+    }
+    
+    while (nn < 0)
+    {
+        nn += 12;
+        nf *= 2.0;
+    }
+    while (nn >= 12)
+    {
+        nn -= 12;
+        nf *= 0.5;
+    }
+    
+    currentRefNote = nn;
+    currentRefFreq = originalRefFreq * nf;
+    
+    for (int i = 0; i < 12; ++i)
+    {
+        coOrds[i].first = duoCo[i].first + positionX;
+        coOrds[i].second = duoCo[i].second + positionY;
+    }
+    
+    if (mode == Syntonic)
+    {
+        int syntShape = ((positionX % 4) + 4) % 4;
+
+        ratios[6] = (syntShape > 0) ? (double)36/25 : (double)45/32;
+        ratios[11] = (syntShape > 1) ? (double)48/25 : (double)15/8;
+        ratios[4] = (syntShape == 3) ? (double)32/25 : (double)5/4;
+
+        coOrds[6].second = (syntShape > 0) ? positionY - 2 : positionY + 1;
+        coOrds[11].second =  (syntShape > 1) ? positionY - 2 : positionY + 1;
+        coOrds[4].second = (syntShape == 3) ? positionY - 2 : positionY + 1;
+    }
+    updateTuning();
 }
 
 void LatticesProcessor::updateTuning()
