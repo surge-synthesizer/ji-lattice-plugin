@@ -127,8 +127,12 @@ struct LatticeComponent : juce::Component
                 g.setColour(juce::Colours::white.withAlpha(alpha));
                 g.drawEllipse(x - ellipseRadius,y - JIRadius, 2 * ellipseRadius, 2 * JIRadius, 3);
 
-                auto [n,d] = calculateCell(w, v);
-                auto s = std::to_string(n) + "/" + std::to_string(d);
+                
+                
+//                auto [n,d] = calculateCell(w, v);
+//                auto s = std::to_string(n) + "/" + std::to_string(d);
+                
+                std::string s = jim.nameNoteOnLattice(w,v);
                 g.setFont(stoke);
                 g.drawFittedText(s, x - ellipseRadius + 3, y - (JIRadius / 3.f) , 2.f * (ellipseRadius - 3), .66667f * JIRadius, juce::Justification::horizontallyCentred, 1, 0.05f);
             }
@@ -253,7 +257,6 @@ struct LatticeComponent : juce::Component
 
     std::pair<uint64_t, uint64_t> calculateCell(int fifths, int thirds)
     {
-        JIMath jim;
         uint64_t n{1}, d{1};
 
         while(thirds > 0)
@@ -296,6 +299,7 @@ struct LatticeComponent : juce::Component
     }
 protected:
     static constexpr int JIRadius{26};
+    JIMath jim;
     
     juce::ReferenceCountedObjectPtr<juce::Typeface> Stoke{ juce::Typeface::createSystemTypefaceFor(LatticesBinary::Stoke_otf, LatticesBinary::Stoke_otfSize)};
     

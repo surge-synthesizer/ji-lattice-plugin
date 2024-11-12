@@ -13,6 +13,8 @@
 #define LATTICES_JIMATH_H
 
 #include <utility>
+#include <string>
+#include <cmath>
 
 struct JIMath
 {
@@ -145,22 +147,28 @@ struct JIMath
         }
     }
     
-    void ratioToMonzo(const uint64_t num, const uint64_t denom, monzo &m)
+    inline void ratioToMonzo(const uint64_t num, const uint64_t denom, monzo &m)
     {
+        auto n = num;
+        auto d = denom;
+        
         for (int i = 0; i < limit; ++i)
         {
-            while (num % primes[i] == 0)
+            while (n % primes[i] == 0)
             {
                 m[i]++;
+                n /= primes[i];
+                
             }
-            while (denom % primes[i] == 0)
+            while (d % primes[i] == 0)
             {
                 m[i]--;
+                d /= primes[i];
             }
         }
     }
     
-    void octaveReduceRatio(uint64_t &num, uint64_t &denom)
+    inline void octaveReduceRatio(uint64_t &num, uint64_t &denom)
     {
         while (num < denom)
         {
@@ -172,7 +180,7 @@ struct JIMath
         }
     }
     
-    void octaveReduceMonzo(monzo &m)
+    inline void octaveReduceMonzo(monzo &m)
     {
         uint64_t n{1}, d{1};
         
@@ -180,6 +188,45 @@ struct JIMath
         octaveReduceRatio(n, d);
         ratioToMonzo(n, d, m);
     }
+    
+    // ============ Note Name Support
+    
+    std::string nameNoteOnLattice(int x, int y)
+    {
+        auto location = x + y * 4 + 3;
+        
+        auto ml = ((location % 7) + 7) % 7;
+        std::string name = noteNames[ml];
+        
+        while (location >= 7)
+        {
+            name += "#";
+            location -= 7;
+        }
+        while (location < 0)
+        {
+            name += "b";
+            location += 7;
+        }
+        auto pom = y;
+        while (pom > 0)
+        {
+            name += "-";
+            --pom;
+        }
+        while (pom < 0)
+        {
+            name += "+";
+            ++pom;
+        }
+        
+        return name;
+    }
+    
+private:
+    
+    std::string noteNames[7] = {"F", "C", "G", "D", "A", "E", "B"};
+    
 };
 
 #endif // JI_MTS_SOURCE_JIMATH_H
