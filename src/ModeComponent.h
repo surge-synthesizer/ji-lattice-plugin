@@ -42,8 +42,8 @@ struct ModeComponent : public juce::ToggleButton
     
     void resized() override
     {
-        duodeneButton.setBounds(5,5,110,35);
-        syntonicButton.setBounds(5,45,110,35);
+        duodeneButton.setBounds(5,5,100,35);
+        syntonicButton.setBounds(5,45,100,35);
     }
     
     void updateToggleState()
@@ -55,6 +55,8 @@ struct ModeComponent : public juce::ToggleButton
     {
         g.setColour(bg);
         g.fillRect(this->getLocalBounds());
+        g.setColour(juce::Colours::lightgrey);
+        g.drawRect(this->getLocalBounds());
     }
     
     int whichMode()

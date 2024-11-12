@@ -34,9 +34,8 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
     
-    void showModeMenu();
+    void showTuningMenu();
     void showMidiMenu();
-    void showOriginMenu();
     
     void timerCallback() override;
     
@@ -52,14 +51,12 @@ private:
     
     std::unique_ptr<LatticeComponent> latticeComponent;
     
-    std::unique_ptr<juce::TextButton> modeButton;
+    std::unique_ptr<juce::TextButton> tuningButton;
+    std::unique_ptr<OriginComponent> originComponent;
     std::unique_ptr<ModeComponent> modeComponent;
     
     std::unique_ptr<juce::TextButton> midiButton;
     std::unique_ptr<MIDIMenuComponent> midiComponent;
-    
-    std::unique_ptr<juce::TextButton> originButton;
-    std::unique_ptr<OriginComponent> originComponent;
     
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.

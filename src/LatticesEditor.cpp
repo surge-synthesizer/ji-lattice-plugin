@@ -11,7 +11,6 @@
 
 #include "LatticesProcessor.h"
 #include "LatticesEditor.h"
-#include <memory>
 
 //==============================================================================
 LatticesEditor::LatticesEditor(LatticesProcessor &p)
@@ -21,15 +20,7 @@ LatticesEditor::LatticesEditor(LatticesProcessor &p)
     latticeComponent = std::make_unique<LatticeComponent>(p.coOrds);
     addAndMakeVisible(*latticeComponent);
     
-    modeButton = std::make_unique<juce::TextButton>("Mode");
-    addAndMakeVisible(*modeButton);
-    modeButton->onClick = [this]{ showModeMenu(); };
-    modeButton->setClickingTogglesState(true);
-    modeButton->setToggleState(false, juce::dontSendNotification);
-    
-    modeComponent = std::make_unique<ModeComponent>(p.mode);
-    addAndMakeVisible(*modeComponent);
-    modeComponent->setVisible(false);
+
     
     
     midiButton = std::make_unique<juce::TextButton>("MIDI Settings");
@@ -47,12 +38,15 @@ LatticesEditor::LatticesEditor(LatticesProcessor &p)
     addAndMakeVisible(*midiComponent);
     midiComponent->setVisible(false);
     
+    tuningButton = std::make_unique<juce::TextButton>("Tuning Settings");
+    addAndMakeVisible(*tuningButton);
+    tuningButton->onClick = [this]{ showTuningMenu(); };
+    tuningButton->setClickingTogglesState(true);
+    tuningButton->setToggleState(false, juce::dontSendNotification);
     
-    originButton = std::make_unique<juce::TextButton>("Origin");
-    addAndMakeVisible(*originButton);
-    originButton->onClick = [this]{ showOriginMenu(); };
-    originButton->setClickingTogglesState(true);
-    originButton->setToggleState(false, juce::dontSendNotification);
+    modeComponent = std::make_unique<ModeComponent>(p.mode);
+    addAndMakeVisible(*modeComponent);
+    modeComponent->setVisible(false);
     
     originComponent = std::make_unique<OriginComponent>(p.originalRefNote,
                                                         p.originalRefFreq);
@@ -84,31 +78,15 @@ void LatticesEditor::resized()
     
     latticeComponent->setBounds(b);
     
-    
-    modeButton->setBounds(10, 10, 120, 30);
-    modeComponent->setBounds(10, 40, 120, 90);
-    
     midiButton->setBounds(10, b.getBottom() - 40, 120, 30);
     midiComponent->setBounds(10, b.getBottom() - 155 - 30 - 10, 120, 155);
     
-    originButton->setBounds(b.getRight() - 216 - 10, b.getBottom() - 40, 216, 30);
+    tuningButton->setBounds(b.getRight() - 216 - 10, b.getBottom() - 40, 216, 30);
+    modeComponent->setBounds(b.getRight() - 216 - 10, b.getBottom() - 180 - 40, 216, 90);
     originComponent->setBounds(b.getRight() - 216 - 10, b.getBottom() - 95 - 40, 216, 95);
 }
 
-void LatticesEditor::showModeMenu()
-{
-    bool show = modeButton->getToggleState();
-    modeComponent->setVisible(show);
-    
-    if (show)
-    {
-        modeButton->setConnectedEdges(8);
-    }
-    else
-    {
-        modeButton->setConnectedEdges(!8);
-    }
-}
+
 
 void LatticesEditor::showMidiMenu()
 {
@@ -125,18 +103,19 @@ void LatticesEditor::showMidiMenu()
     }
 }
 
-void LatticesEditor::showOriginMenu()
+void LatticesEditor::showTuningMenu()
 {
-    bool show = originButton->getToggleState();
+    bool show = tuningButton->getToggleState();
     originComponent->setVisible(show);
+    modeComponent->setVisible(show);
     
     if (show)
     {
-        originButton->setConnectedEdges(4);
+        tuningButton->setConnectedEdges(4);
     }
     else
     {
-        originButton->setConnectedEdges(!4);
+        tuningButton->setConnectedEdges(!4);
     }
 }
 
