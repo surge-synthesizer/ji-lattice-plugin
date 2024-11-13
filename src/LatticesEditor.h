@@ -31,11 +31,14 @@ public:
     ~LatticesEditor();
 
     //==============================================================================
+
+    
     void paint (juce::Graphics&) override;
     void resized() override;
     
     void showTuningMenu();
     void showMidiMenu();
+    void resetMTS();
     
     void timerCallback() override;
     
@@ -47,6 +50,9 @@ private:
     static constexpr int width{900};
     static constexpr int height{600};
     
+    void initUI();
+    bool inited{false};
+    
     // melatonin::Inspector inspector { *this };
     
     std::unique_ptr<LatticeComponent> latticeComponent;
@@ -57,6 +63,8 @@ private:
     
     std::unique_ptr<juce::TextButton> midiButton;
     std::unique_ptr<MIDIMenuComponent> midiComponent;
+    
+    std::unique_ptr<juce::TextButton> resetButton;
     
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.

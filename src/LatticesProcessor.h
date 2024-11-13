@@ -22,7 +22,7 @@
 #include "JIMath.h"
 
 
-class LatticesProcessor : public juce::AudioProcessor, juce::Timer, private juce::AudioProcessorParameter::Listener
+class LatticesProcessor : public juce::AudioProcessor, juce::MultiTimer, private juce::AudioProcessorParameter::Listener
 {
 public:
     //==============================================================================
@@ -53,7 +53,7 @@ public:
     //==============================================================================
     
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
-    void timerCallback() override;
+    void timerCallback(int timerID) override;
     
     void modeSwitch(int m);
     void updateMIDI(int wCC, int eCC, int nCC, int sCC, int hCC, int C);
@@ -62,6 +62,8 @@ public:
     void parameterValueChanged(int parameterIndex, float newValue) override;
     
     bool registeredMTS{false};
+    bool MTSIPC{false};
+    bool MTSreset{false};
     
     std::atomic<int> positionX{0};
     std::atomic<int> positionY{0};

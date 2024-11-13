@@ -14,7 +14,6 @@
 #include "LatticesEditor.h"
 #include "libMTSMaster.h"
 
-
 //==============================================================================
 LatticesProcessor::LatticesProcessor()
     : juce::AudioProcessor(juce::AudioProcessor::BusesProperties().withOutput ("Output", juce::AudioChannelSet::stereo(), true))
@@ -143,30 +142,18 @@ LatticesProcessor::LatticesProcessor()
     xParam->addListener(this);
     yParam->addListener(this);
     
+    
     if (MTS_CanRegisterMaster())
     {
-        registeredMTS = true;
         MTS_RegisterMaster();
+        registeredMTS = true;
     }
-    
-    // TODO: Implement this:
-    /*
     else
     {
-        if (MTS_HasIPC())
-        {
-            Warn user another master is already connected, but provide an option to reinitialize MTS-ESP in case there was a crash and no master is connected any more;
-            if (user clicks to reinitialize MTS-ESP)
-            {
-                MTS_Reinitialize();
-                MTS_RegisterMaster();
-            }
-        }
-        else
-           Warn user another master is already connected, do not provide an option to reinitialize MTS-ESP;
+        startTimer(0, 50);
+        MTSIPC = MTS_HasIPC();
     }
-    */
-    
+
     if (registeredMTS == true)
     {
         mode = Duodene;
@@ -175,7 +162,7 @@ LatticesProcessor::LatticesProcessor()
         currentRefFreq = originalRefFreq;
         currentRefNote = originalRefNote;
         returnToOrigin();
-        startTimer(50);
+        startTimer(1, 50);
     }
 }
 
@@ -303,14 +290,37 @@ void LatticesProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     }
 }
 
-void LatticesProcessor::timerCallback()
+void LatticesProcessor::timerCallback(int timerID)
 {
-    for (int i = 0; i < 5; ++i)
+    if (timerID == 0)
     {
-        if (wait[i])
+        if (MTSreset == true)
         {
-            wait[i] = false;
-            hold[i] = false;
+            MTS_Reinitialize();
+            MTS_RegisterMaster();
+            registeredMTS = true;
+            MTSreset = false;
+            
+            mode = Duodene;
+            originalRefFreq = defaultRefFreq;
+            originalRefNote = defaultRefNote;
+            currentRefFreq = originalRefFreq;
+            currentRefNote = originalRefNote;
+            returnToOrigin();
+            stopTimer(0);
+            startTimer(1, 50);
+        }
+    }
+    
+    if (timerID == 1)
+    {
+        for (int i = 0; i < 5; ++i)
+        {
+            if (wait[i])
+            {
+                wait[i] = false;
+                hold[i] = false;
+            }
         }
     }
 }

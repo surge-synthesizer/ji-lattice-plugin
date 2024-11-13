@@ -20,40 +20,26 @@ LatticesEditor::LatticesEditor(LatticesProcessor &p)
     latticeComponent = std::make_unique<LatticeComponent>(p.coOrds);
     addAndMakeVisible(*latticeComponent);
     
-
+    if (p.registeredMTS == false)
+    {
+        if (p.MTSIPC == true)
+        {
+            resetButton = std::make_unique<juce::TextButton>("Re-Initialize MTS-ESP");
+            addAndMakeVisible(*resetButton);
+            resetButton->onClick = [this]{ resetMTS(); };
+        }
+        else
+        {
+            resetButton = std::make_unique<juce::TextButton>("Re-Initialize MTS-ESP");
+            addAndMakeVisible(*resetButton);
+            resetButton->onClick = [this]{ resetMTS(); };
+        }
+    }
+    else
+    {
+        initUI();
+    }
     
-    
-    midiButton = std::make_unique<juce::TextButton>("MIDI Settings");
-    addAndMakeVisible(*midiButton);
-    midiButton->onClick = [this]{ showMidiMenu(); };
-    midiButton->setClickingTogglesState(true);
-    midiButton->setToggleState(false, juce::dontSendNotification);
-    
-    midiComponent = std::make_unique<MIDIMenuComponent>(p.shiftCCs[0],
-                                                        p.shiftCCs[1],
-                                                        p.shiftCCs[2],
-                                                        p.shiftCCs[3],
-                                                        p.shiftCCs[4],
-                                                        p.listenOnChannel);
-    addAndMakeVisible(*midiComponent);
-    midiComponent->setVisible(false);
-    
-    tuningButton = std::make_unique<juce::TextButton>("Tuning Settings");
-    addAndMakeVisible(*tuningButton);
-    tuningButton->onClick = [this]{ showTuningMenu(); };
-    tuningButton->setClickingTogglesState(true);
-    tuningButton->setToggleState(false, juce::dontSendNotification);
-    
-    modeComponent = std::make_unique<ModeComponent>(p.mode);
-    addAndMakeVisible(*modeComponent);
-    modeComponent->setVisible(false);
-    
-    originComponent = std::make_unique<OriginComponent>(p.originalRefNote,
-                                                        p.originalRefFreq);
-    addAndMakeVisible(*originComponent);
-    originComponent->setVisible(false);
-    
-    startTimer(5);
     
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
@@ -64,6 +50,51 @@ LatticesEditor::LatticesEditor(LatticesProcessor &p)
 LatticesEditor::~LatticesEditor() {}
 
 //==============================================================================
+void LatticesEditor::initUI()
+{
+    midiButton = std::make_unique<juce::TextButton>("MIDI Settings");
+    addAndMakeVisible(*midiButton);
+    midiButton->onClick = [this]{ showMidiMenu(); };
+    midiButton->setClickingTogglesState(true);
+    midiButton->setToggleState(false, juce::dontSendNotification);
+    
+    midiComponent = std::make_unique<MIDIMenuComponent>(processor.shiftCCs[0],
+                                                        processor.shiftCCs[1],
+                                                        processor.shiftCCs[2],
+                                                        processor.shiftCCs[3],
+                                                        processor.shiftCCs[4],
+                                                        processor.listenOnChannel);
+    addAndMakeVisible(*midiComponent);
+    midiComponent->setVisible(false);
+    
+    tuningButton = std::make_unique<juce::TextButton>("Tuning Settings");
+    addAndMakeVisible(*tuningButton);
+    tuningButton->onClick = [this]{ showTuningMenu(); };
+    tuningButton->setClickingTogglesState(true);
+    tuningButton->setToggleState(false, juce::dontSendNotification);
+    
+    modeComponent = std::make_unique<ModeComponent>(processor.mode);
+    addAndMakeVisible(*modeComponent);
+    modeComponent->setVisible(false);
+    
+    originComponent = std::make_unique<OriginComponent>(processor.originalRefNote,
+                                                        processor.originalRefFreq);
+    addAndMakeVisible(*originComponent);
+    originComponent->setVisible(false);
+    
+    auto b = this->getLocalBounds();
+    
+    midiButton->setBounds(10, b.getBottom() - 40, 120, 30);
+    midiComponent->setBounds(10, b.getBottom() - 155 - 30 - 10, 120, 155);
+    
+    tuningButton->setBounds(b.getRight() - 216 - 10, b.getBottom() - 40, 216, 30);
+    modeComponent->setBounds(b.getRight() - 216 - 10, b.getBottom() - 180 - 40, 216, 90);
+    originComponent->setBounds(b.getRight() - 216 - 10, b.getBottom() - 95 - 40, 216, 95);
+    
+    inited = true;
+    startTimer(5);
+}
+
 void LatticesEditor::paint(juce::Graphics &g)
 {
     // (Our component is opaque, so we must completely fill the background with a solid colour)
@@ -78,15 +109,20 @@ void LatticesEditor::resized()
     
     latticeComponent->setBounds(b);
     
-    midiButton->setBounds(10, b.getBottom() - 40, 120, 30);
-    midiComponent->setBounds(10, b.getBottom() - 155 - 30 - 10, 120, 155);
-    
-    tuningButton->setBounds(b.getRight() - 216 - 10, b.getBottom() - 40, 216, 30);
-    modeComponent->setBounds(b.getRight() - 216 - 10, b.getBottom() - 180 - 40, 216, 90);
-    originComponent->setBounds(b.getRight() - 216 - 10, b.getBottom() - 95 - 40, 216, 95);
+    if (inited)
+    {
+        midiButton->setBounds(10, b.getBottom() - 40, 120, 30);
+        midiComponent->setBounds(10, b.getBottom() - 155 - 30 - 10, 120, 155);
+        
+        tuningButton->setBounds(b.getRight() - 216 - 10, b.getBottom() - 40, 216, 30);
+        modeComponent->setBounds(b.getRight() - 216 - 10, b.getBottom() - 180 - 40, 216, 90);
+        originComponent->setBounds(b.getRight() - 216 - 10, b.getBottom() - 95 - 40, 216, 95);
+    }
+    else
+    {
+        resetButton->setBounds(375, 255, 150, 90);
+    }
 }
-
-
 
 void LatticesEditor::showMidiMenu()
 {
@@ -117,6 +153,14 @@ void LatticesEditor::showTuningMenu()
     {
         tuningButton->setConnectedEdges(!4);
     }
+}
+
+void LatticesEditor::resetMTS()
+{
+    processor.MTSreset = true;
+    resetButton->setEnabled(false);
+    resetButton->setVisible(false);
+    initUI();
 }
 
 void LatticesEditor::timerCallback()
