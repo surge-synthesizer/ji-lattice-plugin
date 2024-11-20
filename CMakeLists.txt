@@ -35,12 +35,20 @@ juce_add_binary_data(lattices-binary
   SOURCES ${CMAKE_SOURCE_DIR}/resources/fonts/Stoke.otf
 )
 
+juce_add_binary_data(lattices-assets
+  NAMESPACE LatticesAssets
+  HEADER_NAME LatticesAssets.h
+  SOURCES ${CMAKE_SOURCE_DIR}/resources/graphics/Horiz.png
+        ${CMAKE_SOURCE_DIR}/resources/graphics/Up.png
+        ${CMAKE_SOURCE_DIR}/resources/graphics/Down.png
+)
+
 target_include_directories(${PROJECT_NAME}
   PRIVATE
   src/
 )
 
-add_subdirectory (libs/melatonin_inspector)
+add_subdirectory(libs/melatonin_inspector)
 juce_add_module("libs/melatonin_blur")
 add_library(oddsound-mts-source libs/MTS-ESP/Master/libMTSMaster.cpp)
 target_include_directories(oddsound-mts-source PUBLIC libs/MTS-ESP/Master)
@@ -70,5 +78,5 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
         oddsound-mts-source
         )
         
-target_link_libraries(${PROJECT_NAME} PRIVATE lattices-binary)
+target_link_libraries(${PROJECT_NAME} PRIVATE lattices-binary lattices-assets)
 

@@ -13,6 +13,7 @@
 
 #include "JIMath.h"
 #include "LatticesBinary.h"
+#include "LatticesAssets.h"
 
 #include <melatonin_blur/melatonin_blur.h>
 
@@ -80,6 +81,7 @@ struct LatticeComponent : juce::Component
                 auto ellipseRadius = JIRadius * 1.15;
                 
                 auto alpha = (lit) ? 1.f : .5f;
+                
                 if ((w + (v * 4)) % 12 == 0)
                 {
                     auto gradient = juce::ColourGradient(com1, x-(ellipseRadius), y,
@@ -127,10 +129,10 @@ struct LatticeComponent : juce::Component
                 g.setColour(juce::Colours::white.withAlpha(alpha));
                 g.drawEllipse(x - ellipseRadius,y - JIRadius, 2 * ellipseRadius, 2 * JIRadius, 3);
 
-                
-                
 //                auto [n,d] = calculateCell(w, v);
 //                auto s = std::to_string(n) + "/" + std::to_string(d);
+                
+                
                 
                 std::string s = jim.nameNoteOnLattice(w,v);
                 g.setFont(stoke);
@@ -158,72 +160,85 @@ struct LatticeComponent : juce::Component
                 if (x < 0 || x > getWidth())
                     continue;
                 
-                bool lit{false};
-                for (int i = 0; i < 12; ++i) // are we currently lit?
+                bool sphereLit{false}, horizLit{false}, upLit{false}, downLit{false};
+                for (int i = 0; i < 12; ++i)
                 {
-                    std::pair<int, int> C = {w,v}; // current sphere
-                    
+                    std::pair<int, int> C = {w, v}; // current sphere
                     if (C == CoO[i])
                     {
-                        lit = true;
+                        sphereLit = true;
                         break;
                     }
                 }
-                
-                bool lineLit{false};
-                for (int i = 0; i < 12; ++i) // next horizontal line lit?
+                if (sphereLit)
                 {
-                    std::pair<int, int> C = {w + 1,v};
-                    if (C == CoO[i])
+                    std::pair<int, int> H = {w + 1, v}; // next one over
+                    std::pair<int, int> U = {w, v + 1}; // next one up
+                    std::pair<int, int> D = {w + 1, v - 1}; // next one down
+                    for (int i = 0; i < 12; ++i)
                     {
-                        lineLit = true;
-                        break;
+                        if (H == CoO[i]) horizLit = true;
+                        if (U == CoO[i]) upLit = true;
+                        if (D == CoO[i]) downLit = true;
                     }
                 }
                 
-                auto alpha = (lineLit && lit) ? 1.f : .5f;
-                g.setColour(juce::Colours::white.withAlpha(alpha));
-                juce::Line<float> horiz(x, y, x + hDistance, y);
-                g.drawLine(horiz, 3.f);
-                
-                for (int i = 0; i < 12; ++i) // next upward diagonal line lit?
+                juce::Image hLine{juce::Image::ARGB, (int)hDistance, (int)vDistance, true};
                 {
-                    std::pair<int, int> C = {w,v + 1};
-                    if (C == CoO[i])
-                    {
-                        lineLit = true;
-                        break;
-                    }
-                    else if (i == 11)
-                    {
-                        lineLit = false;
-                    }
+                    juce::Graphics tg(hLine);
+                    tg.setColour(juce::Colours::white);
+                    juce::Line<float> horiz(0, vDistance * .5, hDistance, vDistance * .5);
+                    tg.drawLine(horiz, 4.f);
                 }
                 
-                alpha = (lineLit && lit) ? 1.f : .5f;
-                g.setColour(juce::Colours::white.withAlpha(alpha));
-                juce::Line<float> up(x, y, x + (hDistance * .5f), y - vDistance);
-                float l[2] = {7.f, 3.f};
-                g.drawDashedLine(up, l, 2, 3.f, 1);
-                
-                for (int i = 0; i < 12; ++i) // next downward diagonal line lit?
+                if (horizLit)
                 {
-                    std::pair<int, int> C = {w + 1,v - 1};
-                    if (C == CoO[i])
-                    {
-                        lineLit = true;
-                        break;
-                    }
-                    else if (i == 11)
-                    {
-                        lineLit = false;
-                    }
+                    g.setOpacity(1.f);
+                    g.drawImageAt(hLine, x, y - vDistance * .5, false);
                 }
-                alpha = (lineLit && lit) ? 1.f : .5f;
-                g.setColour(juce::Colours::white.withAlpha(alpha));
-                juce::Line<float> down(x, y, x + (hDistance * .5f), y + vDistance);
-                float le[2] = {2.f, 3.f};
-                g.drawDashedLine(down, le, 2, 3.f, 1);
+                else
+                {
+                    g.setOpacity(.5f);
+                    g.drawImageAt(hBlur.render(hLine), x, y - vDistance * .5, false);
+                }
+                
+                juce::Image uLine{juce::Image::ARGB, (int)hDistance, (int)vDistance, true};
+                {
+                    juce::Graphics tg(uLine);
+                    tg.setColour(juce::Colours::white);
+                    juce::Line<float> up(0, vDistance, hDistance * .5f, 0);
+                    float l[2] = {7.f, 3.f};
+                    tg.drawDashedLine(up, l, 2, 4.f, 1);
+                }
+                if (upLit)
+                {
+                    g.setOpacity(1.f);
+                    g.drawImageAt(uLine, x, y - vDistance, false);
+                }
+                else
+                {
+                    g.setOpacity(.85f);
+                    g.drawImageAt(uBlur.render(uLine), x, y - vDistance, false);
+                }
+                
+                juce::Image dLine{juce::Image::ARGB, (int)hDistance, (int)vDistance, true};
+                {
+                    juce::Graphics tg(dLine);
+                    tg.setColour(juce::Colours::white);
+                    juce::Line<float> down(0, 0, hDistance * .5f, vDistance);
+                    float le[2] = {2.f, 3.f};
+                    tg.drawDashedLine(down, le, 2, 4.f, 1);
+                }
+                if (downLit)
+                {
+                    g.setOpacity(1.f);
+                    g.drawImageAt(dLine, x, y, false);
+                }
+                else
+                {
+                    g.setOpacity(.85f);
+                    g.drawImageAt(dBlur.render(dLine), x, y, false);
+                }
             }
         }
     }
@@ -249,8 +264,12 @@ struct LatticeComponent : juce::Component
                 
                 auto ellipseRadius = JIRadius * 1.15;
                 
+                juce::Path e{};
+                e.addEllipse(x - ellipseRadius - 1.5, y - JIRadius - 1.5, 2 * ellipseRadius + 3, 2 * JIRadius + 3);
+//                shadow.render(g, e);
+                
                 g.setColour(juce::Colours::black.withAlpha(1.f));
-                g.fillEllipse(x - ellipseRadius - 1.5, y - JIRadius - 1.5, 2 * ellipseRadius + 3, 2 * JIRadius + 3);
+                g.fillPath(e);
             }
         }
     }
@@ -322,6 +341,13 @@ protected:
     
     juce::Colour l4c1{.5777778f, .97f, .94f, 58.f};
     juce::Colour l4c2{.8666667f, 1.f, .36f, 1.f};
+    
+    melatonin::CachedBlur hBlur{6};
+    
+    melatonin::CachedBlur uBlur{5};
+    melatonin::CachedBlur dBlur{3};
+    
+    melatonin::DropShadow shadow = {juce::Colours::black, 15};
     
     std::pair<int, int> CoO[12]
     {

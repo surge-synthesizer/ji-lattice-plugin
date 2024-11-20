@@ -16,42 +16,11 @@
 LatticesEditor::LatticesEditor(LatticesProcessor &p)
     : juce::AudioProcessorEditor(&p), processor(p)
 {
+
     
     latticeComponent = std::make_unique<LatticeComponent>(p.coOrds);
     addAndMakeVisible(*latticeComponent);
     
-    if (p.registeredMTS == false)
-    {
-        if (p.MTSIPC == true)
-        {
-            resetButton = std::make_unique<juce::TextButton>("Re-Initialize MTS-ESP");
-            addAndMakeVisible(*resetButton);
-            resetButton->onClick = [this]{ resetMTS(); };
-        }
-        else
-        {
-            resetButton = std::make_unique<juce::TextButton>("Re-Initialize MTS-ESP");
-            addAndMakeVisible(*resetButton);
-            resetButton->onClick = [this]{ resetMTS(); };
-        }
-    }
-    else
-    {
-        initUI();
-    }
-    
-    
-    // Make sure that before the constructor has finished, you've set the
-    // editor's size to whatever you need it to be.
-    setSize(width, height);
-    setResizable(true, true);
-}
-
-LatticesEditor::~LatticesEditor() {}
-
-//==============================================================================
-void LatticesEditor::initUI()
-{
     midiButton = std::make_unique<juce::TextButton>("MIDI Settings");
     addAndMakeVisible(*midiButton);
     midiButton->onClick = [this]{ showMidiMenu(); };
@@ -91,14 +60,20 @@ void LatticesEditor::initUI()
     modeComponent->setBounds(b.getRight() - 216 - 10, b.getBottom() - 180 - 40, 216, 90);
     originComponent->setBounds(b.getRight() - 216 - 10, b.getBottom() - 95 - 40, 216, 95);
     
-    inited = true;
     startTimer(5);
+    
+    setSize(width, height);
+    setResizable(true, true);
 }
+
+LatticesEditor::~LatticesEditor() {}
+
+//==============================================================================
 
 void LatticesEditor::paint(juce::Graphics &g)
 {
     // (Our component is opaque, so we must completely fill the background with a solid colour)
-    g.fillAll(juce::Colours::black);
+    g.fillAll(backgroundColour);
 }
 
 void LatticesEditor::idle() {}
@@ -108,20 +83,13 @@ void LatticesEditor::resized()
     auto b = this->getLocalBounds();
     
     latticeComponent->setBounds(b);
+
+    midiButton->setBounds(10, b.getBottom() - 40, 120, 30);
+    midiComponent->setBounds(10, b.getBottom() - 155 - 30 - 10, 120, 155);
     
-    if (inited)
-    {
-        midiButton->setBounds(10, b.getBottom() - 40, 120, 30);
-        midiComponent->setBounds(10, b.getBottom() - 155 - 30 - 10, 120, 155);
-        
-        tuningButton->setBounds(b.getRight() - 216 - 10, b.getBottom() - 40, 216, 30);
-        modeComponent->setBounds(b.getRight() - 216 - 10, b.getBottom() - 180 - 40, 216, 90);
-        originComponent->setBounds(b.getRight() - 216 - 10, b.getBottom() - 95 - 40, 216, 95);
-    }
-    else
-    {
-        resetButton->setBounds(375, 255, 150, 90);
-    }
+    tuningButton->setBounds(b.getRight() - 216 - 10, b.getBottom() - 40, 216, 30);
+    modeComponent->setBounds(b.getRight() - 216 - 10, b.getBottom() - 180 - 40, 216, 90);
+    originComponent->setBounds(b.getRight() - 216 - 10, b.getBottom() - 95 - 40, 216, 95);
 }
 
 void LatticesEditor::showMidiMenu()
@@ -155,16 +123,50 @@ void LatticesEditor::showTuningMenu()
     }
 }
 
-void LatticesEditor::resetMTS()
-{
-    processor.MTSreset = true;
-    resetButton->setEnabled(false);
-    resetButton->setVisible(false);
-    initUI();
-}
-
 void LatticesEditor::timerCallback()
 {
+    if (processor.registeredMTS)
+    {
+        
+    }
+    else
+    {
+        if (processor.changed)
+        {
+            latticeComponent->update(processor.coOrds);
+            latticeComponent->repaint();
+            processor.changed = false;
+        }
+        
+        if (modeComponent->modeChanged)
+        {
+            processor.modeSwitch(modeComponent->whichMode());
+            modeComponent->modeChanged = false;
+        }
+        
+        if (midiComponent->settingChanged)
+        {
+            processor.updateMIDI(midiComponent->data[0],
+                                 midiComponent->data[1],
+                                 midiComponent->data[2],
+                                 midiComponent->data[3],
+                                 midiComponent->data[4],
+                                 midiComponent->midiChannel);
+        }
+        
+        if (originComponent->freqChanged)
+        {
+            processor.updateFreq(originComponent->whatFreq);
+            originComponent->freqChanged = false;
+        }
+        
+        if (originComponent->rootChanged)
+        {
+            int r = originComponent->whichNote();
+            originComponent->resetFreqOnRootChange(processor.updateRoot(r));
+        }
+    }
+    
     if (processor.changed)
     {
         latticeComponent->update(processor.coOrds);

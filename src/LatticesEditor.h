@@ -14,12 +14,13 @@
 #include <memory>
 
 #include <juce_audio_processors/juce_audio_processors.h>
-// #include "melatonin_inspector/melatonin_inspector.h"
+#include "melatonin_inspector/melatonin_inspector.h"
 #include "LatticesProcessor.h"
 #include "LatticeComponent.h"
 #include "ModeComponent.h"
 #include "MIDIMenuComponent.h"
 #include "OriginComponent.h"
+#include "MTSComponent.h"
 
 //==============================================================================
 /**
@@ -46,14 +47,15 @@ public:
     void idle();
     
 
+    
+
 private:
     static constexpr int width{900};
     static constexpr int height{600};
     
-    void initUI();
-    bool inited{false};
+    melatonin::Inspector inspector{*this};
     
-    // melatonin::Inspector inspector { *this };
+    juce::Colour backgroundColour = juce::Colour{.5f, .5f, 0.f, 1.f};
     
     std::unique_ptr<LatticeComponent> latticeComponent;
     
@@ -64,7 +66,7 @@ private:
     std::unique_ptr<juce::TextButton> midiButton;
     std::unique_ptr<MIDIMenuComponent> midiComponent;
     
-    std::unique_ptr<juce::TextButton> resetButton;
+    std::unique_ptr<MTSComponent> mtsComponent;
     
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.

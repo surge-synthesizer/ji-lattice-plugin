@@ -147,6 +147,7 @@ LatticesProcessor::LatticesProcessor()
     {
         MTS_RegisterMaster();
         registeredMTS = true;
+        std::cout << "registered OK" << std::endl;
     }
     else
     {
