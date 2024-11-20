@@ -62,8 +62,8 @@ public:
     void parameterValueChanged(int parameterIndex, float newValue) override;
     
     bool registeredMTS{false};
-    bool MTSIPC{false};
-    bool MTSreset{false};
+    bool MTSreInit{false};
+    bool MTStryAgain{false};
     
     std::atomic<int> positionX{0};
     std::atomic<int> positionY{0};

@@ -20,12 +20,12 @@
 #include "ModeComponent.h"
 #include "MIDIMenuComponent.h"
 #include "OriginComponent.h"
-#include "MTSComponent.h"
+#include "MTSWarningComponent.h"
 
 //==============================================================================
 /**
 */
-class LatticesEditor : public juce::AudioProcessorEditor, juce::Timer
+class LatticesEditor : public juce::AudioProcessorEditor, juce::MultiTimer
 {
 public:
   LatticesEditor(LatticesProcessor &);
@@ -41,9 +41,9 @@ public:
     void showMidiMenu();
     void resetMTS();
     
-    void timerCallback() override;
+    void timerCallback(int timerID) override;
     
-    std::unique_ptr<juce::Timer> idleTimer;
+//    std::unique_ptr<juce::Timer> idleTimer;
     void idle();
     
 
@@ -66,7 +66,10 @@ private:
     std::unique_ptr<juce::TextButton> midiButton;
     std::unique_ptr<MIDIMenuComponent> midiComponent;
     
-    std::unique_ptr<MTSComponent> mtsComponent;
+    std::unique_ptr<MTSWarningComponent> warningComponent;
+    
+    void init();
+    bool inited{false};
     
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.

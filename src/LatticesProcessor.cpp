@@ -152,7 +152,6 @@ LatticesProcessor::LatticesProcessor()
     else
     {
         startTimer(0, 50);
-        MTSIPC = MTS_HasIPC();
     }
 
     if (registeredMTS == true)
@@ -295,13 +294,36 @@ void LatticesProcessor::timerCallback(int timerID)
 {
     if (timerID == 0)
     {
-        if (MTSreset == true)
+        if (MTStryAgain)
+        {
+            if (MTS_CanRegisterMaster())
+            {
+                MTS_RegisterMaster();
+                registeredMTS = true;
+            }
+                
+            if (registeredMTS)
+            {
+                std::cout << "registered OK" << std::endl;
+                mode = Duodene;
+                originalRefFreq = defaultRefFreq;
+                originalRefNote = defaultRefNote;
+                currentRefFreq = originalRefFreq;
+                currentRefNote = originalRefNote;
+                returnToOrigin();
+                stopTimer(0);
+                startTimer(1, 50);
+            }
+            MTStryAgain = false;
+        }
+        
+        if (MTSreInit)
         {
             MTS_Reinitialize();
             MTS_RegisterMaster();
             registeredMTS = true;
-            MTSreset = false;
-            
+            MTSreInit = false;
+            std::cout << "registered OK" << std::endl;
             mode = Duodene;
             originalRefFreq = defaultRefFreq;
             originalRefNote = defaultRefNote;
