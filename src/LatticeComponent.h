@@ -82,61 +82,67 @@ struct LatticeComponent : juce::Component
                 
                 auto alpha = (lit) ? 1.f : .5f;
                 
-                if ((w + (v * 4)) % 12 == 0)
+                juce::Image thisSphere{juce::Image::ARGB, (int)ellipseRadius, (int)JIRadius, true}
                 {
-                    auto gradient = juce::ColourGradient(com1, x-(ellipseRadius), y,
-                                                         com2, x+(ellipseRadius), y, false);
-                    gradient.multiplyOpacity(alpha);
-                    g.setGradientFill(gradient);
-                }
-                else if (v == 0)
-                {
-                    auto gradient = juce::ColourGradient(p1, x-(ellipseRadius), y,
-                                                         p2, x+(ellipseRadius), y, false);
-                    gradient.multiplyOpacity(alpha);
-                    g.setGradientFill(gradient);
-                }
-                else if (v == 1 || v == - 1)
-                {
-                    auto gradient = juce::ColourGradient(l1c1, x-(ellipseRadius), y,
-                                                         l1c2, x+(ellipseRadius), y, false);
-                    gradient.multiplyOpacity(alpha);
-                    g.setGradientFill(gradient);
-                }
-                else if (v == 2 || v == - 2)
-                {
-                    auto gradient = juce::ColourGradient(l2c1, x-(ellipseRadius), y,
-                                                         l2c2, x+(ellipseRadius), y, false);
-                    gradient.multiplyOpacity(alpha);
-                    g.setGradientFill(gradient);
-                }
-                else if (v == 3 || v == - 3)
-                {
-                    auto gradient = juce::ColourGradient(l3c1, x-(ellipseRadius), y,
-                                                         l3c2, x+(ellipseRadius), y, false);
-                    gradient.multiplyOpacity(alpha);
-                    g.setGradientFill(gradient);
-                }
-                else
-                {
-                    auto gradient = juce::ColourGradient(l4c1, x-(ellipseRadius), y,
-                                                         l4c2, x+(ellipseRadius), y, false);
-                    gradient.multiplyOpacity(alpha);
-                    g.setGradientFill(gradient);
-                }
-                g.fillEllipse(x - (ellipseRadius),y - JIRadius, 2 * ellipseRadius, 2 * JIRadius);
-                
-                g.setColour(juce::Colours::white.withAlpha(alpha));
-                g.drawEllipse(x - ellipseRadius,y - JIRadius, 2 * ellipseRadius, 2 * JIRadius, 3);
+                    juce::Graphics tg{thisSphere};
+                    
+                    if ((w + (v * 4)) % 12 == 0)
+                    {
+                        auto gradient = juce::ColourGradient(com1, x-(ellipseRadius), y,
+                                                             com2, x+(ellipseRadius), y, false);
+                        gradient.multiplyOpacity(alpha);
+                        tg.setGradientFill(gradient);
+                    }
+                    else if (v == 0)
+                    {
+                        auto gradient = juce::ColourGradient(p1, x-(ellipseRadius), y,
+                                                             p2, x+(ellipseRadius), y, false);
+                        gradient.multiplyOpacity(alpha);
+                        tg.setGradientFill(gradient);
+                    }
+                    else if (v == 1 || v == - 1)
+                    {
+                        auto gradient = juce::ColourGradient(l1c1, x-(ellipseRadius), y,
+                                                             l1c2, x+(ellipseRadius), y, false);
+                        gradient.multiplyOpacity(alpha);
+                        tg.setGradientFill(gradient);
+                    }
+                    else if (v == 2 || v == - 2)
+                    {
+                        auto gradient = juce::ColourGradient(l2c1, x-(ellipseRadius), y,
+                                                             l2c2, x+(ellipseRadius), y, false);
+                        gradient.multiplyOpacity(alpha);
+                        tg.setGradientFill(gradient);
+                    }
+                    else if (v == 3 || v == - 3)
+                    {
+                        auto gradient = juce::ColourGradient(l3c1, x-(ellipseRadius), y,
+                                                             l3c2, x+(ellipseRadius), y, false);
+                        gradient.multiplyOpacity(alpha);
+                        tg.setGradientFill(gradient);
+                    }
+                    else
+                    {
+                        auto gradient = juce::ColourGradient(l4c1, x-(ellipseRadius), y,
+                                                             l4c2, x+(ellipseRadius), y, false);
+                        gradient.multiplyOpacity(alpha);
+                        tg.setGradientFill(gradient);
+                    }
+                    tg.fillEllipse(x - (ellipseRadius),y - JIRadius, 2 * ellipseRadius, 2 * JIRadius);
+                    
+                    tg.setColour(juce::Colours::white.withAlpha(alpha));
+                    tg.drawEllipse(x - ellipseRadius,y - JIRadius, 2 * ellipseRadius, 2 * JIRadius, 3);
 
-//                auto [n,d] = calculateCell(w, v);
-//                auto s = std::to_string(n) + "/" + std::to_string(d);
+    //                auto [n,d] = calculateCell(w, v);
+    //                auto s = std::to_string(n) + "/" + std::to_string(d);
+                    
+                    std::string s = jim.nameNoteOnLattice(w,v);
+                    tg.setFont(stoke);
+                    tg.drawFittedText(s, x - ellipseRadius + 3, y - (JIRadius / 3.f) , 2.f * (ellipseRadius - 3), .66667f * JIRadius, juce::Justification::horizontallyCentred, 1, 0.05f);
+                }
                 
+                g.drawImageAt(thisSphere, x - ellipseRadius * .5, y - JIRadius * .5, false);
                 
-                
-                std::string s = jim.nameNoteOnLattice(w,v);
-                g.setFont(stoke);
-                g.drawFittedText(s, x - ellipseRadius + 3, y - (JIRadius / 3.f) , 2.f * (ellipseRadius - 3), .66667f * JIRadius, juce::Justification::horizontallyCentred, 1, 0.05f);
             }
         }
     }
