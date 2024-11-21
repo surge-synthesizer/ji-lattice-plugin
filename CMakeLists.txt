@@ -9,6 +9,8 @@ set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 
+option(JI_LATTICE_COPY_AFTER_BUILD "Copy the plugin after build" TRUE)
+
 include (cmake/CPM.cmake)
 
 CPMAddPackage("gh:juce-framework/JUCE#8.0.4")
@@ -27,7 +29,7 @@ juce_add_plugin(${PROJECT_NAME}
     
     FORMATS AU VST3 Standalone
 
-    COPY_PLUGIN_AFTER_BUILD TRUE
+    COPY_PLUGIN_AFTER_BUILD ${JI_LATTICE_COPY_AFTER_BUILD}
 )
 
 juce_add_binary_data(lattices-binary
