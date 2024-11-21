@@ -62,4 +62,4 @@ jobs:
 
       - name: Confirm Build
         run: |
-          ls -l build/monique_products
+          ls -l build/
