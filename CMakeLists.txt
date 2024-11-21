@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.15)
 
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.14 CACHE STRING "Build for 10.14")
 
-project(lattices VERSION 0.3.0)
+project(ji-lattice-plugin VERSION 0.3.0)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
@@ -10,7 +10,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 
 include (cmake/CPM.cmake)
 
-CPMAddPackage("gh:juce-framework/JUCE#8.0.3")
+CPMAddPackage("gh:juce-framework/JUCE#8.0.4")
 
 juce_add_plugin(${PROJECT_NAME}
     PRODUCT_NAME "Lattices"
@@ -35,13 +35,13 @@ juce_add_binary_data(lattices-binary
   SOURCES ${CMAKE_SOURCE_DIR}/resources/fonts/Stoke.otf
 )
 
-juce_add_binary_data(lattices-assets
-  NAMESPACE LatticesAssets
-  HEADER_NAME LatticesAssets.h
-  SOURCES ${CMAKE_SOURCE_DIR}/resources/graphics/Horiz.png
-        ${CMAKE_SOURCE_DIR}/resources/graphics/Up.png
-        ${CMAKE_SOURCE_DIR}/resources/graphics/Down.png
-)
+#juce_add_binary_data(lattices-assets
+#  NAMESPACE LatticesAssets
+#  HEADER_NAME LatticesAssets.h
+#  SOURCES ${CMAKE_SOURCE_DIR}/resources/graphics/Horiz.png
+#        ${CMAKE_SOURCE_DIR}/resources/graphics/Up.png
+#        ${CMAKE_SOURCE_DIR}/resources/graphics/Down.png
+#)
 
 target_include_directories(${PROJECT_NAME}
   PRIVATE
@@ -78,5 +78,10 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
         oddsound-mts-source
         )
         
-target_link_libraries(${PROJECT_NAME} PRIVATE lattices-binary lattices-assets)
+target_link_libraries(${PROJECT_NAME} PRIVATE
+        lattices-binary
+#        lattices-assets
+)
 
+add_custom_target(${PROJECT_NAME}-installer)
+add_dependencies(${PROJECT_NAME}-installer ${PROJECT_NAME}_All)
