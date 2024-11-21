@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
 
+message(STATUS "Building ji-lattice-plugin")
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.14 CACHE STRING "Build for 10.14")
 
 project(ji-lattice-plugin VERSION 0.3.0)
@@ -7,6 +8,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
+
+option(JI_LATTICE_COPY_AFTER_BUILD "Copy the plugin after build" TRUE)
 
 include (cmake/CPM.cmake)
 
@@ -26,7 +29,7 @@ juce_add_plugin(${PROJECT_NAME}
     
     FORMATS AU VST3 Standalone
 
-    COPY_PLUGIN_AFTER_BUILD TRUE
+    COPY_PLUGIN_AFTER_BUILD ${JI_LATTICE_COPY_AFTER_BUILD}
 )
 
 juce_add_binary_data(lattices-binary
