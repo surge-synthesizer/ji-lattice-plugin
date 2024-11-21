@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
 
+message(STATUS "Building ji-lattice-plugin")
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.14 CACHE STRING "Build for 10.14")
 
 project(ji-lattice-plugin VERSION 0.3.0)
