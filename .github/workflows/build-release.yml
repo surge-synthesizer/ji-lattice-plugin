@@ -1,0 +1,141 @@
+name: Build Release Installer
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v**'
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build_plugin:
+    name: Release Build - ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+          - os: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: apple-actions/import-codesign-certs@v3
+        if: runner.os == 'macOS'
+        with:
+          p12-file-base64: ${{ secrets.MAC_CERTS_P12 }}
+          p12-password: ${{ secrets.CERT_PWD }}
+
+      - name: Prepare for JUCE
+        uses: surge-synthesizer/sst-githubactions/prepare-for-juce@main
+        with:
+          os: ${{ runner.os }}
+          gccversion: 9
+
+      - name: Build release version
+        run: |
+          
+          export MAC_SIGNING_CERT="${{ secrets.MAC_SIGNING_CERT_NAME }}"
+          export MAC_INSTALLING_CERT="${{ secrets.MAC_INSTALLING_CERT_NAME }}"
+          
+          export MAC_SIGNING_ID="${{ secrets.MAC_SIGNING_ID }}"
+          export MAC_SIGNING_1UPW="${{ secrets.MAC_SIGNING_1UPW }}"
+          export MAC_SIGNING_TEAM="${{ secrets.MAC_SIGNING_TEAM }}"
+          
+          cmake -S . -B ./build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DJI_LATTICE_COPY_AFTER_BUILD=FALSE
+          cmake --build ./build --config Release --target ji-lattice-installer --parallel 3
+
+      - name: Show Installer Directory
+        run: |
+          ls -l ./build/installer
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          path: build/installer
+          name: build-${{ matrix.os }}
+
+  build_plugin_docker:
+    name: Docker Build Ubuntu20 ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: JILattice
+            installer_dir: linux-docker
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build in Docker
+        uses: surge-synthesizer/sst-githubactions/cmake-in-docker@main
+        with:
+          image: ghcr.io/surge-synthesizer/sst-dockerimages/ubuntu20_gcc11:main
+          username: ${{ github.actor }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          cmakeArgs: -DCMAKE_BUILD_TYPE=Release -GNinja -DJI_LATTICE_COPY_AFTER_BUILD=FALSE
+          target: ji-lattice-installer
+
+
+      - name: Show Installer Directory
+        run: |
+          ls -l ./build/installer
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          path: build/installer
+          name: build-docker-${{matrix.installer_dir }}
+
+  publish-ji-lattice-nightly:
+    name: Publish JI Lattice Nightly
+    if: ${{ github.ref == 'refs/heads/main' && github.repository_owner == 'surge-synthesizer' }}
+    runs-on: ubuntu-latest
+    needs: [ build_plugin, build_plugin_docker ]
+    steps:
+      - name: Upload to Nightly
+        uses: surge-synthesizer/sst-githubactions/upload-to-release@main
+        with:
+          tag: Nightly
+          reuse_tag: true
+          create_tag: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Post to Discord
+        uses: surge-synthesizer/sst-githubactions/discord-release-notify@main
+        with:
+          webhook: ${{ secrets.DISCORD_OTHER_WEBHOOK }}
+          tag: Nightly
+          title: "A New JI Lattice Nightly is Available"
+
+
+  publish-ji-lattice-release:
+    name: Publish JI Lattice Release
+    if: startsWith(github.ref, 'refs/tags/v') && github.repository_owner == 'surge-synthesizer'
+    runs-on: ubuntu-latest
+    needs: [ build_plugin, build_plugin_docker ]
+    steps:
+      - name: Upload to Release
+        uses: surge-synthesizer/sst-githubactions/upload-to-release@main
+        with:
+          tag: ${{ github.ref_name }}
+          reuse_tag: false
+          create_tag: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Post to Discord
+        uses: surge-synthesizer/sst-githubactions/discord-release-notify@main
+        with:
+          webhook: ${{ secrets.DISCORD_OTHER_WEBHOOK }}
+          tag: ${{ github.ref_name }}
+          title: "A New JI Lattice Release is Available"
+          subtitle: "Release ${{ github.ref_name }}"
+

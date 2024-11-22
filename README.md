@@ -2,6 +2,7 @@
 
 The code in this repo builds a microtonal control plugin which makes extended Just Intonation easy to explore on regular 12-note interfaces. A baseline was put down by BaconPaul in early 2023, which I (Andreya) have been building on in the second half of 2024. It is currently in Alpha. More on that below.
 
+![A screenshot of the plugin](resources/LatticesSegmentScreenshot.png)
 
 Lattices works by tuning nearby synths to Just Intonation by acting as an **MTS-ESP source** (for more info on what that means, [click here](https://surge-synthesizer.github.io/tuning-guide/#mts-esp)), and displaying a **lattice pattern** that help navigate the harmonic possibilities. 
 
