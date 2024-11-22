@@ -19,7 +19,6 @@ jobs:
         include:
           - os: windows-latest
           - os: macos-latest
-          - os: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -60,6 +59,41 @@ jobs:
         with:
           path: build/installer
           name: build-${{ matrix.os }}
+
+  build_plugin_docker:
+    name: Docker Build Ubuntu20 ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: JILattice
+            installer_dir: linux-docker
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build in Docker
+        uses: surge-synthesizer/sst-githubactions/cmake-in-docker@main
+        with:
+          image: ghcr.io/surge-synthesizer/sst-dockerimages/ubuntu20_gcc11:main
+          username: ${{ github.actor }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          cmakeArgs: -DCMAKE_BUILD_TYPE=Release -GNinja
+          target: ji-lattice-installer
+
+
+      - name: Show Installer Directory
+        run: |
+          ls -l ./build/installer
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          path: build/installer
+          name: build-docker-${{matrix.installer_dir }}
 
   publish-ji-lattice-nightly:
     name: Publish JI Lattice Nightly
