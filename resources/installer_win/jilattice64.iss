@@ -1,7 +1,7 @@
 #define MyAppPublisher "Surge Synth Team"
 #define MyAppURL "https://www.surge-synth-team.org/"
-#define MyAppName "JI Lattice Plugin"
-#define MyAppNameCondensed "JILattice"
+#define MyAppName "Lattices"
+#define MyAppNameCondensed "Lattices"
 #define MyID "AAA29DB2-70CC-4FF0-8806-36A5C6C9E95C"
 
 #ifndef MyAppVersion
