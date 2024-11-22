@@ -14,12 +14,16 @@ option(JI_LATTICE_COPY_AFTER_BUILD "Copy the plugin after build" TRUE)
 include (cmake/CPM.cmake)
 
 CPMAddPackage("gh:juce-framework/JUCE#8.0.4")
+CPMAddPackage("gh:free-audio/clap-juce-extensions#main")
+
+# Set this here so we can use it in installer also
+set(PRODUCT_NAME "Lattices")
 
 juce_add_plugin(${PROJECT_NAME}
-    PRODUCT_NAME "Lattices"
-    COMPANY_NAME "TBD Tuners"  
-    BUNDLE_ID "org.tbd.tuners.lattices"
-    PLUGIN_MANUFACTURER_CODE TbdL
+    PRODUCT_NAME ${PRODUCT_NAME}
+    COMPANY_NAME "Surge Synth Team"
+    BUNDLE_ID "org.surge-synth-team.ji-lattice-plugin"
+    PLUGIN_MANUFACTURER_CODE VmbA
     PLUGIN_CODE LatT
 
     IS_SYNTH TRUE
@@ -31,6 +35,12 @@ juce_add_plugin(${PROJECT_NAME}
 
     COPY_PLUGIN_AFTER_BUILD ${JI_LATTICE_COPY_AFTER_BUILD}
 )
+
+clap_juce_extensions_plugin(TARGET ${PROJECT_NAME}
+        CLAP_ID "org.sure-synth-team.ji-lattice-plugin.clap"
+        CLAP_FEATURES "instrument" microtonal "just intonation")
+
+
 
 juce_add_binary_data(lattices-binary
   NAMESPACE LatticesBinary
@@ -86,5 +96,4 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 #        lattices-assets
 )
 
-add_custom_target(${PROJECT_NAME}-installer)
-add_dependencies(${PROJECT_NAME}-installer ${PROJECT_NAME}_All)
+include(cmake/basic-installer.cmake)
