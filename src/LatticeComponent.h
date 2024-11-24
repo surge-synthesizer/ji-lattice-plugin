@@ -182,7 +182,6 @@ struct LatticeComponent : juce::Component
                                                         x + ellipseRadius, y, false);
                     }
 
-
                     // Spheres
                     juce::Path e{};
                     e.addEllipse(x - ellipseRadius, y - JIRadius, 2 * ellipseRadius, 2 * JIRadius);
@@ -192,10 +191,10 @@ struct LatticeComponent : juce::Component
                                  2 * JIRadius + 3);
 
                     // Names or Ratios?
-                                        auto [n,d] = calculateCell(w, v);
-                                        auto s = std::to_string(n) + "/" + std::to_string(d);
+                    auto [n, d] = calculateCell(w, v);
+                    auto s = std::to_string(n) + "/" + std::to_string(d);
                     // std::string s = jim.nameNoteOnLattice(w, v);
-                    
+
                     if (sphereLit)
                     {
                         whiteShadow.render(lS, e);
