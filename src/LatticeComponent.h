@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 
 #include <melatonin_blur/melatonin_blur.h>
 
