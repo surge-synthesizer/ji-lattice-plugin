@@ -86,20 +86,20 @@ struct LatticeComponent : juce::Component
                     float alpha{};
 
                     // Horizontal Line
-                    alpha = 1.f / (std::powf(hDist, .5f) + 1);
+                    alpha = 1.f / (std::sqrt(hDist) + 1);
                     lG.setColour(juce::Colours::white.withAlpha(alpha));
                     juce::Line<float> horiz(x, y, x + hDistance, y);
                     lG.drawLine(horiz, 3.f);
 
                     // Upward Line
-                    alpha = 1.f / (std::powf(uDist, .5f) + 1);
+                    alpha = 1.f / (std::sqrt(uDist) + 1);
                     lG.setColour(juce::Colours::white.withAlpha(alpha));
                     juce::Line<float> up(x, y, x + (hDistance * .5f), y - vDistance);
                     float ul[2] = {7.f, 3.f};
                     lG.drawDashedLine(up, ul, 2, 3.f, 1);
 
                     // Downward Line
-                    alpha = 1.f / (std::powf(dDist, .5f) + 1);
+                    alpha = 1.f / (std::sqrt(dDist) + 1);
                     lG.setColour(juce::Colours::white.withAlpha(alpha));
                     juce::Line<float> down(x, y, x + (hDistance * .5f), y + vDistance);
                     float dl[2] = {2.f, 3.f};
@@ -147,7 +147,7 @@ struct LatticeComponent : juce::Component
                     b.addEllipse(x - ellipseRadius - 1.5, y - JIRadius - 1.5, 2 * ellipseRadius + 3,
                                  2 * JIRadius + 3);
 
-                    alpha = 1.f / (std::powf(dist, .5f) + 1);
+                    alpha = 1.f / (std::sqrt(dist) + 1);
                     // draw those
                     whiteShadow.setOpacity(alpha);
                     whiteShadow.render(sG, e);
