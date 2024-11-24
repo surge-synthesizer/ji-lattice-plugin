@@ -182,10 +182,7 @@ struct LatticeComponent : juce::Component
                                                         x + ellipseRadius, y, false);
                     }
 
-                    // Names or Ratios?
-                    //                    auto [n,d] = calculateCell(w, v);
-                    //                    auto s = std::to_string(n) + "/" + std::to_string(d);
-                    std::string s = jim.nameNoteOnLattice(w, v);
+
                     // Spheres
                     juce::Path e{};
                     e.addEllipse(x - ellipseRadius, y - JIRadius, 2 * ellipseRadius, 2 * JIRadius);
@@ -194,6 +191,11 @@ struct LatticeComponent : juce::Component
                     b.addEllipse(x - ellipseRadius - 1.5, y - JIRadius - 1.5, 2 * ellipseRadius + 3,
                                  2 * JIRadius + 3);
 
+                    // Names or Ratios?
+                                        auto [n,d] = calculateCell(w, v);
+                                        auto s = std::to_string(n) + "/" + std::to_string(d);
+                    // std::string s = jim.nameNoteOnLattice(w, v);
+                    
                     if (sphereLit)
                     {
                         whiteShadow.render(lS, e);
@@ -289,7 +291,7 @@ struct LatticeComponent : juce::Component
     juce::ReferenceCountedObjectPtr<juce::Typeface> Stoke{juce::Typeface::createSystemTypefaceFor(
         LatticesBinary::Stoke_otf, LatticesBinary::Stoke_otfSize)};
 
-    juce::Font stoke{juce::FontOptions(Stoke).withPointHeight(JIRadius)};
+    juce::Font stoke{juce::FontOptions(Stoke).withPointHeight(JIRadius - 3)};
 
     juce::Colour com1{0.f, .84f, 1.f, 1.f};
     juce::Colour com2{.961111f, .79f, .41f, .25f};

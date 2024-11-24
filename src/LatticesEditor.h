@@ -14,7 +14,7 @@
 #include <memory>
 
 #include <juce_audio_processors/juce_audio_processors.h>
-#include "melatonin_inspector/melatonin_inspector.h"
+//#include "melatonin_inspector/melatonin_inspector.h"
 #include "LatticesProcessor.h"
 #include "LatticeComponent.h"
 #include "ModeComponent.h"
@@ -49,7 +49,7 @@ class LatticesEditor : public juce::AudioProcessorEditor, juce::MultiTimer
     static constexpr int width{900};
     static constexpr int height{600};
 
-    melatonin::Inspector inspector{*this};
+//    melatonin::Inspector inspector{*this};
 
     juce::Colour backgroundColour = juce::Colour{.5f, .5f, 0.f, 1.f};
 
