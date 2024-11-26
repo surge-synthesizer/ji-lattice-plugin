@@ -404,6 +404,15 @@ double LatticesProcessor::updateRoot(int r)
     return nf;
 }
 
+void LatticesProcessor::updateVisitors(double *c)
+{
+    for (int i = 0; i < 12; ++i)
+    {
+        visitor[i] = c[i];
+    }
+    locate();
+}
+
 void LatticesProcessor::returnToOrigin()
 {
     currentRefNote = originalRefNote;
@@ -465,7 +474,6 @@ void LatticesProcessor::shift(int dir)
     case West:
         xParam->beginChangeGesture();
         X = GNV(X - 1);
-        std::cout << X << std::endl;
         xParam->setValueNotifyingHost(X);
         xParam->endChangeGesture();
         break;
@@ -506,7 +514,7 @@ void LatticesProcessor::locate()
         int syntYOff = std::floor(quarter);
         syntYOff *= -1;
 
-        positionY = yParam->get() + syntYOff;
+        positionY += syntYOff;
     }
 
     int nn = originalRefNote;
@@ -548,6 +556,8 @@ void LatticesProcessor::locate()
     {
         coOrds[i].first = duoCo[i].first + positionX;
         coOrds[i].second = duoCo[i].second + positionY;
+        
+        ratios[i] = pyth12[i] * visitor[i];
     }
 
     if (mode == Syntonic)
@@ -562,6 +572,7 @@ void LatticesProcessor::locate()
         coOrds[11].second = (syntShape > 1) ? positionY - 2 : positionY + 1;
         coOrds[4].second = (syntShape == 3) ? positionY - 2 : positionY + 1;
     }
+    
     updateTuning();
 }
 

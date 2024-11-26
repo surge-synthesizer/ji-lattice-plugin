@@ -39,7 +39,7 @@ struct JIMath
         {2176, 2187},     // 17
         {512, 513},       // 19
         {736, 729},       // 23
-    };                    // same size as limit because there are two 5-limit commas
+    };
 
     enum Comma_t
     {
@@ -106,7 +106,6 @@ struct JIMath
     // 3/2 up by 3/2 is 9/4
     std::pair<uint64_t, uint64_t> multiplyRatio(uint64_t N1, uint64_t D1, uint64_t N2, uint64_t D2)
     {
-
         auto nR = N1 * N2;
         auto dR = D1 * D2;
 

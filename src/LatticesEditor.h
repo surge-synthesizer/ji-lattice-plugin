@@ -16,11 +16,14 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 // #include "melatonin_inspector/melatonin_inspector.h"
 #include "LatticesProcessor.h"
+#include "JIMath.h"
 #include "LatticeComponent.h"
 #include "ModeComponent.h"
 #include "MIDIMenuComponent.h"
 #include "OriginComponent.h"
+#include "VisitorsComponent.h"
 #include "MTSWarningComponent.h"
+
 
 //==============================================================================
 /**
@@ -36,6 +39,7 @@ class LatticesEditor : public juce::AudioProcessorEditor, juce::MultiTimer
     void paint(juce::Graphics &) override;
     void resized() override;
 
+    void showVisitorsMenu();
     void showTuningMenu();
     void showMidiMenu();
     void resetMTS();
@@ -44,6 +48,7 @@ class LatticesEditor : public juce::AudioProcessorEditor, juce::MultiTimer
 
     //    std::unique_ptr<juce::Timer> idleTimer;
     void idle();
+    void assignVisitors();
 
   private:
     static constexpr int width{900};
@@ -63,6 +68,9 @@ class LatticesEditor : public juce::AudioProcessorEditor, juce::MultiTimer
     std::unique_ptr<MIDIMenuComponent> midiComponent;
 
     std::unique_ptr<MTSWarningComponent> warningComponent;
+    
+    std::unique_ptr<juce::TextButton> visitorsButton;
+    std::unique_ptr<VisitorsComponent> visitorsComponent;
 
     void init();
     bool inited{false};
@@ -70,6 +78,104 @@ class LatticesEditor : public juce::AudioProcessorEditor, juce::MultiTimer
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.
     LatticesProcessor &processor;
+    
+    struct Visitors
+    {
+        JIMath jim;
+        
+        enum Dimension
+        {
+            Three,
+            Five,
+            Seven,
+            Eleven,
+            Thirteen,
+            Seventeen,
+            Nineteen,
+            Twentythree
+        };
+        
+        bool active{false};
+        bool rootIsMajor{false};
+        double comma[12] = {0.0};
+
+        
+        void setDegree(int d, int dim)
+        {
+            
+            bool major = (d == 7 || d == 2 || d == 9 || d == 4 || d == 11 || d == 6);
+            if (d == 0) major = rootIsMajor;
+            
+            switch (dim)
+            {
+                case Three:
+                    comma[d] = 1.0;
+                    break;
+                case Five:
+                    comma[d] = jim.comma(jim.syntonic, major);
+                    break;
+                case Seven:
+                    comma[d] = jim.comma(jim.seven, major);
+                    break;
+                case Eleven:
+                    comma[d] = jim.comma(jim.eleven, major);
+                    break;
+                case Thirteen:
+                    comma[d] = jim.comma(jim.thirteen, major);
+                    break;
+                case Seventeen:
+                    comma[d] = jim.comma(jim.seventeen, major);
+                    break;
+                case Nineteen:
+                    comma[d] = jim.comma(jim.nineteen, major);
+                    break;
+                case Twentythree:
+                    comma[d] = jim.comma(jim.twentythree, major);
+                    break;
+            }
+        }
+        
+        void reset()
+        {
+            active = false;
+            for (int i = 0; i < 12; ++i)
+            {
+                comma[i] = 1;
+            }
+        }
+        
+        void invite()
+        {
+            active = true;
+        }
+        
+        void unInvite()
+        {
+            active = false;
+        }
+        
+        void saveInvitation(double *c)
+        {
+            for (int i = 0; i < 12; ++i)
+            {
+                c[i] = comma[i];
+            }
+        }
+        
+        void loadInvitation(double *c)
+        {
+            for (int i = 0; i < 12; ++i)
+            {
+                comma[i] = c[i];
+            }
+        }
+    };
+    
+    Visitors currentVisitors;
+    bool previouslyActive{false};
+    
+    int visits[12] = {0};
+
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LatticesEditor)
 };

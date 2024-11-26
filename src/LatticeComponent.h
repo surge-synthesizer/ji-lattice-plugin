@@ -38,6 +38,14 @@ struct LatticeComponent : juce::Component
             CoO[i] = c[i];
         }
     }
+    
+    void setVisitors(int *v)
+    {
+        for (int i = 0; i < 12; ++i)
+        {
+            visited[i] = v[i];
+        }
+    }
 
     void paint(juce::Graphics &g) override
     {
@@ -78,6 +86,19 @@ struct LatticeComponent : juce::Component
 
                     // ok, so how far is this sphere from a lit up one?
                     auto dist = calcDist(C);
+                    int degree{0};
+                    if (dist == 0)
+                    {
+                        for (int i = 0; i < 12; ++i)
+                        {
+                            if (CoO[i] == C)
+                            {
+                                degree = i;
+                                break;
+                            }
+                        }
+                    }
+                    
                     // and what about its lines?
                     auto hDist = std::max(dist, calcDist(H));
                     auto uDist = std::max(dist, calcDist(U));
@@ -106,38 +127,7 @@ struct LatticeComponent : juce::Component
                     lG.drawDashedLine(down, dl, 2, 3.f, 1);
 
                     auto ellipseRadius = JIRadius * 1.15;
-                    auto gradient = juce::ColourGradient{};
-                    // Select gradient colour
-                    if ((w + (v * 4)) % 12 == 0)
-                    {
-                        gradient = juce::ColourGradient(com1, x - ellipseRadius, y, com2,
-                                                        x + ellipseRadius, y, false);
-                    }
-                    else if (v == 0)
-                    {
-                        gradient = juce::ColourGradient(p1, x - ellipseRadius, y, p2,
-                                                        x + ellipseRadius, y, false);
-                    }
-                    else if (v == 1 || v == -1)
-                    {
-                        gradient = juce::ColourGradient(l1c1, x - ellipseRadius, y, l1c2,
-                                                        x + ellipseRadius, y, false);
-                    }
-                    else if (v == 2 || v == -2)
-                    {
-                        gradient = juce::ColourGradient(l2c1, x - ellipseRadius, y, l2c2,
-                                                        x + ellipseRadius, y, false);
-                    }
-                    else if (v == 3 || v == -3)
-                    {
-                        gradient = juce::ColourGradient(l3c1, x - ellipseRadius, y, l3c2,
-                                                        x + ellipseRadius, y, false);
-                    }
-                    else
-                    {
-                        gradient = juce::ColourGradient(l4c1, x - ellipseRadius, y, l4c2,
-                                                        x + ellipseRadius, y, false);
-                    }
+                    
 
                     // Spheres
                     juce::Path e{};
@@ -146,9 +136,13 @@ struct LatticeComponent : juce::Component
                     juce::Path b{};
                     b.addEllipse(x - ellipseRadius - 1.5, y - JIRadius - 1.5, 2 * ellipseRadius + 3,
                                  2 * JIRadius + 3);
+                    
+                    
+                    // Select gradient colour
+                    bool uni = ((w + (v * 4)) % 12 == 0) ? true : false;
+                    auto gradient = chooseColour(std::abs(v), x, y, visited[degree], uni);
 
                     alpha = 1.f / (std::sqrt(dist) + 1);
-                    // draw those
                     whiteShadow.setOpacity(alpha);
                     whiteShadow.render(sG, e);
                     blackShadow.setOpacity(alpha);
@@ -159,13 +153,16 @@ struct LatticeComponent : juce::Component
                     sG.setGradientFill(gradient);
                     sG.fillPath(e);
                     sG.setColour(juce::Colours::white.withAlpha(alpha));
-                    sG.drawEllipse(x - ellipseRadius, y - JIRadius, 2 * ellipseRadius, 2 * JIRadius,
-                                   3);
+                    sG.drawEllipse(x - ellipseRadius, y - JIRadius, 2 * ellipseRadius, 2 * JIRadius, 3);
 
                     // Names or Ratios?
-                    // auto [n,d] = calculateCell(w, v);
-                    // auto s = std::to_string(n) + "/" + std::to_string(d);
-                    std::string s = jim.nameNoteOnLattice(w, v);
+                    auto [n,d] = calculateCell(w, v);
+                    if (dist == 0 && visited[degree] > 1)
+                    {
+                        reCalculateCell(n, d, visited[degree], degree);
+                    }
+                    auto s = std::to_string(n) + "/" + std::to_string(d);
+                    // std::string s = jim.nameNoteOnLattice(w, v);
                     sG.setFont(stoke);
                     sG.drawFittedText(s, x - ellipseRadius + 3, y - (JIRadius / 3.f),
                                       2.f * (ellipseRadius - 3), .66667f * JIRadius,
@@ -176,6 +173,8 @@ struct LatticeComponent : juce::Component
         g.drawImageAt(Lines, 0, 0, false);
         g.drawImageAt(Spheres, 0, 0, false);
     }
+    
+    int visited[12] = {0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1};
 
   protected:
     static constexpr int JIRadius{26};
@@ -186,28 +185,12 @@ struct LatticeComponent : juce::Component
 
     juce::Font stoke{juce::FontOptions(Stoke).withPointHeight(JIRadius)};
 
-    juce::Colour com1{0.f, .84f, 1.f, 1.f};
-    juce::Colour com2{.961111f, .79f, .41f, .25f};
-
-    juce::Colour p1{.5f, .51f, .3f, 1.f};
-    juce::Colour p2{.5277778f, .79f, .41f, .25f};
-
-    juce::Colour l1c1{.35f, .75f, .98f, 1.f};
-    juce::Colour l1c2{.5277778f, .79f, .41f, .25f};
-
-    juce::Colour l2c1{.2888889f, .97f, .67f, 1.f};
-    juce::Colour l2c2{.6194444f, .71f, 1.f, .25f};
-
-    juce::Colour l3c1{.6916667f, .97f, .76f, 1.f};
-    juce::Colour l3c2{.4361111f, 1.f, .59f, .61f};
-
-    juce::Colour l4c1{.5777778f, .97f, .94f, 58.f};
-    juce::Colour l4c2{.8666667f, 1.f, .36f, 1.f};
-
     melatonin::DropShadow blackShadow = {juce::Colours::black, 8};
     melatonin::DropShadow whiteShadow = {juce::Colours::antiquewhite, 12};
 
     std::array<std::pair<int, int>, 12> CoO{}; // currently lit co-ordinates
+    
+    
 
     inline int calcDist(std::pair<int, int> xy) // how far is a given coordinate from those?
     {
@@ -282,6 +265,76 @@ struct LatticeComponent : juce::Component
         auto res = std::max(xDist, yDist);
         return res;
     }
+    
+    const juce::Colour com1{0.f, .84f, 1.f, 1.f},
+        com2{.961111f, .79f, .41f, .25f},
+        py1{.5f, .51f, .3f, 1.f},
+        py2{.5277778f, .79f, .41f, .25f},
+        l1c1{.35f, .75f, .98f, 1.f},
+        l1c2{.5277778f, .79f, .41f, .25f},
+        l2c1{.2888889f, .97f, .67f, 1.f},
+        l2c2{.6194444f, .71f, 1.f, .25f},
+        l3c1{.6916667f, .97f, .76f, 1.f},
+        l3c2{.4361111f, 1.f, .59f, .61f},
+        l4c1{.5777778f, .97f, .94f, 58.f},
+        l4c2{.8666667f, 1.f, .36f, 1.f},
+        sep1{.8138889f, 1.f, .8f, 1.f},
+        sep2{.6166667, 1.f, .8f, .1f},
+        und1{.15f, 1.f, 1.f, 1.f},
+        und2{0.f, .84f, 1.f, .02f},
+        trid1{0.f, 1.f, 1.f, 1.f},
+        trid2{.6888889f, 1.f, .96f, .38f},
+        sed1{.4722222f, 1.f, .51f, 1.f},
+        sed2{.1666667f, 1.f, .8f, .71f},
+        nod1{0.f, .84f, 1.f, .02f},
+        nod2{.7361111f, 1.f, 1.f, 1.f};
+    
+    juce::ColourGradient chooseColour(int row, float x, float y, int visitor = 0, bool unison = false)
+    {
+        auto ellipseRadius = JIRadius * 1.15;
+        
+        if (unison) // && not visited
+        {
+            return juce::ColourGradient(com1, x - ellipseRadius, y, com2,                                                        x + ellipseRadius, y, false);
+        }
+        
+        if (visitor < 2)
+        {
+            switch (row)
+            {
+                case 0:
+                    return juce::ColourGradient(py1, x - ellipseRadius, y, py2,                                                        x + ellipseRadius, y, false);
+                case 1:
+                    return juce::ColourGradient(l1c1, x - ellipseRadius, y, l1c2,                                                       x + ellipseRadius, y, false);
+                case 2:
+                    return juce::ColourGradient(l2c1, x - ellipseRadius, y, l2c2,                                                        x + ellipseRadius, y, false);
+                case 3:
+                    return juce::ColourGradient(l3c1, x - ellipseRadius, y, l3c2,                                                        x + ellipseRadius, y, false);
+                default:
+                    return juce::ColourGradient(l4c1, x - ellipseRadius, y, l4c2,                                                        x + ellipseRadius, y, false);
+            }
+        }
+        else if (visitor == 2)
+        {
+            return juce::ColourGradient(sep1, x - ellipseRadius, y, sep2,                                                        x + ellipseRadius, y, false);
+        }
+        else if (visitor == 3)
+        {
+            return juce::ColourGradient(und1, x - ellipseRadius, y, und2,                                                        x + ellipseRadius, y, false);
+        }
+        else if (visitor == 4)
+        {
+            return juce::ColourGradient(trid1, x - ellipseRadius, y, trid2,                                                        x + ellipseRadius, y, false);
+        }
+        else if (visitor == 5)
+        {
+            return juce::ColourGradient(sed1, x - ellipseRadius, y, sed2,                                                        x + ellipseRadius, y, false);
+        }
+        else if (visitor == 6)
+        {
+            return juce::ColourGradient(nod1, x - ellipseRadius, y, nod2,                                                        x + ellipseRadius, y, false);
+        }
+    }
 
     inline std::pair<uint64_t, uint64_t> calculateCell(int fifths, int thirds)
     {
@@ -324,5 +377,53 @@ struct LatticeComponent : juce::Component
         d = d / g;
 
         return {n, d};
+    }
+    
+    inline void reCalculateCell(uint64_t &n, uint64_t &d, int visitor, int degree)
+    {
+        int cidx = visitor + 1;
+        
+        uint64_t cn{1}, cd{1};
+        
+
+        if (degree == 9 || degree == 4 || degree == 11 || degree == 6)
+        {
+            n *= jim.Commas[1].second;
+            d *= jim.Commas[1].first;
+            auto g = std::gcd(n, d);
+            n = n / g;
+            d = d / g;
+            cn = jim.Commas[cidx].first;
+            cd = jim.Commas[cidx].second;
+        }
+        else if (degree == 1 || degree == 8 || degree == 3 || degree == 10)
+        {
+            n *= jim.Commas[1].first;
+            d *= jim.Commas[1].second;
+            auto g = std::gcd(n, d);
+            n = n / g;
+            d = d / g;
+            cn = jim.Commas[cidx].second;
+            cd = jim.Commas[cidx].first;
+        }
+        else if (degree == 7 || degree == 2)
+        {
+            cn = jim.Commas[cidx].first;
+            cd = jim.Commas[cidx].second;
+        }
+        else
+        {
+            cn = jim.Commas[cidx].second;
+            cd = jim.Commas[cidx].first;
+        }
+        
+        auto [nn, nd] = jim.multiplyRatio(n, d, cn, cd);
+
+        n = nn;
+        d = nd;
+        
+        auto g = std::gcd(n, d);
+        n = n / g;
+        d = d / g;
     }
 };
