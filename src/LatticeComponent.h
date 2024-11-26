@@ -43,7 +43,15 @@ struct LatticeComponent : juce::Component
     {
         for (int i = 0; i < 12; ++i)
         {
-            visited[i] = v[i];
+            if (degree == 5 || degree == 0 || degree == 7 || degree == 2)
+            {
+                if (v[i] == 0)
+                {
+                    visited[i] = false;
+                }
+            }
+            
+            visitor[i] = v[i];
         }
     }
 
@@ -140,7 +148,7 @@ struct LatticeComponent : juce::Component
                     
                     // Select gradient colour
                     bool uni = ((w + (v * 4)) % 12 == 0) ? true : false;
-                    auto gradient = chooseColour(std::abs(v), x, y, visited[degree], uni);
+                    auto gradient = chooseColour(std::abs(v), x, y, visitor[degree], uni);
 
                     alpha = 1.f / (std::sqrt(dist) + 1);
                     whiteShadow.setOpacity(alpha);
@@ -173,8 +181,8 @@ struct LatticeComponent : juce::Component
         g.drawImageAt(Lines, 0, 0, false);
         g.drawImageAt(Spheres, 0, 0, false);
     }
-    
-    int visited[12] = {0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1};
+    bool visited[12] = {};
+    int visitor[12] = {0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1};
 
   protected:
     static constexpr int JIRadius{26};
@@ -190,80 +198,31 @@ struct LatticeComponent : juce::Component
 
     std::array<std::pair<int, int>, 12> CoO{}; // currently lit co-ordinates
     
-    
-
     inline int calcDist(std::pair<int, int> xy) // how far is a given coordinate from those?
     {
         auto inside = std::find(CoO.begin(), CoO.end(), xy);
-        int xDist{CoO[0].first};
-        int yDist{CoO[0].second};
-
+        
         if (inside != CoO.end()) // we're on a lit note
         {
             return 0;
         }
         else // if we aren't, find out how far
         {
-            // find X distance first
-            if (xy.first < CoO[5].first)
+            int xDist{INT_MAX};
+            int yDist{INT_MAX};
+            
+            for (int i=0; i < 12; i++)
             {
-                xDist = CoO[5].first - xy.first;
+                int tx = std::abs(xy.first - CoO[i].first);
+                if (tx < xDist) xDist = tx;
+                
+                int ty = std::abs(xy.second  - CoO[i].second);
+                if (ty < yDist) yDist = ty;
             }
-            else if (xy.first > CoO[2].first)
-            {
-                xDist = xy.first - CoO[2].first;
-            }
-            else
-            {
-                xDist = 0; // We're over or under a lit note
-                // we need to know which column we're in for Syntonic mode.
-                auto x = xy.first;
-
-                std::array<int, 3> ys;
-                int it{0};
-
-                for (int i = 0; i < 12; ++i)
-                {
-                    if (CoO[i].first == x)
-                    {
-                        ys[it] = CoO[i].second;
-                        ++it;
-                    }
-                }
-                // highest and lowest Y of this column
-                int top = *std::max_element(ys.begin(), ys.end());
-                int bottom = *std::min_element(ys.begin(), ys.end());
-
-                // so now find y dist
-                if (xy.second < bottom)
-                {
-                    yDist = bottom - xy.second;
-                }
-                else if (xy.second > top)
-                {
-                    yDist = xy.second - top;
-                }
-
-                auto res = std::max(xDist, yDist);
-                return res;
-            }
-
-            // ok if we made it here we're off to the sides somewhere
-            int top = CoO[4].second;
-            int bottom = CoO[8].second;
-
-            if (xy.second < bottom)
-            {
-                yDist = bottom - xy.second;
-            }
-            else if (xy.second > top)
-            {
-                yDist = xy.second - top;
-            }
+             
+            auto res = std::max(xDist, yDist);
+            return res;
         }
-
-        auto res = std::max(xDist, yDist);
-        return res;
     }
     
     const juce::Colour com1{0.f, .84f, 1.f, 1.f},
@@ -289,7 +248,7 @@ struct LatticeComponent : juce::Component
         nod1{0.f, .84f, 1.f, .02f},
         nod2{.7361111f, 1.f, 1.f, 1.f};
     
-    juce::ColourGradient chooseColour(int row, float x, float y, int visitor = 0, bool unison = false)
+    juce::ColourGradient chooseColour(int row, float x, float y, bool visited, int visitor, bool unison = false)
     {
         auto ellipseRadius = JIRadius * 1.15;
         
