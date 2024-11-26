@@ -29,17 +29,23 @@ struct JIMath
     typedef int monzo[limit];
 
     static constexpr int primes[limit] = {2, 3, 5, 7, 11, 13, 17, 19, 23};
-    static constexpr std::pair<uint64_t, uint64_t> Commas[limit] = {
+    static constexpr std::pair<uint64_t, uint64_t> Commas[15] = {
         {531441, 524288}, // 3
         {80, 81},         // 5
         {125, 128},       // 5
         {64, 63},         // 7
         {32, 33},         // 11
         {1024, 1053},     // 13
+        {352, 351},       // 13/11
+        {40, 39},         // 13/10
+        {3584, 3645},     // 7/5
+        {1701, 1664},     // 14/13
+        {44, 45},         // 11/10
+        {896, 891},       // 14/11
         {2176, 2187},     // 17
         {512, 513},       // 19
         {736, 729},       // 23
-    };                    // same size as limit because there are two 5-limit commas
+    };
 
     enum Comma_t
     {
@@ -106,7 +112,6 @@ struct JIMath
     // 3/2 up by 3/2 is 9/4
     std::pair<uint64_t, uint64_t> multiplyRatio(uint64_t N1, uint64_t D1, uint64_t N2, uint64_t D2)
     {
-
         auto nR = N1 * N2;
         auto dR = D1 * D2;
 

@@ -19,11 +19,12 @@ LatticesEditor::LatticesEditor(LatticesProcessor &p) : juce::AudioProcessorEdito
     addAndMakeVisible(*latticeComponent);
     latticeComponent->setBufferedToImage(true);
 
-    // warningComponent = std::make_unique<MTSWarningComponent>(p);
-    // addAndMakeVisible(*warningComponent);
+    warningComponent = std::make_unique<MTSWarningComponent>(p);
+    addAndMakeVisible(*warningComponent);
 
     if (p.registeredMTS)
     {
+        startTimer(0, 5);
         init();
     }
     else
@@ -38,6 +39,60 @@ LatticesEditor::LatticesEditor(LatticesProcessor &p) : juce::AudioProcessorEdito
 LatticesEditor::~LatticesEditor() {}
 
 //==============================================================================
+
+void LatticesEditor::init()
+{
+    visitorsButton = std::make_unique<juce::TextButton>("Visitors");
+    addAndMakeVisible(*visitorsButton);
+    visitorsButton->onClick = [this] { showVisitorsMenu(); };
+    visitorsButton->setClickingTogglesState(true);
+    visitorsButton->setToggleState(false, juce::dontSendNotification);
+
+    visitorsComponent = std::make_unique<VisitorsComponent>();
+    addAndMakeVisible(*visitorsComponent);
+    visitorsComponent->setVisible(false);
+
+    midiButton = std::make_unique<juce::TextButton>("MIDI Settings");
+    addAndMakeVisible(*midiButton);
+    midiButton->onClick = [this] { showMidiMenu(); };
+    midiButton->setClickingTogglesState(true);
+    midiButton->setToggleState(false, juce::dontSendNotification);
+
+    midiComponent = std::make_unique<MIDIMenuComponent>(
+        processor.shiftCCs[0], processor.shiftCCs[1], processor.shiftCCs[2], processor.shiftCCs[3],
+        processor.shiftCCs[4], processor.listenOnChannel);
+    addAndMakeVisible(*midiComponent);
+    midiComponent->setVisible(false);
+
+    tuningButton = std::make_unique<juce::TextButton>("Tuning Settings");
+    addAndMakeVisible(*tuningButton);
+    tuningButton->onClick = [this] { showTuningMenu(); };
+    tuningButton->setClickingTogglesState(true);
+    tuningButton->setToggleState(false, juce::dontSendNotification);
+
+    modeComponent = std::make_unique<ModeComponent>(processor.mode);
+    addAndMakeVisible(*modeComponent);
+    modeComponent->setVisible(false);
+
+    originComponent =
+        std::make_unique<OriginComponent>(processor.originalRefNote, processor.originalRefFreq);
+    addAndMakeVisible(*originComponent);
+    originComponent->setVisible(false);
+
+    auto b = this->getLocalBounds();
+
+    midiButton->setBounds(10, b.getBottom() - 40, 120, 30);
+    midiComponent->setBounds(10, b.getBottom() - 155 - 30 - 10, 120, 155);
+
+    tuningButton->setBounds(b.getRight() - 216 - 10, b.getBottom() - 40, 216, 30);
+    modeComponent->setBounds(b.getRight() - 216 - 10, b.getBottom() - 180 - 40, 216, 90);
+    originComponent->setBounds(b.getRight() - 216 - 10, b.getBottom() - 95 - 40, 216, 95);
+
+    visitorsButton->setBounds(10, 10, 120, 30);
+    visitorsComponent->setBounds(10, 40, 330, 220);
+
+    inited = true;
+}
 
 void LatticesEditor::paint(juce::Graphics &g)
 {
@@ -60,6 +115,9 @@ void LatticesEditor::resized()
         tuningButton->setBounds(b.getRight() - 216 - 10, b.getBottom() - 40, 216, 30);
         modeComponent->setBounds(b.getRight() - 216 - 10, b.getBottom() - 180 - 40, 216, 90);
         originComponent->setBounds(b.getRight() - 216 - 10, b.getBottom() - 95 - 40, 216, 95);
+
+        visitorsButton->setBounds(10, 10, 125, 30);
+        visitorsComponent->setBounds(10, 40, 330, 220);
     }
     else
     {
@@ -98,6 +156,21 @@ void LatticesEditor::showTuningMenu()
     }
 }
 
+void LatticesEditor::showVisitorsMenu()
+{
+    bool show = visitorsButton->getToggleState();
+    visitorsComponent->setVisible(show);
+
+    //    if (show)
+    //    {
+    //        visitorsButton->setConnectedEdges(0);
+    //    }
+    //    else
+    //    {
+    //        visitorsButton->setConnectedEdges(!0);
+    //    }
+}
+
 void LatticesEditor::timerCallback(int timerID)
 {
     if (timerID == 1)
@@ -114,7 +187,7 @@ void LatticesEditor::timerCallback(int timerID)
     {
         if (processor.changed)
         {
-            latticeComponent->update(processor.coOrds);
+            latticeComponent->update(processor.coOrds, processor.visitor);
             latticeComponent->repaint();
             processor.changed = false;
         }
@@ -143,47 +216,18 @@ void LatticesEditor::timerCallback(int timerID)
             int r = originComponent->whichNote();
             originComponent->resetFreqOnRootChange(processor.updateRoot(r));
         }
+
+        if (visitorsComponent->changed)
+        {
+            int t[12];
+            for (int i = 0; i < 12; ++i)
+            {
+                int v = visitorsComponent->dd[i];
+                t[i] = v;
+            }
+
+            processor.updateVisitors(t);
+            visitorsComponent->changed = false;
+        }
     }
-}
-
-void LatticesEditor::init()
-{
-    midiButton = std::make_unique<juce::TextButton>("MIDI Settings");
-    addAndMakeVisible(*midiButton);
-    midiButton->onClick = [this] { showMidiMenu(); };
-    midiButton->setClickingTogglesState(true);
-    midiButton->setToggleState(false, juce::dontSendNotification);
-
-    midiComponent = std::make_unique<MIDIMenuComponent>(
-        processor.shiftCCs[0], processor.shiftCCs[1], processor.shiftCCs[2], processor.shiftCCs[3],
-        processor.shiftCCs[4], processor.listenOnChannel);
-    addAndMakeVisible(*midiComponent);
-    midiComponent->setVisible(false);
-
-    tuningButton = std::make_unique<juce::TextButton>("Tuning Settings");
-    addAndMakeVisible(*tuningButton);
-    tuningButton->onClick = [this] { showTuningMenu(); };
-    tuningButton->setClickingTogglesState(true);
-    tuningButton->setToggleState(false, juce::dontSendNotification);
-
-    modeComponent = std::make_unique<ModeComponent>(processor.mode);
-    addAndMakeVisible(*modeComponent);
-    modeComponent->setVisible(false);
-
-    originComponent =
-        std::make_unique<OriginComponent>(processor.originalRefNote, processor.originalRefFreq);
-    addAndMakeVisible(*originComponent);
-    originComponent->setVisible(false);
-
-    auto b = this->getLocalBounds();
-
-    midiButton->setBounds(10, b.getBottom() - 40, 120, 30);
-    midiComponent->setBounds(10, b.getBottom() - 155 - 30 - 10, 120, 155);
-
-    tuningButton->setBounds(b.getRight() - 216 - 10, b.getBottom() - 40, 216, 30);
-    modeComponent->setBounds(b.getRight() - 216 - 10, b.getBottom() - 180 - 40, 216, 90);
-    originComponent->setBounds(b.getRight() - 216 - 10, b.getBottom() - 95 - 40, 216, 95);
-
-    startTimer(0, 5);
-    inited = true;
 }

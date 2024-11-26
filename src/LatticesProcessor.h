@@ -60,6 +60,8 @@ class LatticesProcessor : public juce::AudioProcessor,
     void updateMIDI(int wCC, int eCC, int nCC, int sCC, int hCC, int C);
     void updateFreq(double f);
     double updateRoot(int r);
+    void updateVisitors(int *v);
+    void setVisitorTuning(int d, int c);
     void parameterValueChanged(int parameterIndex, float newValue) override;
 
     bool registeredMTS{false};
@@ -88,6 +90,8 @@ class LatticesProcessor : public juce::AudioProcessor,
 
     int originalRefNote{-12};
     double originalRefFreq{-1};
+
+    int visitor[12] = {0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1};
 
   private:
     static constexpr int maxDistance{24};
@@ -131,10 +135,24 @@ class LatticesProcessor : public juce::AudioProcessor,
     std::pair<int, int> duoCo[12]{{0, 0}, {-1, -1}, {2, 0},  {1, -1}, {0, 1},  {-1, 0},
                                   {2, 1}, {1, 0},   {0, -1}, {-1, 1}, {2, -1}, {1, 1}};
 
-    bool hold[5] = {false, false, false, false, false};
-    bool wait[5] = {false, false, false, false, false};
+    double pyth12[12]{1.0,
+                      (double)256 / 243,
+                      (double)9 / 8,
+                      (double)32 / 27,
+                      (double)81 / 64,
+                      (double)4 / 3,
+                      (double)729 / 512,
+                      (double)3 / 2,
+                      (double)128 / 81,
+                      (double)27 / 16,
+                      (double)16 / 9,
+                      (double)243 / 128};
 
-    //    juce::AudioProcessorValueTreeState state;
+    bool hold[5] = {};
+    bool wait[5] = {};
+
+    double visitorTuning[12] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+    int defvis[12] = {0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1};
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LatticesProcessor)
