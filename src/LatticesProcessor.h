@@ -60,9 +60,10 @@ class LatticesProcessor : public juce::AudioProcessor,
     void updateMIDI(int wCC, int eCC, int nCC, int sCC, int hCC, int C);
     void updateFreq(double f);
     double updateRoot(int r);
-    void updateVisitors(double *c);
+    void updateVisitors(int *v);
+    void setVisitorTuning(int d, int c);
     void parameterValueChanged(int parameterIndex, float newValue) override;
-    
+
     bool registeredMTS{false};
     bool MTSreInit{false};
     bool MTStryAgain{false};
@@ -89,8 +90,10 @@ class LatticesProcessor : public juce::AudioProcessor,
 
     int originalRefNote{-12};
     double originalRefFreq{-1};
-    
-    private:
+
+    int visitor[12] = {0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1};
+
+  private:
     static constexpr int maxDistance{24};
     static constexpr int defaultRefNote{0};
     static constexpr double defaultRefFreq{261.6255653005986};
@@ -144,12 +147,12 @@ class LatticesProcessor : public juce::AudioProcessor,
                       (double)27 / 16,
                       (double)16 / 9,
                       (double)243 / 128};
-    
-    double visitor[12]{0.0};
-        
-        
-    bool hold[5] = {false, false, false, false, false};
-    bool wait[5] = {false, false, false, false, false};
+
+    bool hold[5] = {};
+    bool wait[5] = {};
+
+    double visitorTuning[12] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+    int defvis[12] = {0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1};
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LatticesProcessor)

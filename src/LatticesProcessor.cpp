@@ -231,7 +231,6 @@ void LatticesProcessor::getStateInformation(juce::MemoryBlock &destData)
 
 void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
 {
-    std::cout << "called setState" << std::endl;
     std::unique_ptr<juce::XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
 
     if (xmlState.get() != nullptr)
@@ -404,13 +403,47 @@ double LatticesProcessor::updateRoot(int r)
     return nf;
 }
 
-void LatticesProcessor::updateVisitors(double *c)
+void LatticesProcessor::updateVisitors(int *v)
 {
-    for (int i = 0; i < 12; ++i)
+    for (int d = 0; d < 12; ++d)
     {
-        visitor[i] = c[i];
+        visitor[d] = v[d];
+        setVisitorTuning(d, v[d]);
     }
     locate();
+}
+
+void LatticesProcessor::setVisitorTuning(int d, int c)
+{
+    bool major = (d == 7 || d == 2 || d == 9 || d == 4 || d == 11 || d == 6);
+
+    switch (c)
+    {
+    case 0:
+        visitorTuning[d] = 1.0;
+        break;
+    case 1:
+        visitorTuning[d] = jim.comma(jim.syntonic, major);
+        break;
+    case 2:
+        visitorTuning[d] = jim.comma(jim.seven, major);
+        break;
+    case 3:
+        visitorTuning[d] = jim.comma(jim.eleven, major);
+        break;
+    case 4:
+        visitorTuning[d] = jim.comma(jim.thirteen, major);
+        break;
+    case 5:
+        visitorTuning[d] = jim.comma(jim.seventeen, major);
+        break;
+    case 6:
+        visitorTuning[d] = jim.comma(jim.nineteen, major);
+        break;
+    case 7:
+        visitorTuning[d] = jim.comma(jim.twentythree, major);
+        break;
+    }
 }
 
 void LatticesProcessor::returnToOrigin()
@@ -431,6 +464,7 @@ void LatticesProcessor::returnToOrigin()
     {
         ratios[i] = duo12[i];
         coOrds[i] = duoCo[i];
+        setVisitorTuning(i, defvis[i]);
     }
 
     updateTuning();
@@ -552,15 +586,47 @@ void LatticesProcessor::locate()
     currentRefNote = nn;
     currentRefFreq = originalRefFreq * nf;
 
-    for (int i = 0; i < 12; ++i)
+    //    for (int i = 0; i < 12; ++i) // no visitors
+    //    {
+    //        coOrds[i].first = duoCo[i].first + positionX;
+    //        coOrds[i].second = duoCo[i].second + positionY;
+    //
+    //        ratios[i] = duo12[i];
+    //    }
+
+    for (int i = 0; i < 12; ++i) // visitors
     {
-        coOrds[i].first = duoCo[i].first + positionX;
-        coOrds[i].second = duoCo[i].second + positionY;
-        
-        ratios[i] = pyth12[i] * visitor[i];
+        auto vx{0};
+        auto vy{0};
+
+        if ((i == 9 || i == 4 || i == 11 || i == 6) && visitor[i] == 0)
+        {
+            vx = 4;
+            vy = -1;
+        }
+        if ((i == 5 || i == 0) && visitor[i] != 0)
+        {
+            vx = 4;
+            vy = -1;
+        }
+        if ((i == 7 || i == 2) && visitor[i] != 0)
+        {
+            vx = -4;
+            vy = 1;
+        }
+        if ((i == 1 || i == 8 || i == 3 || i == 10) && visitor[i] == 0)
+        {
+            vx = -4;
+            vy = 1;
+        }
+
+        coOrds[i].first = duoCo[i].first + positionX + vx;
+        coOrds[i].second = duoCo[i].second + positionY + vy;
+
+        ratios[i] = pyth12[i] * visitorTuning[i];
     }
 
-    if (mode == Syntonic)
+    if (mode == Syntonic) // syntonic should ignore visitors
     {
         int syntShape = ((positionX % 4) + 4) % 4;
 
@@ -572,7 +638,7 @@ void LatticesProcessor::locate()
         coOrds[11].second = (syntShape > 1) ? positionY - 2 : positionY + 1;
         coOrds[4].second = (syntShape == 3) ? positionY - 2 : positionY + 1;
     }
-    
+
     updateTuning();
 }
 

@@ -31,26 +31,11 @@ struct LatticeComponent : juce::Component
         }
     }
 
-    void update(std::pair<int, int> *c)
+    void update(std::pair<int, int> *c, int *v)
     {
         for (int i = 0; i < 12; ++i)
         {
             CoO[i] = c[i];
-        }
-    }
-    
-    void setVisitors(int *v)
-    {
-        for (int i = 0; i < 12; ++i)
-        {
-            if (degree == 5 || degree == 0 || degree == 7 || degree == 2)
-            {
-                if (v[i] == 0)
-                {
-                    visited[i] = false;
-                }
-            }
-            
             visitor[i] = v[i];
         }
     }
@@ -106,7 +91,7 @@ struct LatticeComponent : juce::Component
                             }
                         }
                     }
-                    
+
                     // and what about its lines?
                     auto hDist = std::max(dist, calcDist(H));
                     auto uDist = std::max(dist, calcDist(U));
@@ -135,7 +120,6 @@ struct LatticeComponent : juce::Component
                     lG.drawDashedLine(down, dl, 2, 3.f, 1);
 
                     auto ellipseRadius = JIRadius * 1.15;
-                    
 
                     // Spheres
                     juce::Path e{};
@@ -144,11 +128,11 @@ struct LatticeComponent : juce::Component
                     juce::Path b{};
                     b.addEllipse(x - ellipseRadius - 1.5, y - JIRadius - 1.5, 2 * ellipseRadius + 3,
                                  2 * JIRadius + 3);
-                    
-                    
+
                     // Select gradient colour
                     bool uni = ((w + (v * 4)) % 12 == 0) ? true : false;
-                    auto gradient = chooseColour(std::abs(v), x, y, visitor[degree], uni);
+                    auto gradient =
+                        chooseColour(std::abs(v), x, y, (dist == 0), visitor[degree], uni);
 
                     alpha = 1.f / (std::sqrt(dist) + 1);
                     whiteShadow.setOpacity(alpha);
@@ -161,13 +145,14 @@ struct LatticeComponent : juce::Component
                     sG.setGradientFill(gradient);
                     sG.fillPath(e);
                     sG.setColour(juce::Colours::white.withAlpha(alpha));
-                    sG.drawEllipse(x - ellipseRadius, y - JIRadius, 2 * ellipseRadius, 2 * JIRadius, 3);
+                    sG.drawEllipse(x - ellipseRadius, y - JIRadius, 2 * ellipseRadius, 2 * JIRadius,
+                                   3);
 
                     // Names or Ratios?
-                    auto [n,d] = calculateCell(w, v);
-                    if (dist == 0 && visited[degree] > 1)
+                    auto [n, d] = calculateCell(w, v);
+                    if (dist == 0 && visitor[degree] > 1)
                     {
-                        reCalculateCell(n, d, visited[degree], degree);
+                        reCalculateCell(n, d, visitor[degree], degree);
                     }
                     auto s = std::to_string(n) + "/" + std::to_string(d);
                     // std::string s = jim.nameNoteOnLattice(w, v);
@@ -181,7 +166,7 @@ struct LatticeComponent : juce::Component
         g.drawImageAt(Lines, 0, 0, false);
         g.drawImageAt(Spheres, 0, 0, false);
     }
-    bool visited[12] = {};
+
     int visitor[12] = {0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1};
 
   protected:
@@ -197,101 +182,90 @@ struct LatticeComponent : juce::Component
     melatonin::DropShadow whiteShadow = {juce::Colours::antiquewhite, 12};
 
     std::array<std::pair<int, int>, 12> CoO{}; // currently lit co-ordinates
-    
+
     inline int calcDist(std::pair<int, int> xy) // how far is a given coordinate from those?
     {
-        auto inside = std::find(CoO.begin(), CoO.end(), xy);
-        
-        if (inside != CoO.end()) // we're on a lit note
+        int res{INT_MAX};
+
+        for (int i = 0; i < 12; ++i)
         {
-            return 0;
+            int tx = std::abs(xy.first - CoO[i].first);
+            int ty = std::abs(xy.second - CoO[i].second);
+            int sum = tx + ty;
+            if (sum < res)
+                res = sum;
         }
-        else // if we aren't, find out how far
-        {
-            int xDist{INT_MAX};
-            int yDist{INT_MAX};
-            
-            for (int i=0; i < 12; i++)
-            {
-                int tx = std::abs(xy.first - CoO[i].first);
-                if (tx < xDist) xDist = tx;
-                
-                int ty = std::abs(xy.second  - CoO[i].second);
-                if (ty < yDist) yDist = ty;
-            }
-             
-            auto res = std::max(xDist, yDist);
-            return res;
-        }
+
+        return res;
     }
-    
-    const juce::Colour com1{0.f, .84f, 1.f, 1.f},
-        com2{.961111f, .79f, .41f, .25f},
-        py1{.5f, .51f, .3f, 1.f},
-        py2{.5277778f, .79f, .41f, .25f},
-        l1c1{.35f, .75f, .98f, 1.f},
-        l1c2{.5277778f, .79f, .41f, .25f},
-        l2c1{.2888889f, .97f, .67f, 1.f},
-        l2c2{.6194444f, .71f, 1.f, .25f},
-        l3c1{.6916667f, .97f, .76f, 1.f},
-        l3c2{.4361111f, 1.f, .59f, .61f},
-        l4c1{.5777778f, .97f, .94f, 58.f},
-        l4c2{.8666667f, 1.f, .36f, 1.f},
-        sep1{.8138889f, 1.f, .8f, 1.f},
-        sep2{.6166667, 1.f, .8f, .1f},
-        und1{.15f, 1.f, 1.f, 1.f},
-        und2{0.f, .84f, 1.f, .02f},
-        trid1{0.f, 1.f, 1.f, 1.f},
-        trid2{.6888889f, 1.f, .96f, .38f},
-        sed1{.4722222f, 1.f, .51f, 1.f},
-        sed2{.1666667f, 1.f, .8f, .71f},
-        nod1{0.f, .84f, 1.f, .02f},
-        nod2{.7361111f, 1.f, 1.f, 1.f};
-    
-    juce::ColourGradient chooseColour(int row, float x, float y, bool visited, int visitor, bool unison = false)
+
+    const juce::Colour com1{0.f, .84f, 1.f, 1.f}, com2{.961111f, .79f, .41f, .25f},
+        py1{.5f, .51f, .3f, 1.f}, py2{.5277778f, .79f, .41f, .25f}, l1c1{.35f, .75f, .98f, 1.f},
+        l1c2{.5277778f, .79f, .41f, .25f}, l2c1{.2888889f, .97f, .67f, 1.f},
+        l2c2{.6194444f, .71f, 1.f, .25f}, l3c1{.6916667f, .97f, .76f, 1.f},
+        l3c2{.4361111f, 1.f, .59f, .61f}, l4c1{.5777778f, .97f, .94f, 58.f},
+        l4c2{.8666667f, 1.f, .36f, 1.f}, sep1{.8138889f, 1.f, .8f, 1.f},
+        sep2{.6166667, 1.f, .8f, .1f}, und1{.15f, 1.f, 1.f, 1.f}, und2{0.f, .84f, 1.f, .02f},
+        trid1{0.f, 1.f, 1.f, 1.f}, trid2{.6888889f, 1.f, .96f, .38f},
+        sed1{.4722222f, 1.f, .51f, 1.f}, sed2{.1666667f, 1.f, .8f, .71f},
+        nod1{0.f, .84f, 1.f, .02f}, nod2{.7361111f, 1.f, 1.f, 1.f};
+
+    juce::ColourGradient chooseColour(int row, float x, float y, bool lit, int visitor,
+                                      bool unison = false)
     {
         auto ellipseRadius = JIRadius * 1.15;
-        
-        if (unison) // && not visited
+
+        if (unison)
         {
-            return juce::ColourGradient(com1, x - ellipseRadius, y, com2,                                                        x + ellipseRadius, y, false);
+            return juce::ColourGradient(com1, x - ellipseRadius, y, com2, x + ellipseRadius, y,
+                                        false);
         }
-        
-        if (visitor < 2)
+
+        if (lit)
         {
-            switch (row)
+            switch (visitor)
             {
-                case 0:
-                    return juce::ColourGradient(py1, x - ellipseRadius, y, py2,                                                        x + ellipseRadius, y, false);
-                case 1:
-                    return juce::ColourGradient(l1c1, x - ellipseRadius, y, l1c2,                                                       x + ellipseRadius, y, false);
-                case 2:
-                    return juce::ColourGradient(l2c1, x - ellipseRadius, y, l2c2,                                                        x + ellipseRadius, y, false);
-                case 3:
-                    return juce::ColourGradient(l3c1, x - ellipseRadius, y, l3c2,                                                        x + ellipseRadius, y, false);
-                default:
-                    return juce::ColourGradient(l4c1, x - ellipseRadius, y, l4c2,                                                        x + ellipseRadius, y, false);
+            case 0:
+                break;
+            case 1:
+                break;
+            case 2:
+                return juce::ColourGradient(sep1, x - ellipseRadius, y, sep2, x + ellipseRadius, y,
+                                            false);
+            case 3:
+                return juce::ColourGradient(und1, x - ellipseRadius, y, und2, x + ellipseRadius, y,
+                                            false);
+            case 4:
+                return juce::ColourGradient(trid1, x - ellipseRadius, y, trid2, x + ellipseRadius,
+                                            y, false);
+            case 5:
+                return juce::ColourGradient(sed1, x - ellipseRadius, y, sed2, x + ellipseRadius, y,
+                                            false);
+            case 6:
+                return juce::ColourGradient(nod1, x - ellipseRadius, y, nod2, x + ellipseRadius, y,
+                                            false);
+            default:
+                break;
             }
         }
-        else if (visitor == 2)
+
+        switch (row)
         {
-            return juce::ColourGradient(sep1, x - ellipseRadius, y, sep2,                                                        x + ellipseRadius, y, false);
-        }
-        else if (visitor == 3)
-        {
-            return juce::ColourGradient(und1, x - ellipseRadius, y, und2,                                                        x + ellipseRadius, y, false);
-        }
-        else if (visitor == 4)
-        {
-            return juce::ColourGradient(trid1, x - ellipseRadius, y, trid2,                                                        x + ellipseRadius, y, false);
-        }
-        else if (visitor == 5)
-        {
-            return juce::ColourGradient(sed1, x - ellipseRadius, y, sed2,                                                        x + ellipseRadius, y, false);
-        }
-        else if (visitor == 6)
-        {
-            return juce::ColourGradient(nod1, x - ellipseRadius, y, nod2,                                                        x + ellipseRadius, y, false);
+        case 0:
+            return juce::ColourGradient(py1, x - ellipseRadius, y, py2, x + ellipseRadius, y,
+                                        false);
+        case 1:
+            return juce::ColourGradient(l1c1, x - ellipseRadius, y, l1c2, x + ellipseRadius, y,
+                                        false);
+        case 2:
+            return juce::ColourGradient(l2c1, x - ellipseRadius, y, l2c2, x + ellipseRadius, y,
+                                        false);
+        case 3:
+            return juce::ColourGradient(l3c1, x - ellipseRadius, y, l3c2, x + ellipseRadius, y,
+                                        false);
+        default:
+            return juce::ColourGradient(l4c1, x - ellipseRadius, y, l4c2, x + ellipseRadius, y,
+                                        false);
         }
     }
 
@@ -337,15 +311,14 @@ struct LatticeComponent : juce::Component
 
         return {n, d};
     }
-    
+
     inline void reCalculateCell(uint64_t &n, uint64_t &d, int visitor, int degree)
     {
         int cidx = visitor + 1;
-        
-        uint64_t cn{1}, cd{1};
-        
 
-        if (degree == 9 || degree == 4 || degree == 11 || degree == 6)
+        uint64_t cn{1}, cd{1};
+
+        if (degree == 7 || degree == 2 || degree == 9 || degree == 4 || degree == 11 || degree == 6)
         {
             n *= jim.Commas[1].second;
             d *= jim.Commas[1].first;
@@ -355,7 +328,7 @@ struct LatticeComponent : juce::Component
             cn = jim.Commas[cidx].first;
             cd = jim.Commas[cidx].second;
         }
-        else if (degree == 1 || degree == 8 || degree == 3 || degree == 10)
+        else
         {
             n *= jim.Commas[1].first;
             d *= jim.Commas[1].second;
@@ -365,22 +338,12 @@ struct LatticeComponent : juce::Component
             cn = jim.Commas[cidx].second;
             cd = jim.Commas[cidx].first;
         }
-        else if (degree == 7 || degree == 2)
-        {
-            cn = jim.Commas[cidx].first;
-            cd = jim.Commas[cidx].second;
-        }
-        else
-        {
-            cn = jim.Commas[cidx].second;
-            cd = jim.Commas[cidx].first;
-        }
-        
+
         auto [nn, nd] = jim.multiplyRatio(n, d, cn, cd);
 
         n = nn;
         d = nd;
-        
+
         auto g = std::gcd(n, d);
         n = n / g;
         d = d / g;

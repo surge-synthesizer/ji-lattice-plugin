@@ -21,7 +21,7 @@ LatticesEditor::LatticesEditor(LatticesProcessor &p) : juce::AudioProcessorEdito
 
     warningComponent = std::make_unique<MTSWarningComponent>(p);
     addAndMakeVisible(*warningComponent);
-    
+
     if (p.registeredMTS)
     {
         startTimer(0, 5);
@@ -47,11 +47,11 @@ void LatticesEditor::init()
     visitorsButton->onClick = [this] { showVisitorsMenu(); };
     visitorsButton->setClickingTogglesState(true);
     visitorsButton->setToggleState(false, juce::dontSendNotification);
-    
+
     visitorsComponent = std::make_unique<VisitorsComponent>();
     addAndMakeVisible(*visitorsComponent);
     visitorsComponent->setVisible(false);
-    
+
     midiButton = std::make_unique<juce::TextButton>("MIDI Settings");
     addAndMakeVisible(*midiButton);
     midiButton->onClick = [this] { showMidiMenu(); };
@@ -87,11 +87,10 @@ void LatticesEditor::init()
     tuningButton->setBounds(b.getRight() - 216 - 10, b.getBottom() - 40, 216, 30);
     modeComponent->setBounds(b.getRight() - 216 - 10, b.getBottom() - 180 - 40, 216, 90);
     originComponent->setBounds(b.getRight() - 216 - 10, b.getBottom() - 95 - 40, 216, 95);
-    
+
     visitorsButton->setBounds(10, 10, 120, 30);
-    visitorsComponent->setBounds(10, 40, 260, 185);
-    currentVisitors.reset();
-    
+    visitorsComponent->setBounds(10, 40, 330, 220);
+
     inited = true;
 }
 
@@ -116,10 +115,9 @@ void LatticesEditor::resized()
         tuningButton->setBounds(b.getRight() - 216 - 10, b.getBottom() - 40, 216, 30);
         modeComponent->setBounds(b.getRight() - 216 - 10, b.getBottom() - 180 - 40, 216, 90);
         originComponent->setBounds(b.getRight() - 216 - 10, b.getBottom() - 95 - 40, 216, 95);
-        
-        
+
         visitorsButton->setBounds(10, 10, 125, 30);
-        visitorsComponent->setBounds(10, 40, 260, 185);
+        visitorsComponent->setBounds(10, 40, 330, 220);
     }
     else
     {
@@ -163,14 +161,14 @@ void LatticesEditor::showVisitorsMenu()
     bool show = visitorsButton->getToggleState();
     visitorsComponent->setVisible(show);
 
-//    if (show)
-//    {
-//        visitorsButton->setConnectedEdges(0);
-//    }
-//    else
-//    {
-//        visitorsButton->setConnectedEdges(!0);
-//    }
+    //    if (show)
+    //    {
+    //        visitorsButton->setConnectedEdges(0);
+    //    }
+    //    else
+    //    {
+    //        visitorsButton->setConnectedEdges(!0);
+    //    }
 }
 
 void LatticesEditor::timerCallback(int timerID)
@@ -189,7 +187,7 @@ void LatticesEditor::timerCallback(int timerID)
     {
         if (processor.changed)
         {
-            latticeComponent->update(processor.coOrds);
+            latticeComponent->update(processor.coOrds, processor.visitor);
             latticeComponent->repaint();
             processor.changed = false;
         }
@@ -218,7 +216,7 @@ void LatticesEditor::timerCallback(int timerID)
             int r = originComponent->whichNote();
             originComponent->resetFreqOnRootChange(processor.updateRoot(r));
         }
-        
+
         if (visitorsComponent->changed)
         {
             int t[12];
@@ -226,11 +224,9 @@ void LatticesEditor::timerCallback(int timerID)
             {
                 int v = visitorsComponent->dd[i];
                 t[i] = v;
-                currentVisitors.setDegree(i, v);
             }
-            
-            latticeComponent->setVisitors(t);
-            processor.updateVisitors(currentVisitors.comma);
+
+            processor.updateVisitors(t);
             visitorsComponent->changed = false;
         }
     }
