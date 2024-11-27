@@ -167,6 +167,11 @@ LatticesProcessor::LatticesProcessor()
         originalRefNote = defaultRefNote;
         currentRefFreq = originalRefFreq;
         currentRefNote = originalRefNote;
+
+        Visitors tv{"defgroup", defvis};
+        visitorGroups.push_back(std::move(tv));
+
+        currentVisitors = &visitorGroups[0];
         returnToOrigin();
         startTimer(1, 50);
     }
@@ -407,13 +412,13 @@ void LatticesProcessor::updateVisitors(int *v)
 {
     for (int d = 0; d < 12; ++d)
     {
-        visitor[d] = v[d];
+        currentVisitors->dimensions[d] = v[d];
         setVisitorTuning(d, v[d]);
     }
     locate();
 }
 
-void LatticesProcessor::setVisitorTuning(int d, int c)
+inline void LatticesProcessor::setVisitorTuning(int d, int c)
 {
     bool major = (d == 7 || d == 2 || d == 9 || d == 4 || d == 11 || d == 6);
 
@@ -444,6 +449,15 @@ void LatticesProcessor::setVisitorTuning(int d, int c)
         visitorTuning[d] = jim.comma(jim.twentythree, major);
         break;
     }
+}
+
+int *LatticesProcessor::selectVisitorGroup(int g)
+{
+    for (int i = 0; i < 12; ++i)
+    {
+        visitors[i] = visitorGroups[g].dimensions[i];
+    }
+    return visitors;
 }
 
 void LatticesProcessor::returnToOrigin()
@@ -599,22 +613,22 @@ void LatticesProcessor::locate()
         auto vx{0};
         auto vy{0};
 
-        if ((i == 9 || i == 4 || i == 11 || i == 6) && visitor[i] == 0)
+        if ((i == 9 || i == 4 || i == 11 || i == 6) && currentVisitors->dimensions[i] == 0)
         {
             vx = 4;
             vy = -1;
         }
-        if ((i == 5 || i == 0) && visitor[i] != 0)
+        if ((i == 5 || i == 0) && currentVisitors->dimensions[i] != 0)
         {
             vx = 4;
             vy = -1;
         }
-        if ((i == 7 || i == 2) && visitor[i] != 0)
+        if ((i == 7 || i == 2) && currentVisitors->dimensions[i] != 0)
         {
             vx = -4;
             vy = 1;
         }
-        if ((i == 1 || i == 8 || i == 3 || i == 10) && visitor[i] == 0)
+        if ((i == 1 || i == 8 || i == 3 || i == 10) && currentVisitors->dimensions[i] == 0)
         {
             vx = -4;
             vy = 1;

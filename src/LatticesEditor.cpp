@@ -48,7 +48,9 @@ void LatticesEditor::init()
     visitorsButton->setClickingTogglesState(true);
     visitorsButton->setToggleState(false, juce::dontSendNotification);
 
-    visitorsComponent = std::make_unique<VisitorsComponent>();
+    std::string bruh[1] = {"mf compile pls"};
+
+    visitorsComponent = std::make_unique<VisitorsComponent>(processor.visitors, 1, bruh);
     addAndMakeVisible(*visitorsComponent);
     visitorsComponent->setVisible(false);
 
@@ -187,7 +189,7 @@ void LatticesEditor::timerCallback(int timerID)
     {
         if (processor.changed)
         {
-            latticeComponent->update(processor.coOrds, processor.visitor);
+            latticeComponent->update(processor.coOrds, processor.currentVisitors->dimensions);
             latticeComponent->repaint();
             processor.changed = false;
         }
@@ -217,7 +219,15 @@ void LatticesEditor::timerCallback(int timerID)
             originComponent->resetFreqOnRootChange(processor.updateRoot(r));
         }
 
-        if (visitorsComponent->changed)
+        if (visitorsComponent->reselect)
+        {
+            int g = visitorsComponent->selectedGroup;
+            visitorsComponent->setGroupData(processor.selectVisitorGroup(g));
+
+            visitorsComponent->reselect = false;
+        }
+
+        if (visitorsComponent->update)
         {
             int t[12];
             for (int i = 0; i < 12; ++i)
@@ -227,7 +237,7 @@ void LatticesEditor::timerCallback(int timerID)
             }
 
             processor.updateVisitors(t);
-            visitorsComponent->changed = false;
+            visitorsComponent->update = false;
         }
     }
 }

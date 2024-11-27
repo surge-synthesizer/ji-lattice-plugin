@@ -13,11 +13,14 @@
 
 #include <algorithm>
 
+#include "Visitors.h"
+
 //==============================================================================
 struct VisitorsComponent : public juce::Component
 {
-    VisitorsComponent()
+    VisitorsComponent(int *v, int ng, std::string names[])
     {
+        numGroups = ng;
         circle.addEllipse(0, 0, diameter, diameter);
 
         juce::Colour n = juce::Colours::white.withAlpha(0.f);
@@ -26,6 +29,8 @@ struct VisitorsComponent : public juce::Component
 
         for (int i = 0; i < 12; ++i)
         {
+            dd[i] = v[i];
+
             notes.add(new juce::ShapeButton(std::to_string(i + 1), n, o, o));
             notes[i]->setShape(circle, true, true, false);
             addAndMakeVisible(notes[i]);
@@ -42,6 +47,16 @@ struct VisitorsComponent : public juce::Component
                 commas[i]->onClick = [this] { selectComma(); };
                 commas[i]->setClickingTogglesState(true);
             }
+        }
+
+        for (int g = 0; g < numGroups; ++g)
+        {
+            groups.add(new juce::ShapeButton(names[g], n, o, o));
+            groups[g]->setShape(circle, true, true, false);
+            addAndMakeVisible(groups[g]);
+            groups[g]->setRadioGroupId(3);
+            groups[g]->onClick = [this] { selectGroup(); };
+            groups[g]->setClickingTogglesState(true);
         }
 
         notes[4]->setToggleState(true, juce::dontSendNotification);
@@ -154,38 +169,24 @@ struct VisitorsComponent : public juce::Component
         }
     }
 
-    void selectNote()
+    bool update = false;
+    bool reselect = false;
+    int dd[12] = {0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1}; // Dimension of degree
+    bool madeNewGroup = false;
+    int selectedGroup = 0;
+
+    void setGroupData(int *v)
     {
         for (int i = 0; i < 12; ++i)
         {
-            if (notes[i]->getToggleState())
-            {
-                selectedNote = i;
-                commas[dd[i]]->setToggleState(true, juce::sendNotification);
-                repaint();
-                break;
-            }
+            dd[i] = v[i];
         }
+        repaint();
     }
-
-    void selectComma()
-    {
-        for (int i = 0; i < 7; ++i)
-        {
-            if (commas[i]->getToggleState())
-            {
-                dd[selectedNote] = i;
-                repaint();
-                changed = true;
-                break;
-            }
-        }
-    }
-
-    bool changed = false;
-    int dd[12] = {0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1}; // Dimension of degree
 
   private:
+    int numGroups{0};
+
     static constexpr int radius = 20;
     int diameter = 40;
 
@@ -200,6 +201,7 @@ struct VisitorsComponent : public juce::Component
 
     juce::OwnedArray<juce::ShapeButton> notes;
     juce::OwnedArray<juce::ShapeButton> commas;
+    juce::OwnedArray<juce::ShapeButton> groups;
 
     int selectedNote{-1};
 
@@ -253,5 +255,64 @@ struct VisitorsComponent : public juce::Component
         default:
             return juce::ColourGradient::horizontal(py1, py2, a);
         }
+    }
+
+    void selectNote()
+    {
+        for (int i = 0; i < 12; ++i)
+        {
+            if (notes[i]->getToggleState())
+            {
+                selectedNote = i;
+                commas[dd[i]]->setToggleState(true, juce::sendNotification);
+                repaint();
+                break;
+            }
+        }
+    }
+
+    void selectComma()
+    {
+        for (int i = 0; i < 7; ++i)
+        {
+            if (commas[i]->getToggleState())
+            {
+                dd[selectedNote] = i;
+                repaint();
+                update = true;
+                break;
+            }
+        }
+    }
+
+    void selectGroup()
+    {
+        for (int i = 0; i < numGroups; ++i)
+        {
+            if (groups[i]->getToggleState())
+            {
+                selectedGroup = i;
+                reselect = true;
+                break;
+            }
+        }
+    }
+
+    void newGroup()
+    {
+        juce::Colour n = juce::Colours::white.withAlpha(0.f);
+        juce::Colour o = juce::Colours::white.withAlpha(.15f);
+        juce::Colour d = juce::Colours::white.withAlpha(.5f);
+
+        groups.add(new juce::ShapeButton("new", n, o, o));
+        groups[numGroups]->setShape(circle, true, true, false);
+        addAndMakeVisible(groups[numGroups]);
+        groups[numGroups]->setRadioGroupId(3);
+        groups[numGroups]->onClick = [this] { selectGroup(); };
+        groups[numGroups]->setClickingTogglesState(true);
+        groups[numGroups]->setToggleState(true, juce::dontSendNotification);
+
+        ++numGroups;
+        selectGroup();
     }
 };

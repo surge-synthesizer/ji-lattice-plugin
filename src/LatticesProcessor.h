@@ -20,6 +20,7 @@
 #include <string>
 
 #include "JIMath.h"
+#include "Visitors.h"
 
 class LatticesProcessor : public juce::AudioProcessor,
                           juce::MultiTimer,
@@ -61,7 +62,8 @@ class LatticesProcessor : public juce::AudioProcessor,
     void updateFreq(double f);
     double updateRoot(int r);
     void updateVisitors(int *v);
-    void setVisitorTuning(int d, int c);
+    inline void setVisitorTuning(int d, int c);
+    int *selectVisitorGroup(int g);
     void parameterValueChanged(int parameterIndex, float newValue) override;
 
     bool registeredMTS{false};
@@ -91,7 +93,9 @@ class LatticesProcessor : public juce::AudioProcessor,
     int originalRefNote{-12};
     double originalRefFreq{-1};
 
-    int visitor[12] = {0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1};
+    int visitors[12] = {0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1};
+
+    Visitors *currentVisitors;
 
   private:
     static constexpr int maxDistance{24};
@@ -153,6 +157,8 @@ class LatticesProcessor : public juce::AudioProcessor,
 
     double visitorTuning[12] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
     int defvis[12] = {0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1};
+
+    std::vector<Visitors> visitorGroups;
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LatticesProcessor)
