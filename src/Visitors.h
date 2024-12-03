@@ -14,15 +14,18 @@
 //==============================================================================
 struct Visitors
 {
-    Visitors(std::string n, int *v) : name(n)
+    Visitors(std::string n, int *v = nullptr) : name(n)
     {
-        for (int i = 0; i < 12; ++i)
+        if (v != nullptr)
         {
-            dimensions[i] = v[i];
+            for (int i = 0; i < 12; ++i)
+            {
+                dimensions[i] = v[i];
+            }
         }
     }
 
-    int dimensions[12] = {};
+    int dimensions[12] = {0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1};
     std::string name = "";
 
     void setName(std::string n) { name = n; }

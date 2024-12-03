@@ -12,31 +12,30 @@
 #pragma once
 
 #include <algorithm>
+#include <string>
+#include <memory>
 
 #include "Visitors.h"
+#include "LatticeComponent.h"
 
 //==============================================================================
 struct VisitorsComponent : public juce::Component
 {
     VisitorsComponent(int *v, int ng, std::string names[])
     {
-        numGroups = ng;
-        circle.addEllipse(0, 0, diameter, diameter);
+        juce::Colour n{juce::Colours::transparentWhite};
+        juce::Colour o{juce::Colours::ghostwhite.withAlpha(.15f)};
 
-        juce::Colour n = juce::Colours::white.withAlpha(0.f);
-        juce::Colour o = juce::Colours::white.withAlpha(.15f);
-        juce::Colour d = juce::Colours::white.withAlpha(.5f);
+        numGroups = ng;
+
+        miniLattice = std::make_unique<lattice_t>(dd, this, 18);
+        addAndMakeVisible(*miniLattice);
+
+        circle.addEllipse(0, 0, diameter, diameter);
 
         for (int i = 0; i < 12; ++i)
         {
             dd[i] = v[i];
-
-            notes.add(new juce::ShapeButton(std::to_string(i + 1), n, o, o));
-            notes[i]->setShape(circle, true, true, false);
-            addAndMakeVisible(notes[i]);
-            notes[i]->setRadioGroupId(1);
-            notes[i]->onClick = [this] { selectNote(); };
-            notes[i]->setClickingTogglesState(true);
 
             if (i < 7)
             {
@@ -49,51 +48,43 @@ struct VisitorsComponent : public juce::Component
             }
         }
 
+        plusButton = std::make_unique<juce::TextButton>("+");
+        addAndMakeVisible(*plusButton);
+        plusButton->onClick = [this] { newGroup(); };
+
         for (int g = 0; g < numGroups; ++g)
         {
-            groups.add(new juce::ShapeButton(names[g], n, o, o));
-            groups[g]->setShape(circle, true, true, false);
+            groups.add(new juce::TextButton(std::to_string(g)));
             addAndMakeVisible(groups[g]);
             groups[g]->setRadioGroupId(3);
             groups[g]->onClick = [this] { selectGroup(); };
             groups[g]->setClickingTogglesState(true);
         }
 
-        notes[4]->setToggleState(true, juce::dontSendNotification);
-        selectedNote = 4;
         commas[1]->setToggleState(true, juce::dontSendNotification);
     }
 
     void resized() override
     {
-        int hOffs = diameter + 55;
-        int vOffs = 5;
-        int place = 0;
-        for (int i = 0; i < 12; ++i)
+        if (enabled)
         {
-            if (i == 4)
+            auto b = this->getLocalBounds();
+            miniLattice->setBounds(1, diameter, b.getWidth() - 2, diameter * 4 + 10);
+
+            for (int i = 0; i < 7; ++i)
             {
-                hOffs -= radius;
-                vOffs += diameter + 5;
-                place = 0;
+                commas[i]->setBounds(5 * (1 + i) + diameter * i, diameter * 5 + boxsize + 5,
+                                     diameter, diameter);
             }
 
-            if (i == 8)
+            for (int i = 0; i <= numGroups; ++i)
             {
-                hOffs -= radius;
-                vOffs += diameter + 5;
-                place = 0;
-            }
-
-            int n = map[i];
-
-            notes[n]->setBounds(hOffs + place, vOffs, diameter, diameter);
-
-            place += diameter + 5;
-
-            if (i < 7)
-            {
-                commas[i]->setBounds(5 * (1 + i) + diameter * i, diameter * 4, diameter, diameter);
+                if (i == numGroups)
+                {
+                    plusButton->setBounds(5 + boxsize * i, 5, boxsize, boxsize);
+                    break;
+                }
+                groups[i]->setBounds(5 + boxsize * i, 5, boxsize, boxsize);
             }
         }
     }
@@ -102,78 +93,45 @@ struct VisitorsComponent : public juce::Component
     {
         auto b = this->getLocalBounds();
 
-        g.setColour(findColour(juce::TextEditor::backgroundColourId));
+        g.setColour(menuColour);
         g.fillRect(b);
 
-        g.setColour(findColour(juce::TextEditor::outlineColourId));
-        g.drawRect(b, 3);
+        g.setColour(outlineColour);
+        g.drawRect(b, 1);
 
-        int hOffs = diameter + 55;
-        int vOffs = 5;
-        int place = 0;
-        for (int i = 0; i < 12; ++i)
+        if (enabled)
         {
-            if (i == 4)
-            {
-                hOffs -= radius;
-                vOffs += diameter + 5;
-                place = 0;
-            }
-
-            if (i == 8)
-            {
-                hOffs -= radius;
-                vOffs += diameter + 5;
-                place = 0;
-            }
-
-            int n = map[i];
-
-            int left1 = hOffs + place;
-
-            g.setColour(juce::Colours::black);
-            g.fillEllipse(left1, vOffs, diameter, diameter);
-
-            g.setGradientFill(chooseColour(dd[n], (float)left1, (float)left1 + diameter));
-            g.fillEllipse(left1, vOffs, diameter, diameter);
-
-            if (notes[n]->getToggleState())
-            {
-                g.setColour(juce::Colours::white);
-                g.drawEllipse(left1, vOffs, diameter, diameter, 3.f);
-            }
-
-            place += diameter + 5;
-
-            if (i < 7)
+            for (int i = 0; i < 7; ++i)
             {
                 int left2 = 5.f * (1 + i) + diameter * i;
 
                 g.setColour(juce::Colours::black);
-                g.fillEllipse(left2, diameter * 4, diameter, diameter);
+                g.fillEllipse(left2, diameter * 5 + boxsize + 5, diameter, diameter);
 
                 g.setGradientFill(chooseColour(i, (float)left2, (float)left2 + diameter));
-                g.fillEllipse(left2, diameter * 4, diameter, diameter);
+                g.fillEllipse(left2, diameter * 5 + boxsize + 5, diameter, diameter);
 
                 g.setColour(juce::Colours::white);
                 g.setFont(stoke);
-                g.drawFittedText(names[i], left2 + 2, diameter * 4 + 2, diameter - 4, diameter - 4,
-                                 juce::Justification::centred, 1, .05f);
+                g.drawFittedText(names[i], left2 + 2, diameter * 5 + 2 + boxsize + 5, diameter - 4,
+                                 diameter - 4, juce::Justification::centred, 1, .05f);
 
                 if (commas[i]->getToggleState())
                 {
-                    g.setColour(juce::Colours::white);
-                    g.drawEllipse(left2, diameter * 4, diameter, diameter, 3.f);
+                    g.setColour(outlineColour);
+                    g.drawEllipse(left2, diameter * 5 + boxsize + 5, diameter, diameter, 3.f);
                 }
             }
         }
     }
 
+    bool enabled = true;
     bool update = false;
     bool reselect = false;
     int dd[12] = {0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1}; // Dimension of degree
     bool madeNewGroup = false;
     int selectedGroup = 0;
+    int selectedNote{0};
 
     void setGroupData(int *v)
     {
@@ -181,6 +139,25 @@ struct VisitorsComponent : public juce::Component
         {
             dd[i] = v[i];
         }
+        resized();
+        repaint();
+
+        int idx{};
+        for (int i = 0; i < 7; ++i)
+        {
+            if (dd[selectedNote] == i)
+            {
+                idx = i;
+                break;
+            }
+        }
+        commas[idx]->setToggleState(true, juce::sendNotification);
+    }
+
+    void selectNote(int n)
+    {
+        selectedNote = n;
+        commas[dd[n]]->setToggleState(true, juce::sendNotification);
         repaint();
     }
 
@@ -189,23 +166,31 @@ struct VisitorsComponent : public juce::Component
 
     static constexpr int radius = 20;
     int diameter = 40;
+    int boxsize = 30;
 
     juce::ReferenceCountedObjectPtr<juce::Typeface> Stoke{juce::Typeface::createSystemTypefaceFor(
         LatticesBinary::Stoke_otf, LatticesBinary::Stoke_otfSize)};
 
     juce::Font stoke{juce::FontOptions(Stoke).withPointHeight(radius)};
 
-    std::array<std::string, 7> names = {"3", "5", "7", "11", "13", "13/11", "13/10"};
+    std::array<std::string, 7> names = {"3", "5", "7", "11", "13", "17", "19"};
 
     juce::Path circle;
 
     juce::OwnedArray<juce::ShapeButton> notes;
     juce::OwnedArray<juce::ShapeButton> commas;
-    juce::OwnedArray<juce::ShapeButton> groups;
 
-    int selectedNote{-1};
+    juce::OwnedArray<juce::TextButton> groups;
+    std::unique_ptr<juce::TextButton> plusButton;
 
-    const int map[12] = {9, 4, 11, 6, 5, 0, 7, 2, 1, 8, 3, 10};
+    using lattice_t = SmallLatticeComponent<VisitorsComponent>;
+    std::unique_ptr<lattice_t> miniLattice;
+
+    const int map[12] = {1, 8, 3, 10, 5, 0, 7, 2, 9, 4, 11, 6};
+    const int homes[12] = {1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1};
+
+    juce::Colour menuColour{.475f, .5f, 0.2f, 1.f};
+    juce::Colour outlineColour{juce::Colours::ghostwhite};
 
     const juce::Colour py1{.5f, .51f, .3f, 1.f};
     const juce::Colour py2{.5277778f, .79f, .41f, .25f};
@@ -257,20 +242,6 @@ struct VisitorsComponent : public juce::Component
         }
     }
 
-    void selectNote()
-    {
-        for (int i = 0; i < 12; ++i)
-        {
-            if (notes[i]->getToggleState())
-            {
-                selectedNote = i;
-                commas[dd[i]]->setToggleState(true, juce::sendNotification);
-                repaint();
-                break;
-            }
-        }
-    }
-
     void selectComma()
     {
         for (int i = 0; i < 7; ++i)
@@ -278,6 +249,7 @@ struct VisitorsComponent : public juce::Component
             if (commas[i]->getToggleState())
             {
                 dd[selectedNote] = i;
+                miniLattice->updateDegree(selectedNote, i);
                 repaint();
                 update = true;
                 break;
@@ -300,18 +272,14 @@ struct VisitorsComponent : public juce::Component
 
     void newGroup()
     {
-        juce::Colour n = juce::Colours::white.withAlpha(0.f);
-        juce::Colour o = juce::Colours::white.withAlpha(.15f);
-        juce::Colour d = juce::Colours::white.withAlpha(.5f);
-
-        groups.add(new juce::ShapeButton("new", n, o, o));
-        groups[numGroups]->setShape(circle, true, true, false);
+        groups.add(new juce::TextButton(std::to_string(numGroups)));
         addAndMakeVisible(groups[numGroups]);
         groups[numGroups]->setRadioGroupId(3);
         groups[numGroups]->onClick = [this] { selectGroup(); };
         groups[numGroups]->setClickingTogglesState(true);
         groups[numGroups]->setToggleState(true, juce::dontSendNotification);
 
+        madeNewGroup = true;
         ++numGroups;
         selectGroup();
     }

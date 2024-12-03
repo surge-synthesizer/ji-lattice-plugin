@@ -24,7 +24,6 @@ LatticesEditor::LatticesEditor(LatticesProcessor &p) : juce::AudioProcessorEdito
 
     if (p.registeredMTS)
     {
-        startTimer(0, 5);
         init();
     }
     else
@@ -42,65 +41,16 @@ LatticesEditor::~LatticesEditor() {}
 
 void LatticesEditor::init()
 {
-    visitorsButton = std::make_unique<juce::TextButton>("Visitors");
-    addAndMakeVisible(*visitorsButton);
-    visitorsButton->onClick = [this] { showVisitorsMenu(); };
-    visitorsButton->setClickingTogglesState(true);
-    visitorsButton->setToggleState(false, juce::dontSendNotification);
-
-    std::string bruh[1] = {"mf compile pls"};
-
-    visitorsComponent = std::make_unique<VisitorsComponent>(processor.visitors, 1, bruh);
-    addAndMakeVisible(*visitorsComponent);
-    visitorsComponent->setVisible(false);
-
-    midiButton = std::make_unique<juce::TextButton>("MIDI Settings");
-    addAndMakeVisible(*midiButton);
-    midiButton->onClick = [this] { showMidiMenu(); };
-    midiButton->setClickingTogglesState(true);
-    midiButton->setToggleState(false, juce::dontSendNotification);
-
-    midiComponent = std::make_unique<MIDIMenuComponent>(
-        processor.shiftCCs[0], processor.shiftCCs[1], processor.shiftCCs[2], processor.shiftCCs[3],
-        processor.shiftCCs[4], processor.listenOnChannel);
-    addAndMakeVisible(*midiComponent);
-    midiComponent->setVisible(false);
-
-    tuningButton = std::make_unique<juce::TextButton>("Tuning Settings");
-    addAndMakeVisible(*tuningButton);
-    tuningButton->onClick = [this] { showTuningMenu(); };
-    tuningButton->setClickingTogglesState(true);
-    tuningButton->setToggleState(false, juce::dontSendNotification);
-
-    modeComponent = std::make_unique<ModeComponent>(processor.mode);
-    addAndMakeVisible(*modeComponent);
-    modeComponent->setVisible(false);
-
-    originComponent =
-        std::make_unique<OriginComponent>(processor.originalRefNote, processor.originalRefFreq);
-    addAndMakeVisible(*originComponent);
-    originComponent->setVisible(false);
+    menuComponent = std::make_unique<MenuBarComponent>(processor);
+    addAndMakeVisible(*menuComponent);
 
     auto b = this->getLocalBounds();
 
-    midiButton->setBounds(10, b.getBottom() - 40, 120, 30);
-    midiComponent->setBounds(10, b.getBottom() - 155 - 30 - 10, 120, 155);
-
-    tuningButton->setBounds(b.getRight() - 216 - 10, b.getBottom() - 40, 216, 30);
-    modeComponent->setBounds(b.getRight() - 216 - 10, b.getBottom() - 180 - 40, 216, 90);
-    originComponent->setBounds(b.getRight() - 216 - 10, b.getBottom() - 95 - 40, 216, 95);
-
-    visitorsButton->setBounds(10, 10, 120, 30);
-    visitorsComponent->setBounds(10, 40, 330, 220);
-
+    startTimer(0, 5);
     inited = true;
 }
 
-void LatticesEditor::paint(juce::Graphics &g)
-{
-    // (Our component is opaque, so we must completely fill the background with a solid colour)
-    g.fillAll(backgroundColour);
-}
+void LatticesEditor::paint(juce::Graphics &g) { g.fillAll(backgroundColour); }
 
 void LatticesEditor::idle() {}
 
@@ -111,66 +61,12 @@ void LatticesEditor::resized()
 
     if (inited)
     {
-        midiButton->setBounds(10, b.getBottom() - 40, 120, 30);
-        midiComponent->setBounds(10, b.getBottom() - 155 - 30 - 10, 120, 155);
-
-        tuningButton->setBounds(b.getRight() - 216 - 10, b.getBottom() - 40, 216, 30);
-        modeComponent->setBounds(b.getRight() - 216 - 10, b.getBottom() - 180 - 40, 216, 90);
-        originComponent->setBounds(b.getRight() - 216 - 10, b.getBottom() - 95 - 40, 216, 95);
-
-        visitorsButton->setBounds(10, 10, 125, 30);
-        visitorsComponent->setBounds(10, 40, 330, 220);
+        menuComponent->setBounds(b);
     }
     else
     {
-        warningComponent->setBounds(375, 175, 200, 200);
+        warningComponent->setBounds((width / 2) - 100, (height / 2) - 100, 200, 200);
     }
-}
-
-void LatticesEditor::showMidiMenu()
-{
-    bool show = midiButton->getToggleState();
-    midiComponent->setVisible(show);
-
-    if (show)
-    {
-        midiButton->setConnectedEdges(4);
-    }
-    else
-    {
-        midiButton->setConnectedEdges(!4);
-    }
-}
-
-void LatticesEditor::showTuningMenu()
-{
-    bool show = tuningButton->getToggleState();
-    originComponent->setVisible(show);
-    modeComponent->setVisible(show);
-
-    if (show)
-    {
-        tuningButton->setConnectedEdges(4);
-    }
-    else
-    {
-        tuningButton->setConnectedEdges(!4);
-    }
-}
-
-void LatticesEditor::showVisitorsMenu()
-{
-    bool show = visitorsButton->getToggleState();
-    visitorsComponent->setVisible(show);
-
-    //    if (show)
-    //    {
-    //        visitorsButton->setConnectedEdges(0);
-    //    }
-    //    else
-    //    {
-    //        visitorsButton->setConnectedEdges(!0);
-    //    }
 }
 
 void LatticesEditor::timerCallback(int timerID)
@@ -181,63 +77,81 @@ void LatticesEditor::timerCallback(int timerID)
         {
             warningComponent->setVisible(false);
             warningComponent->setEnabled(false);
+            stopTimer(1);
             init();
         }
     }
 
     if (timerID == 0)
     {
+        if (menuComponent->visC->isVisible())
+        {
+            processor.editingVisitors = true;
+        }
+        else
+        {
+            processor.editingVisitors = false;
+        }
+
         if (processor.changed)
         {
             latticeComponent->update(processor.coOrds, processor.currentVisitors->dimensions);
             latticeComponent->repaint();
+
             processor.changed = false;
         }
 
-        if (modeComponent->modeChanged)
+        if (menuComponent->modeC->modeChanged)
         {
-            processor.modeSwitch(modeComponent->whichMode());
-            modeComponent->modeChanged = false;
+            processor.modeSwitch(menuComponent->modeC->whichMode());
+            menuComponent->modeC->modeChanged = false;
         }
 
-        if (midiComponent->settingChanged)
+        if (menuComponent->midiC->settingChanged)
         {
-            processor.updateMIDI(midiComponent->data[0], midiComponent->data[1],
-                                 midiComponent->data[2], midiComponent->data[3],
-                                 midiComponent->data[4], midiComponent->midiChannel);
+            processor.updateMIDI(menuComponent->midiC->data[0], menuComponent->midiC->data[1],
+                                 menuComponent->midiC->data[2], menuComponent->midiC->data[3],
+                                 menuComponent->midiC->data[4], menuComponent->midiC->midiChannel);
         }
 
-        if (originComponent->freqChanged)
+        if (menuComponent->originC->freqChanged)
         {
-            processor.updateFreq(originComponent->whatFreq);
-            originComponent->freqChanged = false;
+            processor.updateFreq(menuComponent->originC->whatFreq);
+            menuComponent->originC->freqChanged = false;
         }
 
-        if (originComponent->rootChanged)
+        if (menuComponent->originC->rootChanged)
         {
-            int r = originComponent->whichNote();
-            originComponent->resetFreqOnRootChange(processor.updateRoot(r));
+            int r = menuComponent->originC->whichNote();
+            menuComponent->originC->resetFreqOnRootChange(processor.updateRoot(r));
+            // Updates root in processor, and returns the frequency the note previously
+            // had, which is fed back to the originComponent so it can update its readout
         }
 
-        if (visitorsComponent->reselect)
+        if (menuComponent->visC->reselect)
         {
-            int g = visitorsComponent->selectedGroup;
-            visitorsComponent->setGroupData(processor.selectVisitorGroup(g));
-
-            visitorsComponent->reselect = false;
-        }
-
-        if (visitorsComponent->update)
-        {
-            int t[12];
-            for (int i = 0; i < 12; ++i)
+            if (menuComponent->visC->madeNewGroup)
             {
-                int v = visitorsComponent->dd[i];
-                t[i] = v;
+                processor.newVisitorGroup();
+                menuComponent->visC->madeNewGroup = false;
             }
+            else
+            {
+                int g = menuComponent->visC->selectedGroup;
+                // updates processor and returns the array of the selected groups values,
+                // so the visitorComponent can update itself
+                menuComponent->visC->setGroupData(processor.selectVisitorGroup(g));
+                menuComponent->visC->reselect = false;
+            }
+        }
 
-            processor.updateVisitors(t);
-            visitorsComponent->update = false;
+        if (menuComponent->visC->update)
+        {
+            int d = menuComponent->visC->selectedNote;
+            int v = menuComponent->visC->dd[d];
+
+            processor.updateVisitor(d, v);
+            menuComponent->visC->update = false;
         }
     }
 }

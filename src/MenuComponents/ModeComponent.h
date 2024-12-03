@@ -52,7 +52,7 @@ struct ModeComponent : public juce::ToggleButton
     {
         g.setColour(bg);
         g.fillRect(this->getLocalBounds());
-        g.setColour(juce::Colours::lightgrey);
+        g.setColour(juce::Colours::ghostwhite);
         g.drawRect(this->getLocalBounds());
     }
 
@@ -72,7 +72,7 @@ struct ModeComponent : public juce::ToggleButton
     bool modeChanged = false;
 
   private:
-    juce::Colour bg = findColour(juce::TextEditor::backgroundColourId);
+    juce::Colour bg{.475f, .5f, 0.2f, 1.f};
 
     juce::TextButton duodeneButton{"Duodene"};
     juce::TextButton syntonicButton{"Syntonic"};

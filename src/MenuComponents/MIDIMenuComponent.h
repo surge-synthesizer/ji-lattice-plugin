@@ -24,7 +24,7 @@ struct MIDIMenuComponent : public juce::Component
         data[3] = sCC;
         data[4] = hCC;
         midiChannel = C;
-
+        
         addAndMakeVisible(westLabel);
         westLabel.setJustificationType(juce::Justification::left);
         westLabel.setColour(juce::Label::backgroundColourId, bg);
@@ -183,8 +183,8 @@ struct MIDIMenuComponent : public juce::Component
     juce::Label channelLabel{{}, "Channel"};
 
     //    juce::Colour noColour{};
-    juce::Colour bg = findColour(juce::TextEditor::backgroundColourId);
-    juce::Colour ol = findColour(juce::TextEditor::outlineColourId);
+    juce::Colour bg{.475f, .5f, 0.2f, 1.f};
+    juce::Colour ol{juce::Colours::ghostwhite};
     juce::Range<int> noRange{};
 
     bool rejectBadInput(int input, bool channel = false)

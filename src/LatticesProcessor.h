@@ -16,7 +16,6 @@
 #include <set>
 #include <atomic>
 #include <cmath>
-#include <iostream>
 #include <string>
 
 #include "JIMath.h"
@@ -61,9 +60,10 @@ class LatticesProcessor : public juce::AudioProcessor,
     void updateMIDI(int wCC, int eCC, int nCC, int sCC, int hCC, int C);
     void updateFreq(double f);
     double updateRoot(int r);
-    void updateVisitors(int *v);
-    inline void setVisitorTuning(int d, int c);
+    void updateVisitor(int d, int v);
+    inline void setVisitorTuning(int d, int v);
     int *selectVisitorGroup(int g);
+    void newVisitorGroup();
     void parameterValueChanged(int parameterIndex, float newValue) override;
 
     bool registeredMTS{false};
@@ -93,17 +93,43 @@ class LatticesProcessor : public juce::AudioProcessor,
     int originalRefNote{-12};
     double originalRefFreq{-1};
 
-    int visitors[12] = {0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1};
-
     Visitors *currentVisitors;
+    int numVisitorGroups{0};
+    std::atomic<bool> editingVisitors{false};
 
   private:
     static constexpr int maxDistance{24};
     static constexpr int defaultRefNote{0};
     static constexpr double defaultRefFreq{261.6255653005986};
 
-    juce::AudioParameterInt *xParam;
-    juce::AudioParameterInt *yParam;
+    juce::AudioParameterFloat *xParam;
+    juce::AudioParameterFloat *yParam;
+    juce::AudioParameterFloat *vParam;
+
+    // these are defined here lest the string functions at the bottom
+    // throw an annoying "lambda not defined" warning
+    inline double toParam(int input, bool v = false)
+    {
+        if (v)
+        {
+            return static_cast<double>(input) / numVisitorGroups;
+        }
+        else
+        {
+            return static_cast<double>(input + maxDistance) / (2.0 * maxDistance);
+        }
+    }
+    inline int fromParam(double input, bool v = false)
+    {
+        if (v)
+        {
+            return static_cast<int>(std::round(input * numVisitorGroups));
+        }
+        else
+        {
+            return static_cast<int>(std::round((input - 0.5) * 2 * maxDistance));
+        }
+    }
 
     JIMath jim;
 
@@ -127,9 +153,6 @@ class LatticesProcessor : public juce::AudioProcessor,
 
     void updateTuning();
 
-    inline float GNV(int input);
-    // GetNormValue... I was getting nonsense from JUCE param one
-
     double ratios[12] = {};
     double freqs[128]{};
 
@@ -152,13 +175,144 @@ class LatticesProcessor : public juce::AudioProcessor,
                       (double)16 / 9,
                       (double)243 / 128};
 
-    bool hold[5] = {};
-    bool wait[5] = {};
-
-    double visitorTuning[12] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
-    int defvis[12] = {0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1};
+    bool hold[6] = {};
+    bool wait[6] = {};
 
     std::vector<Visitors> visitorGroups;
+    double visitorTuning[12] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+
+    const juce::AudioParameterFloatAttributes distanceReadoutX =
+        juce::AudioParameterFloatAttributes{}
+            .withStringFromValueFunction(
+                [this](float value, int maximumStringLength) -> juce::String
+                {
+                    int v = fromParam(value);
+
+                    juce::String dir{};
+                    if (v == 0)
+                    {
+                        dir = "Home";
+                        return dir;
+                    }
+
+                    if (v == 1)
+                    {
+                        dir = "1 Step East";
+                        return dir;
+                    }
+                    else if (v == -1)
+                    {
+                        dir = "1 Step West";
+                        return dir;
+                    }
+
+                    dir = std::to_string(std::abs(v)) + ((v > 1) ? " Steps East" : " Steps West");
+                    return dir;
+                })
+            .withValueFromStringFunction(
+                [this](juce::String str)
+                {
+                    if (str == "Home")
+                    {
+                        return 0.5;
+                    }
+
+                    if (str == "1 Step East")
+                    {
+                        return toParam(1);
+                    }
+
+                    if (str == "1 Step West")
+                    {
+                        return toParam(-1);
+                    }
+
+                    double res{};
+                    if (str.endsWith("East"))
+                    {
+                        str = str.trimCharactersAtEnd(" Steps East");
+                        res = toParam(str.getIntValue());
+                    }
+
+                    if (str.endsWith("East"))
+                    {
+                        str = str.trimCharactersAtEnd(" Steps West");
+                        res = toParam(str.getIntValue());
+                        res *= -1;
+                    }
+
+                    return res;
+                });
+
+    const juce::AudioParameterFloatAttributes distanceReadoutY =
+        juce::AudioParameterFloatAttributes{}
+            .withStringFromValueFunction(
+                [this](float value, int maximumStringLength) -> juce::String
+                {
+                    int v = fromParam(value);
+
+                    juce::String dir{};
+                    if (v == 0)
+                    {
+                        dir = "Home";
+                        return dir;
+                    }
+                    if (v == 1)
+                    {
+                        dir = "1 Step North";
+                        return dir;
+                    }
+                    else if (v == -1)
+                    {
+                        dir = "1 Step South";
+                        return dir;
+                    }
+
+                    dir = std::to_string(std::abs(v)) + ((v > 1) ? " Steps North" : " Steps South");
+                    return dir;
+                })
+            .withValueFromStringFunction(
+                [this](juce::String str)
+                {
+                    if (str == "Home")
+                    {
+                        return 0.5;
+                    }
+
+                    if (str == "1 Step North")
+                    {
+                        return toParam(1);
+                    }
+
+                    if (str == "1 Step South")
+                    {
+                        return toParam(-1);
+                    }
+
+                    double res{};
+                    if (str.endsWith("North"))
+                    {
+                        str = str.trimCharactersAtEnd(" Steps North");
+                        res = toParam(str.getIntValue());
+                        return res;
+                    }
+
+                    if (str.endsWith("South"))
+                    {
+                        str = str.trimCharactersAtEnd(" Steps South");
+                        res = toParam(str.getIntValue());
+                        res *= -1;
+                    }
+
+                    return res;
+                });
+
+    const juce::AudioParameterFloatAttributes visitorsReadout =
+        juce::AudioParameterFloatAttributes{}
+            .withStringFromValueFunction(
+                [this](float value, int maximumStringLength) -> juce::String
+                { return "nobody here"; })
+            .withValueFromStringFunction([this](juce::String str) { return 0; });
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LatticesProcessor)

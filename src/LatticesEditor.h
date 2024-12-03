@@ -18,10 +18,7 @@
 #include "LatticesProcessor.h"
 #include "JIMath.h"
 #include "LatticeComponent.h"
-#include "ModeComponent.h"
-#include "MIDIMenuComponent.h"
-#include "OriginComponent.h"
-#include "VisitorsComponent.h"
+#include "MenuComponents/MenuBarComponent.h"
 #include "MTSWarningComponent.h"
 
 //==============================================================================
@@ -53,23 +50,14 @@ class LatticesEditor : public juce::AudioProcessorEditor, juce::MultiTimer
     static constexpr int width{1100};
     static constexpr int height{580};
 
-    //    melatonin::Inspector inspector{*this};
+    // melatonin::Inspector inspector{*this};
 
-    juce::Colour backgroundColour = juce::Colour{.5f, .5f, 0.f, 1.f};
+    juce::Colour backgroundColour = juce::Colour{.475f, 1.f, 0.05f, 1.f};
 
     std::unique_ptr<LatticeComponent> latticeComponent;
-
-    std::unique_ptr<juce::TextButton> tuningButton;
-    std::unique_ptr<OriginComponent> originComponent;
-    std::unique_ptr<ModeComponent> modeComponent;
-
-    std::unique_ptr<juce::TextButton> midiButton;
-    std::unique_ptr<MIDIMenuComponent> midiComponent;
-
     std::unique_ptr<MTSWarningComponent> warningComponent;
 
-    std::unique_ptr<juce::TextButton> visitorsButton;
-    std::unique_ptr<VisitorsComponent> visitorsComponent;
+    std::unique_ptr<MenuBarComponent> menuComponent;
 
     void init();
     bool inited{false};
