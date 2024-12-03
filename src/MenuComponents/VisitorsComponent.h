@@ -69,7 +69,7 @@ struct VisitorsComponent : public juce::Component
         if (enabled)
         {
             auto b = this->getLocalBounds();
-            miniLattice->setBounds(1, diameter, b.getWidth() - 2, diameter * 4 + 10);
+            miniLattice->setBounds(1, diameter, b.getWidth() - 2, diameter * 4.5);
 
             for (int i = 0; i < 7; ++i)
             {
@@ -158,6 +158,7 @@ struct VisitorsComponent : public juce::Component
     {
         selectedNote = n;
         commas[dd[n]]->setToggleState(true, juce::sendNotification);
+        miniLattice->selectedDegree = n;
         repaint();
     }
 

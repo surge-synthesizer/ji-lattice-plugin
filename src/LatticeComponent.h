@@ -127,8 +127,8 @@ struct LatticeComponent : juce::Component
                     e.addEllipse(x - ellipseRadius, y - JIRadius, 2 * ellipseRadius, 2 * JIRadius);
                     // And their shadows
                     juce::Path b{};
-                    b.addEllipse(x - ellipseRadius - 1.5, y - JIRadius - 1.5, 2 * ellipseRadius + 3,
-                                 2 * JIRadius + 3);
+                    b.addEllipse(x - ellipseRadius - shadowSpacing1, y - JIRadius - shadowSpacing1, 2 * ellipseRadius + shadowSpacing2,
+                                 2 * JIRadius + shadowSpacing2);
 
                     // Select gradient colour
                     bool uni = ((w + (v * 4)) % 12 == 0) ? true : false;
@@ -173,6 +173,8 @@ struct LatticeComponent : juce::Component
   protected:
     int JIRadius{26};
     int ellipseRadius = JIRadius * 1.15;
+    int shadowSpacing1 = JIRadius / 20;
+    int shadowSpacing2 = JIRadius / 10;
     JIMath jim;
 
     juce::ReferenceCountedObjectPtr<juce::Typeface> Stoke{juce::Typeface::createSystemTypefaceFor(
@@ -477,8 +479,8 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
                     bool hLit = calcDist(H) == 0;
                     bool uLit = calcDist(U) == 0;
                     bool dLit = calcDist(D) == 0;
-                    float alpha{1.f};
-
+                    float alpha = .9f;
+                    
                     if (hLit) // Horizontal Line
                     {
                         lG.setColour(juce::Colours::ghostwhite.withAlpha(alpha));
@@ -508,21 +510,31 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
                     // And their shadows
                     // TODO: make these dependent on constructor size
                     juce::Path b{};
-                    b.addEllipse(x - ellipseRadius - 1.5, y - JIRadius - 1.5, 2 * ellipseRadius + 3,
-                                 2 * JIRadius + 3);
+                    b.addEllipse(x - ellipseRadius - shadowSpacing1, y - JIRadius - shadowSpacing1, 2 * ellipseRadius + shadowSpacing2,
+                                 2 * JIRadius + shadowSpacing2);
 
                     // Select gradient colour
                     bool uni = ((w + (v * 4)) % 12 == 0) ? true : false;
                     auto gradient =
                         chooseColour(std::abs(v), x, y, (dist == 0), visitor[degree], uni);
-
-                    whiteShadow.render(sG, e);
-                    blackShadow.render(sG, b);
-                    sG.setColour(juce::Colours::black);
+                    
+                    
+                    if (degree == selectedDegree)
+                    {
+                        selectedHighlight.render(sG, b);
+                    }
+                    else
+                    {
+                        whiteShadow.render(sG, e);
+                        blackShadow.render(sG, b);
+                    }
+                    sG.setColour(juce::Colours::black.withAlpha(1.f));
                     sG.fillPath(b);
+                    alpha = (degree == selectedDegree) ? 1.f : .85f;
+                    gradient.multiplyOpacity(alpha);
                     sG.setGradientFill(gradient);
                     sG.fillPath(e);
-                    sG.setColour(juce::Colours::ghostwhite);
+                    sG.setColour(juce::Colours::ghostwhite.withAlpha(alpha));
                     sG.drawEllipse(x - ellipseRadius, y - JIRadius, 2 * ellipseRadius, 2 * JIRadius,
                                    3);
 
@@ -544,11 +556,16 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
         g.drawImageAt(Lines, 0, 0, false);
         g.drawImageAt(Spheres, 0, 0, false);
     }
+    
+    int selectedDegree{0};
 
   protected:
     buttonUser *buttonParent;
     juce::Path circleShape;
     juce::OwnedArray<juce::ShapeButton> buttons;
+    
+    melatonin::DropShadow selectedHighlight = {juce::Colours::ghostwhite, 18};
+    
 
     std::pair<int, int> initCo[12]{{0, 0}, {-1, -1}, {2, 0},  {1, -1}, {0, 1},  {-1, 0},
                                    {2, 1}, {1, 0},   {0, -1}, {-1, 1}, {2, -1}, {1, 1}};

@@ -94,17 +94,19 @@ struct MenuBarComponent : juce::Component
     {
         auto b = this->getLocalBounds();
 
+        visButton->setBounds(visRect);
+        visC->setBounds(0, 30, 600, 300);
+        
         originButton->setBounds(originRect);
-        originC->setBounds(0, 30, 240, 95);
+        originC->setBounds(600, 30, 240, 95);
 
         midiButton->setBounds(midiRect);
-        midiC->setBounds(240, 30, 120, 155);
+        midiC->setBounds(840, 30, 120, 155);
 
         modeButton->setBounds(modeRect);
-        modeC->setBounds(360, 30, 120, 90);
+        modeC->setBounds(960, 30, 120, 90);
 
-        visButton->setBounds(visRect);
-        visC->setBounds(480, 30, 500, 320);
+
     }
 
     void paint(juce::Graphics &g) override
@@ -154,10 +156,11 @@ struct MenuBarComponent : juce::Component
     juce::Colour menuColour{.475f, .5f, 0.2f, 1.f};
     juce::Colour onColour{.975f, .5f, 0.3f, 1.f};
 
-    juce::Rectangle<int> originRect{0, 0, 240, 30};
-    juce::Rectangle<int> midiRect{240, 0, 120, 30};
-    juce::Rectangle<int> modeRect{360, 0, 120, 30};
-    juce::Rectangle<int> visRect{480, 0, 500, 30};
+    juce::Rectangle<int> visRect{0, 0, 600, 30};
+    juce::Rectangle<int> originRect{600, 0, 240, 30};
+    juce::Rectangle<int> midiRect{840, 0, 120, 30};
+    juce::Rectangle<int> modeRect{960, 0, 120, 30};
+   
 
     std::unique_ptr<juce::ShapeButton> originButton;
     std::unique_ptr<juce::ShapeButton> midiButton;
