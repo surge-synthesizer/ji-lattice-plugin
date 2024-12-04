@@ -83,8 +83,13 @@ void LatticesEditor::timerCallback(int timerID)
 
     if (timerID == 0)
     {
-        menuComponent->visC->setEnabled(menuComponent->visC->isVisible());
-        processor.editingVisitors = menuComponent->visC->isVisible();
+        bool edvi = menuComponent->visC->isVisible();
+        menuComponent->visC->setEnabled(edvi);
+        if (processor.editingVisitors != edvi)
+        {
+            int g = menuComponent->visC->selectedGroup;
+            processor.editVisitors(edvi, g);
+        }
         latticeComponent->setEnabled(!menuComponent->visC->isVisible());
         latticeComponent->repaint();
 
@@ -96,15 +101,22 @@ void LatticesEditor::timerCallback(int timerID)
             processor.changed = false;
         }
 
-        if (menuComponent->modeC->modeChanged)
+        if (menuComponent->settingsC->modeChanged)
         {
-            processor.modeSwitch(menuComponent->modeC->whichMode());
-            menuComponent->modeC->modeChanged = false;
+            processor.modeSwitch(menuComponent->settingsC->whichMode());
+            menuComponent->settingsC->modeChanged = false;
         }
 
-        if (menuComponent->midiC->settingChanged)
+        if (menuComponent->settingsC->settingChanged)
         {
-            processor.updateMIDI(menuComponent->midiC->homeCC, menuComponent->midiC->midiChannel);
+            processor.updateMIDI(menuComponent->settingsC->homeCC,
+                                 menuComponent->settingsC->midiChannel);
+        }
+
+        if (menuComponent->settingsC->distanceChanged)
+        {
+            processor.updateDistance(menuComponent->settingsC->maxDistance);
+            menuComponent->settingsC->distanceChanged = false;
         }
 
         if (menuComponent->originC->freqChanged)

@@ -33,7 +33,6 @@ LatticesProcessor::LatticesProcessor()
     numVisitorGroups = 1;
     Visitors dg{"Nobody Here"};
     visitorGroups.push_back(std::move(dg));
-    selVisG = 0;
     currentVisitors = &visitorGroups[0];
 
     if (MTS_CanRegisterMaster())
@@ -109,9 +108,6 @@ void LatticesProcessor::getStateInformation(juce::MemoryBlock &destData)
     xml->setAttribute("yp", Y);
     xml->setAttribute("vp", V);
 
-    if (numVisitorGroups != visitorGroups.size())
-        numVisitorGroups = visitorGroups.size();
-
     xml->setAttribute("nvg", numVisitorGroups);
 
     if (numVisitorGroups > 1) // no need to store number 0 since it's the default
@@ -132,11 +128,10 @@ void LatticesProcessor::getStateInformation(juce::MemoryBlock &destData)
                 xml->setAttribute(b, i);
             }
         }
-
-        auto selG = juce::String("selG");
-        int selIdx = selVisG;
-        xml->setAttribute(selG, selIdx);
     }
+
+    xml->setAttribute("md", maxDistance);
+
     copyXmlToBinary(*xml, destData);
 }
 
@@ -165,13 +160,13 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
             originalRefNote = xmlState->getIntAttribute("note");
             originalRefFreq = xmlState->getDoubleAttribute("freq");
 
+            maxDistance = xmlState->getIntAttribute("md");
+
             int tx = xmlState->getIntAttribute("xp");
             int ty = xmlState->getIntAttribute("yp");
-            int tv = xmlState->getIntAttribute("vp");
 
             float X = toParam(tx);
             float Y = toParam(ty);
-            float V = toParam(tv, true);
 
             xParam->beginChangeGesture();
             xParam->setValueNotifyingHost(X);
@@ -179,9 +174,6 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
             yParam->beginChangeGesture();
             yParam->setValueNotifyingHost(Y);
             yParam->endChangeGesture();
-            vParam->beginChangeGesture();
-            vParam->setValueNotifyingHost(V);
-            vParam->endChangeGesture();
 
             numVisitorGroups = xmlState->getIntAttribute("nvg");
 
@@ -206,11 +198,14 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
                     hold.emplace_back(false);
                     wait.emplace_back(false);
                 }
-                //                auto selG = juce::String("selG");
-                //
-                //                int selIdx = xmlState->getIntAttribute(selG);
-                //                currentVisitors = &visitorGroups[selIdx];
             }
+
+            int tv = xmlState->getIntAttribute("vp");
+            float V = toParam(tv, true);
+
+            vParam->beginChangeGesture();
+            vParam->setValueNotifyingHost(V);
+            vParam->endChangeGesture();
 
             locate();
         }
@@ -234,6 +229,65 @@ void LatticesProcessor::processBlock(juce::AudioBuffer<float> &buffer,
     for (const auto metadata : midiMessages)
     {
         respondToMidi(metadata.getMessage());
+    }
+}
+
+void LatticesProcessor::respondToMidi(const juce::MidiMessage &m)
+{
+    if (editingVisitors)
+        return;
+
+    if (m.isController() && m.getChannel() == listenOnChannel)
+    {
+        auto num = m.getControllerNumber();
+        auto val = m.getControllerValue();
+
+        int numCCs = 5 + numVisitorGroups - 1;
+
+        for (int i = 0; i < 5; ++i)
+        {
+            if (num == homeCC + i)
+            {
+                if (val == 127 && hold[i] == false)
+                {
+                    shift(i);
+                    hold[i] = true;
+                }
+
+                if (val < 127 && hold[i] == true)
+                {
+                    wait[i] = true;
+                }
+            }
+        }
+
+        for (int i = 5; i < numCCs; ++i)
+        {
+            if (num == homeCC + i)
+            {
+                if (val == 127 && hold[i] == false)
+                {
+                    int cv = fromParam(vParam->get(), true);
+                    int nv = num - homeCC - 4;
+
+                    if (cv == nv)
+                    {
+                        vParam->setValueNotifyingHost(0);
+                    }
+                    else
+                    {
+                        vParam->setValueNotifyingHost(toParam(nv, true));
+                    }
+
+                    hold[i] = true;
+                }
+
+                if (val < 127 && hold[i] == true)
+                {
+                    wait[i] = true;
+                }
+            }
+        }
     }
 }
 
@@ -346,6 +400,50 @@ double LatticesProcessor::updateRoot(int r)
     return nf;
 }
 
+void LatticesProcessor::updateDistance(int dist)
+{
+    maxDistance = dist;
+    returnToOrigin();
+    updateHostDisplay(juce::AudioProcessor::ChangeDetails().withNonParameterStateChanged(true));
+}
+
+void LatticesProcessor::editVisitors(bool editing, int g)
+{
+    editingVisitors = editing;
+
+    if (editing)
+    {
+        priorSelectedGroup = fromParam(vParam->get());
+        selectVisitorGroup(g);
+    }
+    else
+    {
+        vParam->setValueNotifyingHost(toParam(priorSelectedGroup));
+        changed = true;
+    }
+}
+
+int *LatticesProcessor::selectVisitorGroup(int g)
+{
+    currentVisitors = &visitorGroups[g];
+
+    float v = toParam(g, true);
+    vParam->setValueNotifyingHost(v);
+
+    return currentVisitors->dimensions;
+}
+
+void LatticesProcessor::newVisitorGroup()
+{
+    Visitors ng{"new"};
+    visitorGroups.push_back(std::move(ng));
+    hold.emplace_back(false);
+    wait.emplace_back(false);
+    ++numVisitorGroups;
+    float v = toParam(numVisitorGroups - 1, true);
+    vParam->setValueNotifyingHost(v);
+}
+
 void LatticesProcessor::updateVisitor(int d, int v)
 {
     currentVisitors->dimensions[d] = v;
@@ -387,35 +485,6 @@ inline void LatticesProcessor::setVisitorTuning(int d, int v)
     }
 }
 
-int *LatticesProcessor::selectVisitorGroup(int g)
-{
-    selVisG = g;
-    currentVisitors = &visitorGroups[selVisG];
-
-    float v = toParam(g, true);
-    vParam->setValueNotifyingHost(v);
-
-    return currentVisitors->dimensions;
-}
-
-void LatticesProcessor::newVisitorGroup()
-{
-    Visitors ng{"new"};
-    visitorGroups.push_back(std::move(ng));
-
-    selVisG = numVisitorGroups;
-
-    float v = toParam(selVisG, true);
-    vParam->setValueNotifyingHost(v);
-
-    currentVisitors = &visitorGroups[selVisG];
-
-    ++numVisitorGroups;
-    hold.emplace_back(false);
-    wait.emplace_back(false);
-    changed = true;
-}
-
 void LatticesProcessor::returnToOrigin()
 {
     currentRefNote = originalRefNote;
@@ -442,63 +511,21 @@ void LatticesProcessor::returnToOrigin()
     updateTuning();
 }
 
-void LatticesProcessor::respondToMidi(const juce::MidiMessage &m)
+void LatticesProcessor::parameterValueChanged(int parameterIndex, float newValue)
 {
-    if (m.isController() && m.getChannel() == listenOnChannel)
+    if (parameterIndex == 2)
     {
-        auto num = m.getControllerNumber();
-        auto val = m.getControllerValue();
+        int vis = fromParam(vParam->get(), true);
+        currentVisitors = &visitorGroups[vis];
 
-        int numCCs = 5 + numVisitorGroups - 1;
-
-        for (int i = 0; i < 5; ++i)
+        for (int d = 0; d < 12; ++d)
         {
-            if (num == homeCC + i)
-            {
-                if (val == 127 && hold[i] == false)
-                {
-                    shift(i);
-                    hold[i] = true;
-                }
-
-                if (val < 127 && hold[i] == true)
-                {
-                    wait[i] = true;
-                }
-            }
-        }
-
-        for (int i = 5; i < numCCs; ++i)
-        {
-            if (num == homeCC + i)
-            {
-                if (val == 127 && hold[i] == false)
-                {
-                    int cv = fromParam(vParam->get(), true);
-                    int nv = num - homeCC - 4;
-
-                    if (cv == nv)
-                    {
-                        vParam->setValueNotifyingHost(0);
-                    }
-                    else
-                    {
-                        vParam->setValueNotifyingHost(toParam(nv, true));
-                    }
-
-                    hold[i] = true;
-                }
-
-                if (val < 127 && hold[i] == true)
-                {
-                    wait[i] = true;
-                }
-            }
+            setVisitorTuning(d, currentVisitors->dimensions[d]);
         }
     }
-}
 
-void LatticesProcessor::parameterValueChanged(int parameterIndex, float newValue) { locate(); }
+    locate();
+}
 
 void LatticesProcessor::shift(int dir)
 {
@@ -553,43 +580,53 @@ void LatticesProcessor::locate()
         positionY += syntYOff;
     }
 
-    int nn = originalRefNote;
-    double nf = 1.0;
-
-    int absx = std::abs(positionX);
-    double mul = positionX < 0 ? 1 / 1.5 : 1.5; // fifth down : fifth up
-    int add = positionX < 0 ? -7 : 7;
-    for (int i = 0; i < absx; ++i)
+    if (editingVisitors)
     {
-        nn += add;
-        nf *= mul;
+        currentRefNote = originalRefNote;
+        currentRefFreq = originalRefFreq;
+    }
+    else
+    {
+        int nn = originalRefNote;
+        double nf = 1.0;
+
+        int absx = std::abs(positionX);
+        double mul = positionX < 0 ? 1 / 1.5 : 1.5; // fifth down : fifth up
+        int add = positionX < 0 ? -7 : 7;
+        for (int i = 0; i < absx; ++i)
+        {
+            nn += add;
+            nf *= mul;
+        }
+
+        int absy = std::abs(positionY);
+        mul = positionY < 0 ? 1 / 1.25 : 1.25; // third down : third up
+        add = positionY < 0 ? -4 : 4;
+        for (int i = 0; i < absy; ++i)
+        {
+            nn += add;
+            nf *= mul;
+        }
+
+        while (nn < 0)
+        {
+            nn += 12;
+            nf *= 2.0;
+        }
+        while (nn >= 12)
+        {
+            nn -= 12;
+            nf *= 0.5;
+        }
+
+        currentRefNote = nn;
+        currentRefFreq = originalRefFreq * nf;
     }
 
-    int absy = std::abs(positionY);
-    mul = positionY < 0 ? 1 / 1.25 : 1.25; // third down : third up
-    add = positionY < 0 ? -4 : 4;
-    for (int i = 0; i < absy; ++i)
+    if (mode == Syntonic)
     {
-        nn += add;
-        nf *= mul;
-    }
+        currentVisitors = &visitorGroups[0]; // ignore visitors
 
-    while (nn < 0)
-    {
-        nn += 12;
-        nf *= 2.0;
-    }
-    while (nn >= 12)
-    {
-        nn -= 12;
-        nf *= 0.5;
-    }
-
-    currentRefNote = nn;
-    currentRefFreq = originalRefFreq * nf;
-
-    if (mode == Syntonic) // syntonic ignores visitors
-    {
         for (int d = 0; d < 12; ++d)
         {
             coOrds[d].first = duoCo[d].first + positionX;
@@ -609,10 +646,7 @@ void LatticesProcessor::locate()
     }
     else
     {
-        int vis = fromParam(vParam->get(), true);
-        currentVisitors = &visitorGroups[vis];
-
-        if ((vis == 0) || visitorGroups.empty())
+        if ((fromParam(vParam->get(), true) == 0) || visitorGroups.empty())
         {
             for (int d = 0; d < 12; ++d)
             {

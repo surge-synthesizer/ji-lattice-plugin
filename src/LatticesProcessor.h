@@ -17,6 +17,7 @@
 #include <atomic>
 #include <cmath>
 #include <string>
+#include <cstdint>
 
 #include "JIMath.h"
 #include "Visitors.h"
@@ -60,10 +61,12 @@ class LatticesProcessor : public juce::AudioProcessor,
     void updateMIDI(int hCC, int C);
     void updateFreq(double f);
     double updateRoot(int r);
-    void updateVisitor(int d, int v);
-    inline void setVisitorTuning(int d, int v);
+    void updateDistance(int dist);
+    void editVisitors(bool editing, int g);
     int *selectVisitorGroup(int g);
     void newVisitorGroup();
+    void updateVisitor(int d, int v);
+    inline void setVisitorTuning(int d, int v);
     void parameterValueChanged(int parameterIndex, float newValue) override;
 
     bool registeredMTS{false};
@@ -95,11 +98,11 @@ class LatticesProcessor : public juce::AudioProcessor,
 
     Visitors *currentVisitors;
     int numVisitorGroups{0};
-    int selVisG{-1};
     std::atomic<bool> editingVisitors{false};
 
+    uint16_t maxDistance{24};
+
   private:
-    static constexpr int maxDistance{24};
     static constexpr int defaultRefNote{0};
     static constexpr double defaultRefFreq{261.6255653005986};
 
@@ -151,6 +154,7 @@ class LatticesProcessor : public juce::AudioProcessor,
                       (double)243 / 128};
 
     std::vector<Visitors> visitorGroups;
+    int priorSelectedGroup{0};
     double visitorTuning[12] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
 
     juce::AudioParameterFloat *xParam;

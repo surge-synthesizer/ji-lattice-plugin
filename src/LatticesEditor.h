@@ -66,9 +66,5 @@ class LatticesEditor : public juce::AudioProcessorEditor, juce::MultiTimer
     // access the processor object that created it.
     LatticesProcessor &processor;
 
-    bool previouslyActive{false};
-
-    int visits[12] = {0};
-
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LatticesEditor)
 };

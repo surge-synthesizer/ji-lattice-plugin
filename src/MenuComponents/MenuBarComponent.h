@@ -16,8 +16,7 @@
 #include "LatticesProcessor.h"
 
 #include "OriginComponent.h"
-#include "ModeComponent.h"
-#include "MIDIMenuComponent.h"
+#include "SettingsComponent.h"
 #include "VisitorsComponent.h"
 #include "LatticesBinary.h"
 
@@ -29,6 +28,9 @@ struct MenuBarComponent : juce::Component
         juce::Colour off = juce::Colours::transparentWhite;
         juce::Colour offo = juce::Colours::ghostwhite.withAlpha(.15f);
         juce::Colour offd = juce::Colours::ghostwhite.withAlpha(.5f);
+
+        settingsRect.setBounds(600, 0, 120, 30);
+        // settingsRect.setBounds(this->getLocalBounds().getRight() - 240, 0, 240, 30);
 
         visButton = std::make_unique<juce::ShapeButton>("Visitors", off, offo, offd);
 
@@ -46,46 +48,24 @@ struct MenuBarComponent : juce::Component
         addAndMakeVisible(*visC);
         visC->setVisible(false);
 
-        originButton = std::make_unique<juce::ShapeButton>("Origin", off, offo, offd);
-        juce::Path oS = {};
-        oS.addRectangle(originRect);
-        originButton->setShape(oS, true, true, false);
-        addAndMakeVisible(*originButton);
-        originButton->onClick = [this] { showOriginMenu(); };
-        originButton->setClickingTogglesState(true);
-        originButton->setToggleState(false, juce::dontSendNotification);
+        settingsButton = std::make_unique<juce::ShapeButton>("Settings", off, offo, offd);
+        juce::Path sS = {};
+        sS.addRectangle(settingsRect);
+        settingsButton->setShape(sS, true, true, false);
+        addAndMakeVisible(*settingsButton);
+        settingsButton->onClick = [this] { showSettingsMenu(); };
+        settingsButton->setClickingTogglesState(true);
+        settingsButton->setToggleState(false, juce::dontSendNotification);
+
+        settingsC = std::make_unique<SettingsComponent>(processor.homeCC, processor.listenOnChannel,
+                                                        processor.mode, processor.maxDistance);
+        addAndMakeVisible(*settingsC);
+        settingsC->setVisible(false);
 
         originC =
             std::make_unique<OriginComponent>(processor.originalRefNote, processor.originalRefFreq);
         addAndMakeVisible(*originC);
         originC->setVisible(false);
-
-        midiButton = std::make_unique<juce::ShapeButton>("MIDI", off, offo, offd);
-        juce::Path miS = {};
-        miS.addRectangle(midiRect);
-        midiButton->setShape(miS, true, true, false);
-        addAndMakeVisible(*midiButton);
-        midiButton->onClick = [this] { showMidiMenu(); };
-        midiButton->setClickingTogglesState(true);
-        midiButton->setToggleState(false, juce::dontSendNotification);
-
-        midiC = std::make_unique<MIDIMenuComponent>(processor.homeCC, processor.listenOnChannel);
-        addAndMakeVisible(*midiC);
-        midiC->setVisible(false);
-
-        modeButton = std::make_unique<juce::ShapeButton>("Mode", off, offo, offd);
-
-        juce::Path moS = {};
-        moS.addRectangle(modeRect);
-        modeButton->setShape(moS, true, true, false);
-        addAndMakeVisible(*modeButton);
-        modeButton->onClick = [this] { showModeMenu(); };
-        modeButton->setClickingTogglesState(true);
-        modeButton->setToggleState(false, juce::dontSendNotification);
-
-        modeC = std::make_unique<ModeComponent>(processor.mode);
-        addAndMakeVisible(*modeC);
-        modeC->setVisible(false);
     }
 
     void resized() override
@@ -95,14 +75,9 @@ struct MenuBarComponent : juce::Component
         visButton->setBounds(visRect);
         visC->setBounds(0, 30, 600, 300);
 
-        originButton->setBounds(originRect);
-        originC->setBounds(600, 30, 240, 95);
-
-        midiButton->setBounds(midiRect);
-        midiC->setBounds(840, 30, 120, 155);
-
-        modeButton->setBounds(modeRect);
-        modeC->setBounds(960, 30, 120, 90);
+        settingsButton->setBounds(settingsRect);
+        settingsC->setBounds(600, 30, 120, 200);
+        originC->setBounds(360, 30, 240, 95);
     }
 
     void paint(juce::Graphics &g) override
@@ -112,35 +87,28 @@ struct MenuBarComponent : juce::Component
         g.setColour(menuColour);
         g.fillRect(0, 0, b.getWidth(), 30);
 
-        g.setColour(onColour);
-        if (originButton->getToggleState())
-            g.drawRect(originRect);
-        if (midiButton->getToggleState())
-            g.drawRect(midiRect);
-        if (modeButton->getToggleState())
-            g.drawRect(modeRect);
         if (visButton->getToggleState())
             g.drawRect(visRect);
+        if (settingsButton->getToggleState())
+            g.drawRect(settingsRect);
 
         g.setColour(juce::Colours::ghostwhite);
         g.fillRect(0, 29, b.getWidth(), 2);
 
-        g.drawRect(originRect);
-        g.drawRect(midiRect);
-        g.drawRect(modeRect);
         g.drawRect(visRect);
+        g.drawRect(settingsRect);
 
         g.setFont(stoke);
 
-        g.drawText("Origin", originRect, 12, false);
-        g.drawText("MIDI", midiRect, 12, false);
-        g.drawText("Mode", modeRect, 12, false);
-        g.drawText("Visitors", visRect, 12, false);
+        if (processor.mode == processor.Mode::Duodene)
+        {
+            g.drawText("Visitors", visRect, 12, false);
+        }
+        g.drawText("Settings", settingsRect, 12, false);
     }
 
     std::unique_ptr<OriginComponent> originC;
-    std::unique_ptr<MIDIMenuComponent> midiC;
-    std::unique_ptr<ModeComponent> modeC;
+    std::unique_ptr<SettingsComponent> settingsC;
     std::unique_ptr<VisitorsComponent> visC;
 
   private:
@@ -153,76 +121,36 @@ struct MenuBarComponent : juce::Component
     juce::Colour onColour{.975f, .5f, 0.3f, 1.f};
 
     juce::Rectangle<int> visRect{0, 0, 600, 30};
-    juce::Rectangle<int> originRect{600, 0, 240, 30};
-    juce::Rectangle<int> midiRect{840, 0, 120, 30};
-    juce::Rectangle<int> modeRect{960, 0, 120, 30};
+    juce::Rectangle<int> settingsRect{};
 
-    std::unique_ptr<juce::ShapeButton> originButton;
-    std::unique_ptr<juce::ShapeButton> midiButton;
-    std::unique_ptr<juce::ShapeButton> modeButton;
+    std::unique_ptr<juce::ShapeButton> settingsButton;
     std::unique_ptr<juce::ShapeButton> visButton;
 
-    void showOriginMenu()
+    void showSettingsMenu()
     {
-        bool show = originButton->getToggleState();
+        bool show = settingsButton->getToggleState();
 
         if (show)
         {
+            settingsC->setVisible(true);
             originC->setVisible(true);
-            midiButton->setToggleState(false, juce::sendNotification);
-            modeButton->setToggleState(false, juce::sendNotification);
             visButton->setToggleState(false, juce::sendNotification);
         }
         else
         {
+            settingsC->setVisible(false);
             originC->setVisible(false);
-        }
-    }
-
-    void showMidiMenu()
-    {
-        bool show = midiButton->getToggleState();
-
-        if (show)
-        {
-            midiC->setVisible(true);
-            originButton->setToggleState(false, juce::sendNotification);
-            modeButton->setToggleState(false, juce::sendNotification);
-            visButton->setToggleState(false, juce::sendNotification);
-        }
-        else
-        {
-            midiC->setVisible(false);
-        }
-    }
-
-    void showModeMenu()
-    {
-        bool show = modeButton->getToggleState();
-
-        if (show)
-        {
-            modeC->setVisible(true);
-            originButton->setToggleState(false, juce::sendNotification);
-            midiButton->setToggleState(false, juce::sendNotification);
-            visButton->setToggleState(false, juce::sendNotification);
-        }
-        else
-        {
-            modeC->setVisible(false);
         }
     }
 
     void showVisitorMenu()
     {
-        bool show = visButton->getToggleState();
+        bool show = (visButton->getToggleState() && processor.mode == processor.Mode::Duodene);
 
         if (show)
         {
             visC->setVisible(true);
-            originButton->setToggleState(false, juce::sendNotification);
-            midiButton->setToggleState(false, juce::sendNotification);
-            modeButton->setToggleState(false, juce::sendNotification);
+            settingsButton->setToggleState(false, juce::sendNotification);
         }
         else
         {
