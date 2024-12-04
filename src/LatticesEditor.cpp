@@ -63,7 +63,6 @@ void LatticesEditor::resized()
     {
 
         menuComponent->setBounds(b);
-
     }
     else
     {
@@ -177,7 +176,6 @@ void LatticesEditor::timerCallback(int timerID)
 
             processor.updateVisitor(d, v);
             menuComponent->visC->update = false;
-
         }
     }
 }

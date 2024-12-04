@@ -83,7 +83,6 @@ struct LatticeComponent : juce::Component
                     if (x < -hDistance || x > getWidth() + hDistance)
                         continue;
 
-
                     int degree{0};
                     if (enabled) // get our bearings so we know how brightly to draw stuff
                     {

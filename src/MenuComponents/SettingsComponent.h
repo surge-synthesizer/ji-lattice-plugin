@@ -22,7 +22,7 @@ struct SettingsComponent : public juce::Component // , juce::ToggleButton
         homeCC = hCC;
         midiChannel = C;
         maxDistance = d;
-        
+
         addAndMakeVisible(distLabel);
         distLabel.setJustificationType(juce::Justification::left);
         distLabel.setColour(juce::Label::backgroundColourId, bg);
@@ -73,7 +73,7 @@ struct SettingsComponent : public juce::Component // , juce::ToggleButton
         channelEditor.onReturnKey = [this] { returnKeyResponse(&channelEditor); };
         channelEditor.onEscapeKey = [this] { escapeKeyResponse(&channelEditor); };
         channelEditor.onFocusLost = [this] { focusLostResponse(&channelEditor); };
-        
+
         addAndMakeVisible(syntonicButton);
         syntonicButton.onClick = [this] { updateToggleState(); };
         syntonicButton.setClickingTogglesState(true);
@@ -111,17 +111,17 @@ struct SettingsComponent : public juce::Component // , juce::ToggleButton
     {
         duodeneButton.setBounds(5, 5, 100, 35);
         syntonicButton.setBounds(5, 45, 100, 35);
-        
+
         distLabel.setBounds(10, 100, 70, 20);
         distEditor.setBounds(80, 100, 30, 20);
-   
+
         homeLabel.setBounds(10, 125, 70, 20);
         homeEditor.setBounds(80, 125, 30, 20);
-        
+
         channelLabel.setBounds(10, 150, 70, 20);
         channelEditor.setBounds(80, 150, 30, 20);
     }
-    
+
     int whichMode()
     {
         if (duodeneButton.getToggleState() == true)
@@ -134,10 +134,10 @@ struct SettingsComponent : public juce::Component // , juce::ToggleButton
         }
         return 0;
     }
-    
+
     std::atomic<bool> settingChanged = false;
-    std::atomic<bool>  modeChanged = false;
-    std::atomic<bool>  distanceChanged = false;
+    std::atomic<bool> modeChanged = false;
+    std::atomic<bool> distanceChanged = false;
     int midiChannel;
     int homeCC;
     uint16_t maxDistance;
@@ -145,22 +145,21 @@ struct SettingsComponent : public juce::Component // , juce::ToggleButton
   private:
     juce::Label distLabel{{}, "Max Distance"};
     juce::TextEditor distEditor{"Distance"};
-    
+
     juce::Label homeLabel{{}, "Home CC"};
     juce::TextEditor homeEditor{"Home"};
-    
+
     juce::Label channelLabel{{}, "Channel"};
     juce::TextEditor channelEditor{"Channel"};
-    
+
     juce::TextButton duodeneButton{"Duodene"};
     juce::TextButton syntonicButton{"Syntonic"};
-   
 
     //    juce::Colour noColour{};
     juce::Colour bg{.475f, .5f, 0.2f, 1.f};
     juce::Colour ol{juce::Colours::ghostwhite};
     juce::Range<int> noRange{};
-    
+
     void updateToggleState() { modeChanged = true; }
 
     bool rejectBadInput(int input, int type = 0)
@@ -175,7 +174,7 @@ struct SettingsComponent : public juce::Component // , juce::ToggleButton
             }
             return false;
         }
-        
+
         if (type == 2)
         {
             if (input < 1 || input > UINT16_MAX)
@@ -184,7 +183,7 @@ struct SettingsComponent : public juce::Component // , juce::ToggleButton
             }
             return false;
         }
-        
+
         if (input < 1 || input > 127)
         {
             return true;
@@ -223,7 +222,7 @@ struct SettingsComponent : public juce::Component // , juce::ToggleButton
             midiChannel = digit;
             settingChanged = true;
         }
-        
+
         if (e == &distEditor)
         {
             if (rejectBadInput(digit, 2))

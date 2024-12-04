@@ -400,7 +400,6 @@ double LatticesProcessor::updateRoot(int r)
     return nf;
 }
 
-
 void LatticesProcessor::updateDistance(int dist)
 {
     maxDistance = dist;
@@ -507,7 +506,6 @@ void LatticesProcessor::returnToOrigin()
     {
         ratios[d] = duo12[d];
         coOrds[d] = duoCo[d];
-
     }
 
     updateTuning();
@@ -623,7 +621,6 @@ void LatticesProcessor::locate()
 
         currentRefNote = nn;
         currentRefFreq = originalRefFreq * nf;
-
     }
 
     if (mode == Syntonic) // syntonic should ignore visitors

@@ -103,7 +103,6 @@ class LatticesProcessor : public juce::AudioProcessor,
 
     uint16_t maxDistance{24};
 
-
   private:
     static constexpr int defaultRefNote{0};
     static constexpr double defaultRefFreq{261.6255653005986};
@@ -330,7 +329,6 @@ class LatticesProcessor : public juce::AudioProcessor,
                 { return std::to_string(fromParam(value, true)); })
             .withValueFromStringFunction([this](juce::String str)
                                          { return toParam(str.getIntValue(), true); });
-
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LatticesProcessor)

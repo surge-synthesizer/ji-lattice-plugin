@@ -59,9 +59,7 @@ class LatticesEditor : public juce::AudioProcessorEditor, juce::MultiTimer
     std::unique_ptr<LatticeComponent> latticeComponent;
     std::unique_ptr<MTSWarningComponent> warningComponent;
 
-
     std::unique_ptr<MenuBarComponent> menuComponent;
-
 
     void init();
     bool inited{false};
