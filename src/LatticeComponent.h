@@ -83,6 +83,7 @@ struct LatticeComponent : juce::Component
                     if (x < -hDistance || x > getWidth() + hDistance)
                         continue;
 
+
                     int degree{0};
                     if (enabled) // get our bearings so we know how brightly to draw stuff
                     {
@@ -117,6 +118,7 @@ struct LatticeComponent : juce::Component
                         uDist = 2;
                         dDist = 2;
                     }
+
                     // those numbers will set this
                     float alpha{};
 
@@ -154,6 +156,11 @@ struct LatticeComponent : juce::Component
                     bool lit = enabled ? (dist == 0) : false;
                     auto gradient = chooseColour(std::abs(v), x, y, lit, visitor[degree], uni);
 
+                    // Select gradient colour
+                    bool uni = ((w + (v * 4)) % 12 == 0) ? true : false;
+                    auto gradient =
+                        chooseColour(std::abs(v), x, y, (dist == 0), visitor[degree], uni);
+
                     alpha = 1.f / (std::sqrt(dist) + 1);
                     whiteShadow.setOpacity(alpha);
                     whiteShadow.render(sG, e);
@@ -170,7 +177,9 @@ struct LatticeComponent : juce::Component
 
                     // Names or Ratios?
                     auto [n, d] = calculateCell(w, v);
+
                     if (enabled && (dist == 0 && visitor[degree] > 1))
+
                     {
                         reCalculateCell(n, d, visitor[degree], degree);
                     }

@@ -67,6 +67,7 @@ class LatticesProcessor : public juce::AudioProcessor,
     void newVisitorGroup();
     void updateVisitor(int d, int v);
     inline void setVisitorTuning(int d, int v);
+
     void parameterValueChanged(int parameterIndex, float newValue) override;
 
     bool registeredMTS{false};
@@ -101,6 +102,7 @@ class LatticesProcessor : public juce::AudioProcessor,
     std::atomic<bool> editingVisitors{false};
 
     uint16_t maxDistance{24};
+
 
   private:
     static constexpr int defaultRefNote{0};
@@ -328,6 +330,7 @@ class LatticesProcessor : public juce::AudioProcessor,
                 { return std::to_string(fromParam(value, true)); })
             .withValueFromStringFunction([this](juce::String str)
                                          { return toParam(str.getIntValue(), true); });
+
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LatticesProcessor)

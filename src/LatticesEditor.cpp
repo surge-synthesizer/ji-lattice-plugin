@@ -24,6 +24,7 @@ LatticesEditor::LatticesEditor(LatticesProcessor &p) : juce::AudioProcessorEdito
 
     if (p.registeredMTS)
     {
+        startTimer(0, 5);
         init();
     }
     else
@@ -60,12 +61,29 @@ void LatticesEditor::resized()
 
     if (inited)
     {
+
         menuComponent->setBounds(b);
+
     }
     else
     {
         warningComponent->setBounds((width / 2) - 100, (height / 2) - 100, 200, 200);
     }
+}
+
+void LatticesEditor::showVisitorsMenu()
+{
+    bool show = visitorsButton->getToggleState();
+    visitorsComponent->setVisible(show);
+
+    //    if (show)
+    //    {
+    //        visitorsButton->setConnectedEdges(0);
+    //    }
+    //    else
+    //    {
+    //        visitorsButton->setConnectedEdges(!0);
+    //    }
 }
 
 void LatticesEditor::timerCallback(int timerID)
@@ -95,7 +113,9 @@ void LatticesEditor::timerCallback(int timerID)
 
         if (processor.changed)
         {
+
             latticeComponent->update(processor.coOrds, processor.currentVisitors->dimensions);
+
             latticeComponent->repaint();
 
             processor.changed = false;
@@ -157,6 +177,7 @@ void LatticesEditor::timerCallback(int timerID)
 
             processor.updateVisitor(d, v);
             menuComponent->visC->update = false;
+
         }
     }
 }

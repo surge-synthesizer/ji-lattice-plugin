@@ -18,7 +18,9 @@
 #include "LatticesProcessor.h"
 #include "JIMath.h"
 #include "LatticeComponent.h"
+
 #include "MenuComponents/MenuBarComponent.h"
+
 #include "MTSWarningComponent.h"
 
 //==============================================================================
@@ -57,7 +59,9 @@ class LatticesEditor : public juce::AudioProcessorEditor, juce::MultiTimer
     std::unique_ptr<LatticeComponent> latticeComponent;
     std::unique_ptr<MTSWarningComponent> warningComponent;
 
+
     std::unique_ptr<MenuBarComponent> menuComponent;
+
 
     void init();
     bool inited{false};
@@ -65,6 +69,10 @@ class LatticesEditor : public juce::AudioProcessorEditor, juce::MultiTimer
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.
     LatticesProcessor &processor;
+
+    bool previouslyActive{false};
+
+    int visits[12] = {0};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LatticesEditor)
 };
