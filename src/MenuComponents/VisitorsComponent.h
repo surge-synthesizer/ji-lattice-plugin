@@ -28,9 +28,6 @@ struct VisitorsComponent : public juce::Component
 
         numGroups = ng;
 
-        miniLattice = std::make_unique<lattice_t>(dd, this, 18);
-        addAndMakeVisible(*miniLattice);
-
         circle.addEllipse(0, 0, diameter, diameter);
 
         for (int i = 0; i < 12; ++i)
@@ -48,13 +45,17 @@ struct VisitorsComponent : public juce::Component
             }
         }
 
+        miniLattice = std::make_unique<lattice_t>(dd, this, 18);
+        addAndMakeVisible(*miniLattice);
+
         plusButton = std::make_unique<juce::TextButton>("+");
         addAndMakeVisible(*plusButton);
         plusButton->onClick = [this] { newGroup(); };
 
         for (int g = 0; g < numGroups; ++g)
         {
-            groups.add(new juce::TextButton(std::to_string(g)));
+            auto name = (g == 0) ? "None" : std::to_string(g);
+            groups.add(new juce::TextButton(name));
             addAndMakeVisible(groups[g]);
             groups[g]->setRadioGroupId(3);
             groups[g]->onClick = [this] { selectGroup(); };
@@ -66,31 +67,33 @@ struct VisitorsComponent : public juce::Component
 
     void resized() override
     {
-        if (enabled)
+        if (this->isEnabled())
         {
             auto b = this->getLocalBounds();
             miniLattice->setBounds(1, diameter, b.getWidth() - 2, diameter * 4.5);
+            miniLattice->setEnabled(numGroups > 1 && selectedGroup != 0);
 
             for (int i = 0; i < 7; ++i)
             {
+                commas[i]->setEnabled(selectedGroup != 0);
                 commas[i]->setBounds(5 * (1 + i) + diameter * i, diameter * 5 + boxsize + 5,
                                      diameter, diameter);
             }
 
-            for (int i = 0; i <= numGroups; ++i)
+            groups[0]->setBounds(5, 5, boxsize * 2, boxsize);
+            for (int i = 1; i < numGroups; ++i)
             {
-                if (i == numGroups)
-                {
-                    plusButton->setBounds(5 + boxsize * i, 5, boxsize, boxsize);
-                    break;
-                }
-                groups[i]->setBounds(5 + boxsize * i, 5, boxsize, boxsize);
+                groups[i]->setBounds(5 + boxsize * (i + 1), 5, boxsize, boxsize);
             }
+            plusButton->setBounds(5 + boxsize * (numGroups + 1), 5, boxsize, boxsize);
         }
     }
 
     void paint(juce::Graphics &g) override
     {
+        if (!this->isEnabled())
+            return;
+
         auto b = this->getLocalBounds();
 
         g.setColour(menuColour);
@@ -99,7 +102,7 @@ struct VisitorsComponent : public juce::Component
         g.setColour(outlineColour);
         g.drawRect(b, 1);
 
-        if (enabled)
+        if (selectedGroup != 0)
         {
             for (int i = 0; i < 7; ++i)
             {
@@ -125,7 +128,6 @@ struct VisitorsComponent : public juce::Component
         }
     }
 
-    bool enabled = true;
     bool update = false;
     bool reselect = false;
     int dd[12] = {0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1}; // Dimension of degree
@@ -135,13 +137,11 @@ struct VisitorsComponent : public juce::Component
 
     void setGroupData(int *v)
     {
-        for (int i = 0; i < 12; ++i)
+        for (int d = 0; d < 12; ++d)
         {
-            dd[i] = v[i];
+            dd[d] = v[d];
+            miniLattice->updateDegree(d, v[d]);
         }
-        resized();
-        repaint();
-
         int idx{};
         for (int i = 0; i < 7; ++i)
         {
@@ -152,6 +152,9 @@ struct VisitorsComponent : public juce::Component
             }
         }
         commas[idx]->setToggleState(true, juce::sendNotification);
+
+        resized();
+        repaint();
     }
 
     void selectNote(int n)
@@ -164,7 +167,6 @@ struct VisitorsComponent : public juce::Component
 
   private:
     int numGroups{0};
-
     static constexpr int radius = 20;
     int diameter = 40;
     int boxsize = 30;
@@ -176,19 +178,14 @@ struct VisitorsComponent : public juce::Component
 
     std::array<std::string, 7> names = {"3", "5", "7", "11", "13", "17", "19"};
 
-    juce::Path circle;
-
-    juce::OwnedArray<juce::ShapeButton> notes;
-    juce::OwnedArray<juce::ShapeButton> commas;
-
-    juce::OwnedArray<juce::TextButton> groups;
     std::unique_ptr<juce::TextButton> plusButton;
+    juce::OwnedArray<juce::TextButton> groups;
 
     using lattice_t = SmallLatticeComponent<VisitorsComponent>;
     std::unique_ptr<lattice_t> miniLattice;
 
-    const int map[12] = {1, 8, 3, 10, 5, 0, 7, 2, 9, 4, 11, 6};
-    const int homes[12] = {1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1};
+    juce::Path circle;
+    juce::OwnedArray<juce::ShapeButton> commas;
 
     juce::Colour menuColour{.475f, .5f, 0.2f, 1.f};
     juce::Colour outlineColour{juce::Colours::ghostwhite};
@@ -245,6 +242,9 @@ struct VisitorsComponent : public juce::Component
 
     void selectComma()
     {
+        if (selectedGroup == 0)
+            return;
+
         for (int i = 0; i < 7; ++i)
         {
             if (commas[i]->getToggleState())

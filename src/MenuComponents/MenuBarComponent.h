@@ -30,6 +30,22 @@ struct MenuBarComponent : juce::Component
         juce::Colour offo = juce::Colours::ghostwhite.withAlpha(.15f);
         juce::Colour offd = juce::Colours::ghostwhite.withAlpha(.5f);
 
+        visButton = std::make_unique<juce::ShapeButton>("Visitors", off, offo, offd);
+
+        juce::Path vS = {};
+        vS.addRectangle(visRect);
+        visButton->setShape(vS, true, true, false);
+        addAndMakeVisible(*visButton);
+        visButton->onClick = [this] { showVisitorMenu(); };
+        visButton->setClickingTogglesState(true);
+        visButton->setToggleState(false, juce::dontSendNotification);
+
+        std::string bruh[1] = {"names of groups here eventually"};
+        visC = std::make_unique<VisitorsComponent>(processor.currentVisitors->dimensions,
+                                                   processor.numVisitorGroups, bruh);
+        addAndMakeVisible(*visC);
+        visC->setVisible(false);
+
         originButton = std::make_unique<juce::ShapeButton>("Origin", off, offo, offd);
         juce::Path oS = {};
         oS.addRectangle(originRect);
@@ -53,9 +69,7 @@ struct MenuBarComponent : juce::Component
         midiButton->setClickingTogglesState(true);
         midiButton->setToggleState(false, juce::dontSendNotification);
 
-        midiC = std::make_unique<MIDIMenuComponent>(
-            processor.shiftCCs[0], processor.shiftCCs[1], processor.shiftCCs[2],
-            processor.shiftCCs[3], processor.shiftCCs[4], processor.listenOnChannel);
+        midiC = std::make_unique<MIDIMenuComponent>(processor.homeCC, processor.listenOnChannel);
         addAndMakeVisible(*midiC);
         midiC->setVisible(false);
 
@@ -72,22 +86,6 @@ struct MenuBarComponent : juce::Component
         modeC = std::make_unique<ModeComponent>(processor.mode);
         addAndMakeVisible(*modeC);
         modeC->setVisible(false);
-
-        visButton = std::make_unique<juce::ShapeButton>("Visitors", off, offo, offd);
-
-        juce::Path vS = {};
-        vS.addRectangle(visRect);
-        visButton->setShape(vS, true, true, false);
-        addAndMakeVisible(*visButton);
-        visButton->onClick = [this] { showVisitorMenu(); };
-        visButton->setClickingTogglesState(true);
-        visButton->setToggleState(false, juce::dontSendNotification);
-
-        std::string bruh[1] = {"names of groups here eventually"};
-        visC = std::make_unique<VisitorsComponent>(processor.currentVisitors->dimensions,
-                                                   processor.numVisitorGroups, bruh);
-        addAndMakeVisible(*visC);
-        visC->setVisible(false);
     }
 
     void resized() override
@@ -96,7 +94,7 @@ struct MenuBarComponent : juce::Component
 
         visButton->setBounds(visRect);
         visC->setBounds(0, 30, 600, 300);
-        
+
         originButton->setBounds(originRect);
         originC->setBounds(600, 30, 240, 95);
 
@@ -105,8 +103,6 @@ struct MenuBarComponent : juce::Component
 
         modeButton->setBounds(modeRect);
         modeC->setBounds(960, 30, 120, 90);
-
-
     }
 
     void paint(juce::Graphics &g) override
@@ -160,7 +156,6 @@ struct MenuBarComponent : juce::Component
     juce::Rectangle<int> originRect{600, 0, 240, 30};
     juce::Rectangle<int> midiRect{840, 0, 120, 30};
     juce::Rectangle<int> modeRect{960, 0, 120, 30};
-   
 
     std::unique_ptr<juce::ShapeButton> originButton;
     std::unique_ptr<juce::ShapeButton> midiButton;

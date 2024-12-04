@@ -43,11 +43,10 @@ void LatticesEditor::init()
 {
     menuComponent = std::make_unique<MenuBarComponent>(processor);
     addAndMakeVisible(*menuComponent);
+    menuComponent->setBounds(this->getLocalBounds());
 
-    auto b = this->getLocalBounds();
-
-    startTimer(0, 5);
     inited = true;
+    startTimer(0, 5);
 }
 
 void LatticesEditor::paint(juce::Graphics &g) { g.fillAll(backgroundColour); }
@@ -84,14 +83,10 @@ void LatticesEditor::timerCallback(int timerID)
 
     if (timerID == 0)
     {
-        if (menuComponent->visC->isVisible())
-        {
-            processor.editingVisitors = true;
-        }
-        else
-        {
-            processor.editingVisitors = false;
-        }
+        menuComponent->visC->setEnabled(menuComponent->visC->isVisible());
+        processor.editingVisitors = menuComponent->visC->isVisible();
+        latticeComponent->setEnabled(!menuComponent->visC->isVisible());
+        latticeComponent->repaint();
 
         if (processor.changed)
         {
@@ -109,9 +104,7 @@ void LatticesEditor::timerCallback(int timerID)
 
         if (menuComponent->midiC->settingChanged)
         {
-            processor.updateMIDI(menuComponent->midiC->data[0], menuComponent->midiC->data[1],
-                                 menuComponent->midiC->data[2], menuComponent->midiC->data[3],
-                                 menuComponent->midiC->data[4], menuComponent->midiC->midiChannel);
+            processor.updateMIDI(menuComponent->midiC->homeCC, menuComponent->midiC->midiChannel);
         }
 
         if (menuComponent->originC->freqChanged)

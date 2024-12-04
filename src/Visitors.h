@@ -31,23 +31,4 @@ struct Visitors
     void setName(std::string n) { name = n; }
 
     void setDegree(int deg, int dim) { dimensions[deg] = dim; }
-
-    void saveGroup(int *dim, std::string &n)
-    {
-        n = name;
-
-        for (int i = 0; i < 12; ++i)
-        {
-            dim[i] = dimensions[i];
-        }
-    }
-    void loadGroup(int *dim, std::string n)
-    {
-        name = n;
-
-        for (int i = 0; i < 12; ++i)
-        {
-            dimensions[i] = dim[i];
-        }
-    }
 };

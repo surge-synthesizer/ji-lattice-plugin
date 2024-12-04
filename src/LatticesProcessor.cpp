@@ -31,8 +31,9 @@ LatticesProcessor::LatticesProcessor()
     vParam->addListener(this);
 
     numVisitorGroups = 1;
-    Visitors dg{"Nobody here"};
+    Visitors dg{"Nobody Here"};
     visitorGroups.push_back(std::move(dg));
+    selVisG = 0;
     currentVisitors = &visitorGroups[0];
 
     if (MTS_CanRegisterMaster())
@@ -91,12 +92,7 @@ void LatticesProcessor::getStateInformation(juce::MemoryBlock &destData)
 
     xml->setAttribute("SavedMode", static_cast<int>(mode));
 
-    for (int i = 0; i < 5; ++i)
-    {
-        juce::String c = juce::String("ccs_") + std::to_string(i);
-        int v = shiftCCs[i];
-        xml->setAttribute(c, v);
-    }
+    xml->setAttribute("cc", homeCC);
     xml->setAttribute("channel", listenOnChannel);
 
     int n = originalRefNote;
@@ -113,6 +109,34 @@ void LatticesProcessor::getStateInformation(juce::MemoryBlock &destData)
     xml->setAttribute("yp", Y);
     xml->setAttribute("vp", V);
 
+    if (numVisitorGroups != visitorGroups.size())
+        numVisitorGroups = visitorGroups.size();
+
+    xml->setAttribute("nvg", numVisitorGroups);
+
+    if (numVisitorGroups > 1) // no need to store number 0 since it's the default
+    {
+        for (int v = 1; v < numVisitorGroups; ++v)
+        {
+            auto vs = juce::String("visitor_") + std::to_string(v) + juce::String("_");
+
+            juce::String n = vs + juce::String("name");
+            juce::String name{visitorGroups[v].name};
+
+            xml->setAttribute(n, name);
+
+            for (int d = 0; d < 12; ++d)
+            {
+                auto b = vs + juce::String("idx_") + std::to_string(d);
+                int i = visitorGroups[v].dimensions[d];
+                xml->setAttribute(b, i);
+            }
+        }
+
+        auto selG = juce::String("selG");
+        int selIdx = selVisG;
+        xml->setAttribute(selG, selIdx);
+    }
     copyXmlToBinary(*xml, destData);
 }
 
@@ -135,15 +159,8 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
                 mode = Duodene;
             }
 
-            for (int i = 0; i < 5; ++i)
-            {
-                juce::String c = juce::String("ccs_") + std::to_string(i);
-                int g = xmlState->getIntAttribute(c);
-                shiftCCs[i] = g;
-            }
-
-            int mc = xmlState->getIntAttribute("channel");
-            listenOnChannel = mc;
+            homeCC = xmlState->getIntAttribute("cc");
+            listenOnChannel = xmlState->getIntAttribute("channel");
 
             originalRefNote = xmlState->getIntAttribute("note");
             originalRefFreq = xmlState->getDoubleAttribute("freq");
@@ -166,8 +183,34 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
             vParam->setValueNotifyingHost(V);
             vParam->endChangeGesture();
 
-            float shj = xParam->get();
-            int dX = fromParam(shj);
+            numVisitorGroups = xmlState->getIntAttribute("nvg");
+
+            if (numVisitorGroups > 1)
+            {
+                for (int v = 1; v < numVisitorGroups; ++v)
+                {
+                    auto vs = juce::String("visitor_") + std::to_string(v) + juce::String("_");
+                    juce::String n = vs + juce::String("name");
+
+                    juce::String jsn{xmlState->getStringAttribute(n)};
+                    std::string name = jsn.toStdString();
+                    int vds[12]{};
+                    for (int d = 0; d < 12; ++d)
+                    {
+                        auto b = vs + juce::String("idx_") + std::to_string(d);
+                        vds[d] = xmlState->getIntAttribute(b);
+                    }
+                    Visitors ng{name, vds};
+                    visitorGroups.push_back(std::move(ng));
+
+                    hold.emplace_back(false);
+                    wait.emplace_back(false);
+                }
+                //                auto selG = juce::String("selG");
+                //
+                //                int selIdx = xmlState->getIntAttribute(selG);
+                //                currentVisitors = &visitorGroups[selIdx];
+            }
 
             locate();
         }
@@ -245,7 +288,7 @@ void LatticesProcessor::timerCallback(int timerID)
 
     if (timerID == 1)
     {
-        for (int i = 0; i < 6; ++i)
+        for (int i = 0; i < wait.size(); ++i)
         {
             if (wait[i])
             {
@@ -272,15 +315,11 @@ void LatticesProcessor::modeSwitch(int m)
     returnToOrigin();
 }
 
-void LatticesProcessor::updateMIDI(int wCC, int eCC, int nCC, int sCC, int hCC, int C)
+void LatticesProcessor::updateMIDI(int hCC, int C)
 {
     // TODO: This doesn't set project dirty flags, investigate
 
-    shiftCCs[0] = wCC;
-    shiftCCs[1] = eCC;
-    shiftCCs[2] = nCC;
-    shiftCCs[3] = sCC;
-    shiftCCs[4] = hCC;
+    homeCC = hCC;
     listenOnChannel = C;
 
     updateHostDisplay(juce::AudioProcessor::ChangeDetails().withNonParameterStateChanged(true));
@@ -309,7 +348,6 @@ double LatticesProcessor::updateRoot(int r)
 
 void LatticesProcessor::updateVisitor(int d, int v)
 {
-    //    if (d == 0) return;
     currentVisitors->dimensions[d] = v;
     setVisitorTuning(d, v);
 
@@ -351,25 +389,30 @@ inline void LatticesProcessor::setVisitorTuning(int d, int v)
 
 int *LatticesProcessor::selectVisitorGroup(int g)
 {
-    currentVisitors = &visitorGroups[g];
+    selVisG = g;
+    currentVisitors = &visitorGroups[selVisG];
 
     float v = toParam(g, true);
     vParam->setValueNotifyingHost(v);
 
-    locate();
     return currentVisitors->dimensions;
 }
 
 void LatticesProcessor::newVisitorGroup()
 {
-    ++numVisitorGroups;
     Visitors ng{"new"};
     visitorGroups.push_back(std::move(ng));
 
-    float v = toParam(numVisitorGroups - 1, true);
+    selVisG = numVisitorGroups;
+
+    float v = toParam(selVisG, true);
     vParam->setValueNotifyingHost(v);
 
-    currentVisitors = &visitorGroups[numVisitorGroups - 1];
+    currentVisitors = &visitorGroups[selVisG];
+
+    ++numVisitorGroups;
+    hold.emplace_back(false);
+    wait.emplace_back(false);
     changed = true;
 }
 
@@ -390,10 +433,10 @@ void LatticesProcessor::returnToOrigin()
     vParam->setValueNotifyingHost(0.0);
     vParam->endChangeGesture();
 
-    for (int i = 0; i < 12; ++i)
+    for (int d = 0; d < 12; ++d)
     {
-        ratios[i] = duo12[i];
-        coOrds[i] = duoCo[i];
+        ratios[d] = duo12[d];
+        coOrds[d] = duoCo[d];
     }
 
     updateTuning();
@@ -406,9 +449,11 @@ void LatticesProcessor::respondToMidi(const juce::MidiMessage &m)
         auto num = m.getControllerNumber();
         auto val = m.getControllerValue();
 
+        int numCCs = 5 + numVisitorGroups - 1;
+
         for (int i = 0; i < 5; ++i)
         {
-            if (num == shiftCCs[i])
+            if (num == homeCC + i)
             {
                 if (val == 127 && hold[i] == false)
                 {
@@ -423,20 +468,33 @@ void LatticesProcessor::respondToMidi(const juce::MidiMessage &m)
             }
         }
 
-        //        if (num == 15)
-        //        {
-        //            if (val == 127 && hold[5] == false)
-        //            {
-        //                visitorsActive = !visitorsActive;
-        //                hold[5] = true;
-        //                locate();
-        //            }
-        //
-        //            if (val < 127 && hold[5] == true)
-        //            {
-        //                wait[5] = true;
-        //            }
-        //        }
+        for (int i = 5; i < numCCs; ++i)
+        {
+            if (num == homeCC + i)
+            {
+                if (val == 127 && hold[i] == false)
+                {
+                    int cv = fromParam(vParam->get(), true);
+                    int nv = num - homeCC - 4;
+
+                    if (cv == nv)
+                    {
+                        vParam->setValueNotifyingHost(0);
+                    }
+                    else
+                    {
+                        vParam->setValueNotifyingHost(toParam(nv, true));
+                    }
+
+                    hold[i] = true;
+                }
+
+                if (val < 127 && hold[i] == true)
+                {
+                    wait[i] = true;
+                }
+            }
+        }
     }
 }
 
@@ -449,6 +507,9 @@ void LatticesProcessor::shift(int dir)
 
     switch (dir)
     {
+    case Home:
+        returnToOrigin();
+        break;
     case West:
         xParam->beginChangeGesture();
         --X;
@@ -472,9 +533,6 @@ void LatticesProcessor::shift(int dir)
         --Y;
         yParam->setValueNotifyingHost(toParam(Y));
         yParam->endChangeGesture();
-        break;
-    case Home:
-        returnToOrigin();
         break;
     };
 
@@ -532,11 +590,11 @@ void LatticesProcessor::locate()
 
     if (mode == Syntonic) // syntonic ignores visitors
     {
-        for (int i = 0; i < 12; ++i)
+        for (int d = 0; d < 12; ++d)
         {
-            coOrds[i].first = duoCo[i].first + positionX;
-            coOrds[i].second = duoCo[i].second + positionY;
-            ratios[i] = duo12[i];
+            coOrds[d].first = duoCo[d].first + positionX;
+            coOrds[d].second = duoCo[d].second + positionY;
+            ratios[d] = duo12[d];
         }
 
         int syntShape = ((positionX % 4) + 4) % 4;
@@ -552,52 +610,50 @@ void LatticesProcessor::locate()
     else
     {
         int vis = fromParam(vParam->get(), true);
-        if (!editingVisitors)
-        {
-            currentVisitors = &visitorGroups[vis];
-        }
+        currentVisitors = &visitorGroups[vis];
 
-        if ((!editingVisitors && vis == 0) || visitorGroups.empty())
+        if ((vis == 0) || visitorGroups.empty())
         {
-            for (int i = 0; i < 12; ++i) // no visitors
+            for (int d = 0; d < 12; ++d)
             {
-                coOrds[i].first = duoCo[i].first + positionX;
-                coOrds[i].second = duoCo[i].second + positionY;
-                ratios[i] = duo12[i];
+
+                coOrds[d].first = duoCo[d].first + positionX;
+                coOrds[d].second = duoCo[d].second + positionY;
+                ratios[d] = duo12[d];
             }
         }
         else
         {
-            for (int i = 0; i < 12; ++i) // visitors
+            for (int d = 0; d < 12; ++d)
             {
                 auto vx{0};
                 auto vy{0};
 
-                if ((i == 9 || i == 4 || i == 11 || i == 6) && currentVisitors->dimensions[i] == 0)
+                if ((d == 9 || d == 4 || d == 11 || d == 6) && currentVisitors->dimensions[d] == 0)
                 {
                     vx = 4;
                     vy = -1;
                 }
-                if ((i == 5 || i == 0) && currentVisitors->dimensions[i] != 0)
+                if ((d == 5 || d == 0) && currentVisitors->dimensions[d] != 0)
                 {
                     vx = 4;
                     vy = -1;
                 }
-                if ((i == 7 || i == 2) && currentVisitors->dimensions[i] != 0)
+                if ((d == 7 || d == 2) && currentVisitors->dimensions[d] != 0)
                 {
                     vx = -4;
                     vy = 1;
                 }
-                if ((i == 1 || i == 8 || i == 3 || i == 10) && currentVisitors->dimensions[i] == 0)
+                if ((d == 1 || d == 8 || d == 3 || d == 10) && currentVisitors->dimensions[d] == 0)
                 {
                     vx = -4;
                     vy = 1;
                 }
 
-                coOrds[i].first = duoCo[i].first + positionX + vx;
-                coOrds[i].second = duoCo[i].second + positionY + vy;
+                coOrds[d].first = duoCo[d].first + positionX + vx;
+                coOrds[d].second = duoCo[d].second + positionY + vy;
 
-                ratios[i] = pyth12[i] * visitorTuning[i];
+                ratios[d] = pyth12[d] * visitorTuning[d];
             }
         }
     }

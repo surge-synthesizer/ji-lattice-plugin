@@ -57,7 +57,7 @@ class LatticesProcessor : public juce::AudioProcessor,
     void timerCallback(int timerID) override;
 
     void modeSwitch(int m);
-    void updateMIDI(int wCC, int eCC, int nCC, int sCC, int hCC, int C);
+    void updateMIDI(int hCC, int C);
     void updateFreq(double f);
     double updateRoot(int r);
     void updateVisitor(int d, int v);
@@ -87,7 +87,7 @@ class LatticesProcessor : public juce::AudioProcessor,
     int syntonicDrift = 0;
     int diesisDrift = 0;
 
-    int shiftCCs[5] = {5, 6, 7, 8, 9};
+    int homeCC = 5;
     int listenOnChannel = 1;
 
     int originalRefNote{-12};
@@ -95,41 +95,13 @@ class LatticesProcessor : public juce::AudioProcessor,
 
     Visitors *currentVisitors;
     int numVisitorGroups{0};
+    int selVisG{-1};
     std::atomic<bool> editingVisitors{false};
 
   private:
     static constexpr int maxDistance{24};
     static constexpr int defaultRefNote{0};
     static constexpr double defaultRefFreq{261.6255653005986};
-
-    juce::AudioParameterFloat *xParam;
-    juce::AudioParameterFloat *yParam;
-    juce::AudioParameterFloat *vParam;
-
-    // these are defined here lest the string functions at the bottom
-    // throw an annoying "lambda not defined" warning
-    inline double toParam(int input, bool v = false)
-    {
-        if (v)
-        {
-            return static_cast<double>(input) / numVisitorGroups;
-        }
-        else
-        {
-            return static_cast<double>(input + maxDistance) / (2.0 * maxDistance);
-        }
-    }
-    inline int fromParam(double input, bool v = false)
-    {
-        if (v)
-        {
-            return static_cast<int>(std::round(input * numVisitorGroups));
-        }
-        else
-        {
-            return static_cast<int>(std::round((input - 0.5) * 2 * maxDistance));
-        }
-    }
 
     JIMath jim;
 
@@ -138,16 +110,19 @@ class LatticesProcessor : public juce::AudioProcessor,
 
     enum Direction
     {
+        Home,
         West,
         East,
         North,
-        South,
-        Home
+        South
     };
 
     void returnToOrigin();
 
     void respondToMidi(const juce::MidiMessage &m);
+    std::vector<bool> hold = {false, false, false, false, false};
+    std::vector<bool> wait = {false, false, false, false, false};
+
     void shift(int dir);
     void locate();
 
@@ -175,11 +150,46 @@ class LatticesProcessor : public juce::AudioProcessor,
                       (double)16 / 9,
                       (double)243 / 128};
 
-    bool hold[6] = {};
-    bool wait[6] = {};
-
     std::vector<Visitors> visitorGroups;
     double visitorTuning[12] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+
+    juce::AudioParameterFloat *xParam;
+    juce::AudioParameterFloat *yParam;
+    juce::AudioParameterFloat *vParam;
+
+    // define these here lest the lambda functions
+    // below throw an annoying "not defined" warning
+    inline double toParam(int input, bool v = false)
+    {
+        if (v)
+        {
+            if (visitorGroups.size() <= 1)
+            {
+                return 0.0;
+            }
+
+            return static_cast<double>(input) / (visitorGroups.size() - 1);
+        }
+        else
+        {
+            return static_cast<double>(input + maxDistance) / (2.0 * maxDistance);
+        }
+    }
+    inline int fromParam(double input, bool v = false)
+    {
+        if (v)
+        {
+            if (visitorGroups.size() <= 1)
+            {
+                return 0;
+            }
+            return static_cast<int>(std::round(input * (visitorGroups.size() - 1)));
+        }
+        else
+        {
+            return static_cast<int>(std::round((input - 0.5) * 2 * maxDistance));
+        }
+    }
 
     const juce::AudioParameterFloatAttributes distanceReadoutX =
         juce::AudioParameterFloatAttributes{}
@@ -311,8 +321,9 @@ class LatticesProcessor : public juce::AudioProcessor,
         juce::AudioParameterFloatAttributes{}
             .withStringFromValueFunction(
                 [this](float value, int maximumStringLength) -> juce::String
-                { return "nobody here"; })
-            .withValueFromStringFunction([this](juce::String str) { return 0; });
+                { return std::to_string(fromParam(value, true)); })
+            .withValueFromStringFunction([this](juce::String str)
+                                         { return toParam(str.getIntValue(), true); });
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LatticesProcessor)

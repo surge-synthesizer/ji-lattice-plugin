@@ -9,7 +9,8 @@
   Source available at https://github.com/Andreya-Autumn/lattices
 */
 
-#pragma once
+#ifndef LATTICES_LATTICECOMPONENT_H
+#define LATTICES_LATTICECOMPONENT_H
 
 #include "JIMath.h"
 #include "LatticesBinary.h"
@@ -45,6 +46,11 @@ struct LatticeComponent : juce::Component
 
     void paint(juce::Graphics &g) override
     {
+        bool enabled = this->isEnabled();
+
+        int shadowSpacing1 = JIRadius / 20;
+        int shadowSpacing2 = JIRadius / 10;
+
         float ctrDistance{JIRadius * (5.f / 3.f)};
 
         float vDistance = 2.0f * ctrDistance;
@@ -55,6 +61,8 @@ struct LatticeComponent : juce::Component
 
         auto nV = std::ceil(getHeight() / vDistance);
         auto nW = std::ceil(getWidth() / hDistance);
+
+        int dist{0}, hDist{0}, uDist{0}, dDist{0};
 
         juce::Image Lines{juce::Image::ARGB, getWidth(), getHeight(), true};
         juce::Image Spheres{juce::Image::ARGB, getWidth(), getHeight(), true};
@@ -75,30 +83,40 @@ struct LatticeComponent : juce::Component
                     if (x < -hDistance || x > getWidth() + hDistance)
                         continue;
 
-                    std::pair<int, int> C = {w, v};         // current sphere
-                    std::pair<int, int> H = {w + 1, v};     // next one over
-                    std::pair<int, int> U = {w, v + 1};     // next one up
-                    std::pair<int, int> D = {w + 1, v - 1}; // next one down
-
-                    // ok, so how far is this sphere from a lit up one?
-                    auto dist = calcDist(C);
                     int degree{0};
-                    if (dist == 0)
+                    if (enabled) // get our bearings so we know how brightly to draw stuff
                     {
-                        for (int i = 0; i < 12; ++i)
+                        std::pair<int, int> C = {w, v};         // current sphere
+                        std::pair<int, int> H = {w + 1, v};     // next one over
+                        std::pair<int, int> U = {w, v + 1};     // next one up
+                        std::pair<int, int> D = {w + 1, v - 1}; // next one down
+
+                        // ok, so how far is this sphere from a lit up one?
+                        dist = calcDist(C);
+
+                        if (dist == 0)
                         {
-                            if (CoO[i] == C)
+                            for (int i = 0; i < 12; ++i)
                             {
-                                degree = i;
-                                break;
+                                if (CoO[i] == C)
+                                {
+                                    degree = i;
+                                    break;
+                                }
                             }
                         }
+                        // and what about its lines?
+                        hDist = std::max(dist, calcDist(H));
+                        uDist = std::max(dist, calcDist(U));
+                        dDist = std::max(dist, calcDist(D));
                     }
-
-                    // and what about its lines?
-                    auto hDist = std::max(dist, calcDist(H));
-                    auto uDist = std::max(dist, calcDist(U));
-                    auto dDist = std::max(dist, calcDist(D));
+                    else // if we're disabled everything is kinda dim
+                    {
+                        dist = 2;
+                        hDist = 2;
+                        uDist = 2;
+                        dDist = 2;
+                    }
                     // those numbers will set this
                     float alpha{};
 
@@ -127,13 +145,14 @@ struct LatticeComponent : juce::Component
                     e.addEllipse(x - ellipseRadius, y - JIRadius, 2 * ellipseRadius, 2 * JIRadius);
                     // And their shadows
                     juce::Path b{};
-                    b.addEllipse(x - ellipseRadius - shadowSpacing1, y - JIRadius - shadowSpacing1, 2 * ellipseRadius + shadowSpacing2,
-                                 2 * JIRadius + shadowSpacing2);
+                    b.addEllipse(x - ellipseRadius - shadowSpacing1, y - JIRadius - shadowSpacing1,
+                                 2 * ellipseRadius + shadowSpacing2, 2 * JIRadius + shadowSpacing2);
 
                     // Select gradient colour
-                    bool uni = ((w + (v * 4)) % 12 == 0) ? true : false;
-                    auto gradient =
-                        chooseColour(std::abs(v), x, y, (dist == 0), visitor[degree], uni);
+
+                    bool uni = enabled ? ((w + (v * 4)) % 12 == 0) : false;
+                    bool lit = enabled ? (dist == 0) : false;
+                    auto gradient = chooseColour(std::abs(v), x, y, lit, visitor[degree], uni);
 
                     alpha = 1.f / (std::sqrt(dist) + 1);
                     whiteShadow.setOpacity(alpha);
@@ -151,7 +170,7 @@ struct LatticeComponent : juce::Component
 
                     // Names or Ratios?
                     auto [n, d] = calculateCell(w, v);
-                    if (dist == 0 && visitor[degree] > 1)
+                    if (enabled && (dist == 0 && visitor[degree] > 1))
                     {
                         reCalculateCell(n, d, visitor[degree], degree);
                     }
@@ -173,8 +192,6 @@ struct LatticeComponent : juce::Component
   protected:
     int JIRadius{26};
     int ellipseRadius = JIRadius * 1.15;
-    int shadowSpacing1 = JIRadius / 20;
-    int shadowSpacing2 = JIRadius / 10;
     JIMath jim;
 
     juce::ReferenceCountedObjectPtr<juce::Typeface> Stoke{juce::Typeface::createSystemTypefaceFor(
@@ -357,7 +374,7 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
 {
     SmallLatticeComponent(int *v, buttonUser *bu, int size = 30) : buttonParent(bu)
     {
-        update(initCo, v);
+        update(initCo, homes);
 
         JIRadius = size;
         ellipseRadius = JIRadius * 1.15;
@@ -368,14 +385,16 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
         juce::Colour n{juce::Colours::transparentWhite};
         juce::Colour o{juce::Colours::ghostwhite.withAlpha(.15f)};
 
-        for (int i = 0; i < 12; ++i)
+        for (int d = 0; d < 12; ++d)
         {
-            buttons.add(new juce::ShapeButton(std::to_string(i + 1), n, o, o));
-            buttons[i]->setShape(circleShape, true, true, false);
-            addAndMakeVisible(buttons[i]);
-            buttons[i]->setRadioGroupId(1);
-            buttons[i]->onClick = [this] { whichNote(); };
-            buttons[i]->setClickingTogglesState(true);
+            buttons.add(new juce::ShapeButton(std::to_string(d), n, o, o));
+            buttons[d]->setShape(circleShape, true, true, false);
+            addAndMakeVisible(buttons[d]);
+            buttons[d]->setRadioGroupId(1);
+            buttons[d]->onClick = [this] { whichNote(); };
+            buttons[d]->setClickingTogglesState(true);
+
+            updateDegree(d, v[d]);
         }
         buttons[0]->setToggleState(true, juce::dontSendNotification);
     }
@@ -414,11 +433,25 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
 
     void paint(juce::Graphics &g) override
     {
+
         auto b = this->getLocalBounds();
         g.setColour(juce::Colour{.475f, 1.f, 0.05f, 1.f});
         g.fillRect(b);
         g.setColour(juce::Colours::ghostwhite);
         g.drawRect(b);
+
+        bool enabled = this->isEnabled();
+        for (int d = 0; d < 12; ++d)
+        {
+            buttons[d]->setEnabled(enabled);
+        }
+
+        int shadowSpacing1 = JIRadius / 20;
+        int shadowSpacing2 = JIRadius / 10;
+        auto a = enabled ? 75.f : .5f;
+
+        whiteShadow.setColor(juce::Colours::antiquewhite.withAlpha(a));
+        blackShadow.setColor(juce::Colours::black.withAlpha(a));
 
         float ctrDistance{JIRadius * (5.f / 3.f)};
 
@@ -479,8 +512,8 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
                     bool hLit = calcDist(H) == 0;
                     bool uLit = calcDist(U) == 0;
                     bool dLit = calcDist(D) == 0;
-                    float alpha = .9f;
-                    
+                    float alpha = enabled ? .9f : .5f;
+
                     if (hLit) // Horizontal Line
                     {
                         lG.setColour(juce::Colours::ghostwhite.withAlpha(alpha));
@@ -510,16 +543,13 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
                     // And their shadows
                     // TODO: make these dependent on constructor size
                     juce::Path b{};
-                    b.addEllipse(x - ellipseRadius - shadowSpacing1, y - JIRadius - shadowSpacing1, 2 * ellipseRadius + shadowSpacing2,
-                                 2 * JIRadius + shadowSpacing2);
+                    b.addEllipse(x - ellipseRadius - shadowSpacing1, y - JIRadius - shadowSpacing1,
+                                 2 * ellipseRadius + shadowSpacing2, 2 * JIRadius + shadowSpacing2);
 
                     // Select gradient colour
-                    bool uni = ((w + (v * 4)) % 12 == 0) ? true : false;
-                    auto gradient =
-                        chooseColour(std::abs(v), x, y, (dist == 0), visitor[degree], uni);
-                    
-                    
-                    if (degree == selectedDegree)
+                    auto gradient = chooseWisely(std::abs(v), x, y, visitor[degree]);
+
+                    if (degree == selectedDegree && enabled)
                     {
                         selectedHighlight.render(sG, b);
                     }
@@ -530,7 +560,9 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
                     }
                     sG.setColour(juce::Colours::black.withAlpha(1.f));
                     sG.fillPath(b);
-                    alpha = (degree == selectedDegree) ? 1.f : .85f;
+                    alpha = (degree == selectedDegree) ? 1.f : .75f;
+                    if (!enabled)
+                        alpha = .5f;
                     gradient.multiplyOpacity(alpha);
                     sG.setGradientFill(gradient);
                     sG.fillPath(e);
@@ -556,19 +588,59 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
         g.drawImageAt(Lines, 0, 0, false);
         g.drawImageAt(Spheres, 0, 0, false);
     }
-    
+
     int selectedDegree{0};
 
   protected:
     buttonUser *buttonParent;
     juce::Path circleShape;
     juce::OwnedArray<juce::ShapeButton> buttons;
-    
-    melatonin::DropShadow selectedHighlight = {juce::Colours::ghostwhite, 18};
-    
 
+    melatonin::DropShadow selectedHighlight = {juce::Colours::ghostwhite, 18};
+
+    int homes[12] = {0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1};
     std::pair<int, int> initCo[12]{{0, 0}, {-1, -1}, {2, 0},  {1, -1}, {0, 1},  {-1, 0},
                                    {2, 1}, {1, 0},   {0, -1}, {-1, 1}, {2, -1}, {1, 1}};
+
+    juce::ColourGradient chooseWisely(int row, float x, float y, int visitor)
+    {
+
+        if (row == 0)
+        {
+            return juce::ColourGradient(py1, x - ellipseRadius, y, py2, x + ellipseRadius, y,
+                                        false);
+        }
+        else
+        {
+            switch (visitor)
+            {
+            case 0:
+                return juce::ColourGradient(py1, x - ellipseRadius, y, py2, x + ellipseRadius, y,
+                                            false);
+            case 1:
+                return juce::ColourGradient(l1c1, x - ellipseRadius, y, l1c2, x + ellipseRadius, y,
+                                            false);
+            case 2:
+                return juce::ColourGradient(sep1, x - ellipseRadius, y, sep2, x + ellipseRadius, y,
+                                            false);
+            case 3:
+                return juce::ColourGradient(und1, x - ellipseRadius, y, und2, x + ellipseRadius, y,
+                                            false);
+            case 4:
+                return juce::ColourGradient(trid1, x - ellipseRadius, y, trid2, x + ellipseRadius,
+                                            y, false);
+            case 5:
+                return juce::ColourGradient(sed1, x - ellipseRadius, y, sed2, x + ellipseRadius, y,
+                                            false);
+            case 6:
+                return juce::ColourGradient(nod1, x - ellipseRadius, y, nod2, x + ellipseRadius, y,
+                                            false);
+            default:
+                return juce::ColourGradient(py1, x - ellipseRadius, y, py2, x + ellipseRadius, y,
+                                            false);
+            }
+        }
+    }
 
     void whichNote()
     {
@@ -583,3 +655,5 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
         buttonParent->selectNote(n);
     }
 };
+
+#endif // LATTICES_LATTICECOMPONENT_H
