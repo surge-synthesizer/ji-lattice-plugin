@@ -155,11 +155,6 @@ struct LatticeComponent : juce::Component
                     bool lit = enabled ? (dist == 0) : false;
                     auto gradient = chooseColour(std::abs(v), x, y, lit, visitor[degree], uni);
 
-                    // Select gradient colour
-                    bool uni = ((w + (v * 4)) % 12 == 0) ? true : false;
-                    auto gradient =
-                        chooseColour(std::abs(v), x, y, (dist == 0), visitor[degree], uni);
-
                     alpha = 1.f / (std::sqrt(dist) + 1);
                     whiteShadow.setOpacity(alpha);
                     whiteShadow.render(sG, e);

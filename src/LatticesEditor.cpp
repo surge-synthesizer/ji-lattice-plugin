@@ -70,21 +70,6 @@ void LatticesEditor::resized()
     }
 }
 
-void LatticesEditor::showVisitorsMenu()
-{
-    bool show = visitorsButton->getToggleState();
-    visitorsComponent->setVisible(show);
-
-    //    if (show)
-    //    {
-    //        visitorsButton->setConnectedEdges(0);
-    //    }
-    //    else
-    //    {
-    //        visitorsButton->setConnectedEdges(!0);
-    //    }
-}
-
 void LatticesEditor::timerCallback(int timerID)
 {
     if (timerID == 1)
