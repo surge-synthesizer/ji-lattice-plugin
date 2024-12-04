@@ -54,7 +54,7 @@ struct OriginComponent : public juce::Component
         addAndMakeVisible(freqLabel);
         freqLabel.setJustificationType(juce::Justification::left);
         freqLabel.setColour(juce::Label::backgroundColourId, menuColour);
-        
+
         whatFreq = f;
     }
 
@@ -73,7 +73,7 @@ struct OriginComponent : public juce::Component
     {
         g.setColour(menuColour);
         g.fillRect(this->getLocalBounds());
-        
+
         for (int i = 0; i < 12; ++i)
         {
             auto c = (kb[i]) ? juce::Colours::black : juce::Colours::antiquewhite;
@@ -82,11 +82,11 @@ struct OriginComponent : public juce::Component
         }
         g.setColour(juce::Colours::black);
         g.fillRect(kw * 5, 1, 2, kh);
-        
+
         g.setColour(juce::Colours::ghostwhite);
         g.drawRect(this->getLocalBounds());
     }
-    
+
     void updateRoot() { rootChanged = true; }
 
     int whichNote()
@@ -123,24 +123,24 @@ struct OriginComponent : public juce::Component
 
     std::array<bool, 12> kb = {false, true,  false, true,  false, false,
                                true,  false, true,  false, true,  false};
-    
+
     juce::Colour menuColour{.475f, .5f, 0.2f, 1.f};
 
     juce::Colour white = juce::Colours::antiquewhite;
     juce::Colour black = juce::Colours::black;
-    
+
     juce::Colour trans{juce::Colours::transparentWhite};
     juce::Colour over{juce::Colours::darkgrey.withAlpha(.5f)};
-    
+
     juce::Colour sel{juce::Colours::darkviolet};
     juce::Colour selover{juce::Colours::blueviolet};
-    
+
     juce::Range<int> noRange{};
     juce::Colour noColour{};
-    
+
     juce::Label freqLabel{{}, "Ref. Frequency = "};
     juce::TextEditor freqEditor{"Ref Freq"};
-    
+
     void returnKeyResponse(juce::TextEditor *e)
     {
         e->setHighlightedRegion(noRange);
