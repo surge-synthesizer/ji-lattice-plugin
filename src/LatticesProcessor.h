@@ -16,10 +16,11 @@
 #include <set>
 #include <atomic>
 #include <cmath>
-#include <iostream>
 #include <string>
+#include <cstdint>
 
 #include "JIMath.h"
+#include "Visitors.h"
 
 class LatticesProcessor : public juce::AudioProcessor,
                           juce::MultiTimer,
@@ -57,11 +58,16 @@ class LatticesProcessor : public juce::AudioProcessor,
     void timerCallback(int timerID) override;
 
     void modeSwitch(int m);
-    void updateMIDI(int wCC, int eCC, int nCC, int sCC, int hCC, int C);
+    void updateMIDI(int hCC, int C);
     void updateFreq(double f);
     double updateRoot(int r);
-    void updateVisitors(int *v);
-    void setVisitorTuning(int d, int c);
+    void updateDistance(int dist);
+    void editVisitors(bool editing, int g);
+    int *selectVisitorGroup(int g);
+    void newVisitorGroup();
+    void updateVisitor(int d, int v);
+    inline void setVisitorTuning(int d, int v);
+
     void parameterValueChanged(int parameterIndex, float newValue) override;
 
     bool registeredMTS{false};
@@ -85,21 +91,21 @@ class LatticesProcessor : public juce::AudioProcessor,
     int syntonicDrift = 0;
     int diesisDrift = 0;
 
-    int shiftCCs[5] = {5, 6, 7, 8, 9};
+    int homeCC = 5;
     int listenOnChannel = 1;
 
     int originalRefNote{-12};
     double originalRefFreq{-1};
 
-    int visitor[12] = {0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1};
+    Visitors *currentVisitors;
+    int numVisitorGroups{0};
+    std::atomic<bool> editingVisitors{false};
+
+    uint16_t maxDistance{24};
 
   private:
-    static constexpr int maxDistance{24};
     static constexpr int defaultRefNote{0};
     static constexpr double defaultRefFreq{261.6255653005986};
-
-    juce::AudioParameterInt *xParam;
-    juce::AudioParameterInt *yParam;
 
     JIMath jim;
 
@@ -108,23 +114,23 @@ class LatticesProcessor : public juce::AudioProcessor,
 
     enum Direction
     {
+        Home,
         West,
         East,
         North,
-        South,
-        Home
+        South
     };
 
     void returnToOrigin();
 
     void respondToMidi(const juce::MidiMessage &m);
+    std::vector<bool> hold = {false, false, false, false, false};
+    std::vector<bool> wait = {false, false, false, false, false};
+
     void shift(int dir);
     void locate();
 
     void updateTuning();
-
-    inline float GNV(int input);
-    // GetNormValue... I was getting nonsense from JUCE param one
 
     double ratios[12] = {};
     double freqs[128]{};
@@ -148,11 +154,181 @@ class LatticesProcessor : public juce::AudioProcessor,
                       (double)16 / 9,
                       (double)243 / 128};
 
-    bool hold[5] = {};
-    bool wait[5] = {};
-
+    std::vector<Visitors> visitorGroups;
+    int priorSelectedGroup{0};
     double visitorTuning[12] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
-    int defvis[12] = {0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1};
+
+    juce::AudioParameterFloat *xParam;
+    juce::AudioParameterFloat *yParam;
+    juce::AudioParameterFloat *vParam;
+
+    // define these here lest the lambda functions
+    // below throw an annoying "not defined" warning
+    inline double toParam(int input, bool v = false)
+    {
+        if (v)
+        {
+            if (visitorGroups.size() <= 1)
+            {
+                return 0.0;
+            }
+
+            return static_cast<double>(input) / (visitorGroups.size() - 1);
+        }
+        else
+        {
+            return static_cast<double>(input + maxDistance) / (2.0 * maxDistance);
+        }
+    }
+    inline int fromParam(double input, bool v = false)
+    {
+        if (v)
+        {
+            if (visitorGroups.size() <= 1)
+            {
+                return 0;
+            }
+            return static_cast<int>(std::round(input * (visitorGroups.size() - 1)));
+        }
+        else
+        {
+            return static_cast<int>(std::round((input - 0.5) * 2 * maxDistance));
+        }
+    }
+
+    const juce::AudioParameterFloatAttributes distanceReadoutX =
+        juce::AudioParameterFloatAttributes{}
+            .withStringFromValueFunction(
+                [this](float value, int maximumStringLength) -> juce::String
+                {
+                    int v = fromParam(value);
+
+                    juce::String dir{};
+                    if (v == 0)
+                    {
+                        dir = "Home";
+                        return dir;
+                    }
+
+                    if (v == 1)
+                    {
+                        dir = "1 Step East";
+                        return dir;
+                    }
+                    else if (v == -1)
+                    {
+                        dir = "1 Step West";
+                        return dir;
+                    }
+
+                    dir = std::to_string(std::abs(v)) + ((v > 1) ? " Steps East" : " Steps West");
+                    return dir;
+                })
+            .withValueFromStringFunction(
+                [this](juce::String str)
+                {
+                    if (str == "Home")
+                    {
+                        return 0.5;
+                    }
+
+                    if (str == "1 Step East")
+                    {
+                        return toParam(1);
+                    }
+
+                    if (str == "1 Step West")
+                    {
+                        return toParam(-1);
+                    }
+
+                    double res{};
+                    if (str.endsWith("East"))
+                    {
+                        str = str.trimCharactersAtEnd(" Steps East");
+                        res = toParam(str.getIntValue());
+                    }
+
+                    if (str.endsWith("East"))
+                    {
+                        str = str.trimCharactersAtEnd(" Steps West");
+                        res = toParam(str.getIntValue());
+                        res *= -1;
+                    }
+
+                    return res;
+                });
+
+    const juce::AudioParameterFloatAttributes distanceReadoutY =
+        juce::AudioParameterFloatAttributes{}
+            .withStringFromValueFunction(
+                [this](float value, int maximumStringLength) -> juce::String
+                {
+                    int v = fromParam(value);
+
+                    juce::String dir{};
+                    if (v == 0)
+                    {
+                        dir = "Home";
+                        return dir;
+                    }
+                    if (v == 1)
+                    {
+                        dir = "1 Step North";
+                        return dir;
+                    }
+                    else if (v == -1)
+                    {
+                        dir = "1 Step South";
+                        return dir;
+                    }
+
+                    dir = std::to_string(std::abs(v)) + ((v > 1) ? " Steps North" : " Steps South");
+                    return dir;
+                })
+            .withValueFromStringFunction(
+                [this](juce::String str)
+                {
+                    if (str == "Home")
+                    {
+                        return 0.5;
+                    }
+
+                    if (str == "1 Step North")
+                    {
+                        return toParam(1);
+                    }
+
+                    if (str == "1 Step South")
+                    {
+                        return toParam(-1);
+                    }
+
+                    double res{};
+                    if (str.endsWith("North"))
+                    {
+                        str = str.trimCharactersAtEnd(" Steps North");
+                        res = toParam(str.getIntValue());
+                        return res;
+                    }
+
+                    if (str.endsWith("South"))
+                    {
+                        str = str.trimCharactersAtEnd(" Steps South");
+                        res = toParam(str.getIntValue());
+                        res *= -1;
+                    }
+
+                    return res;
+                });
+
+    const juce::AudioParameterFloatAttributes visitorsReadout =
+        juce::AudioParameterFloatAttributes{}
+            .withStringFromValueFunction(
+                [this](float value, int maximumStringLength) -> juce::String
+                { return std::to_string(fromParam(value, true)); })
+            .withValueFromStringFunction([this](juce::String str)
+                                         { return toParam(str.getIntValue(), true); });
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LatticesProcessor)

@@ -18,136 +18,22 @@ LatticesProcessor::LatticesProcessor()
     : juce::AudioProcessor(juce::AudioProcessor::BusesProperties().withOutput(
           "Output", juce::AudioChannelSet::stereo(), true))
 {
-    auto distanceReadoutX = juce::AudioParameterIntAttributes{}
-                                .withStringFromValueFunction(
-                                    [](int value, int maximumStringLength) -> juce::String
-                                    {
-                                        juce::String dir{};
-                                        if (value == 0)
-                                        {
-                                            dir = "Home";
-                                            return dir;
-                                        }
+    juce::NormalisableRange r = juce::NormalisableRange(0.f, 1.f);
 
-                                        if (value == 1)
-                                        {
-                                            dir = "1 Step East";
-                                            return dir;
-                                        }
-                                        else if (value == -1)
-                                        {
-                                            dir = "1 Step West";
-                                            return dir;
-                                        }
-
-                                        dir = std::to_string(std::abs(value)) +
-                                              ((value > 1) ? " Steps East" : " Steps West");
-                                        return dir;
-                                    })
-                                .withValueFromStringFunction(
-                                    [](juce::String str)
-                                    {
-                                        if (str == "Home")
-                                        {
-                                            return 0;
-                                        }
-
-                                        if (str == "1 Step East")
-                                        {
-                                            return 1;
-                                        }
-
-                                        if (str == "1 Step West")
-                                        {
-                                            return -1;
-                                        }
-
-                                        int res{};
-                                        if (str.endsWith("East"))
-                                        {
-                                            str = str.trimCharactersAtEnd(" Steps East");
-                                            res = str.getIntValue();
-                                        }
-
-                                        if (str.endsWith("East"))
-                                        {
-                                            str = str.trimCharactersAtEnd(" Steps West");
-                                            res = str.getIntValue();
-                                            res *= -1;
-                                        }
-
-                                        return res;
-                                    });
-
-    auto distanceReadoutY = juce::AudioParameterIntAttributes{}
-                                .withStringFromValueFunction(
-                                    [](int value, int maximumStringLength) -> juce::String
-                                    {
-                                        juce::String dir{};
-                                        if (value == 0)
-                                        {
-                                            dir = "Home";
-                                            return dir;
-                                        }
-
-                                        if (value == 1)
-                                        {
-                                            dir = "1 Step North";
-                                            return dir;
-                                        }
-                                        else if (value == -1)
-                                        {
-                                            dir = "1 Step South";
-                                            return dir;
-                                        }
-
-                                        dir = std::to_string(std::abs(value)) +
-                                              ((value > 1) ? " Steps North" : " Steps South");
-                                        return dir;
-                                    })
-                                .withValueFromStringFunction(
-                                    [](juce::String str)
-                                    {
-                                        if (str == "Home")
-                                        {
-                                            return 0;
-                                        }
-
-                                        if (str == "1 Step North")
-                                        {
-                                            return 1;
-                                        }
-
-                                        if (str == "1 Step South")
-                                        {
-                                            return -1;
-                                        }
-
-                                        int res{};
-                                        if (str.endsWith("North"))
-                                        {
-                                            str = str.trimCharactersAtEnd(" Steps North");
-                                            res = str.getIntValue();
-                                            return res;
-                                        }
-
-                                        if (str.endsWith("South"))
-                                        {
-                                            str = str.trimCharactersAtEnd(" Steps South");
-                                            res = str.getIntValue();
-                                            res *= -1;
-                                        }
-
-                                        return res;
-                                    });
-
-    addParameter(xParam = new juce::AudioParameterInt("px", "X Position", -maxDistance, maxDistance,
-                                                      0, distanceReadoutX));
-    addParameter(yParam = new juce::AudioParameterInt("py", "Y Position", -maxDistance, maxDistance,
-                                                      0, distanceReadoutY));
+    addParameter(xParam =
+                     new juce::AudioParameterFloat("px", "X Position", r, 0.5, distanceReadoutX));
+    addParameter(yParam =
+                     new juce::AudioParameterFloat("py", "Y Position", r, 0.5, distanceReadoutY));
+    addParameter(vParam = new juce::AudioParameterFloat("pv", "Visitors", r, 0, visitorsReadout));
 
     xParam->addListener(this);
     yParam->addListener(this);
+    vParam->addListener(this);
+
+    numVisitorGroups = 1;
+    Visitors dg{"Nobody Here"};
+    visitorGroups.push_back(std::move(dg));
+    currentVisitors = &visitorGroups[0];
 
     if (MTS_CanRegisterMaster())
     {
@@ -165,8 +51,6 @@ LatticesProcessor::LatticesProcessor()
         mode = Duodene;
         originalRefFreq = defaultRefFreq;
         originalRefNote = defaultRefNote;
-        currentRefFreq = originalRefFreq;
-        currentRefNote = originalRefNote;
         returnToOrigin();
         startTimer(1, 50);
     }
@@ -176,6 +60,7 @@ LatticesProcessor::~LatticesProcessor()
 {
     xParam->removeListener(this);
     yParam->removeListener(this);
+    vParam->removeListener(this);
 
     if (registeredMTS)
         MTS_DeregisterMaster();
@@ -206,12 +91,7 @@ void LatticesProcessor::getStateInformation(juce::MemoryBlock &destData)
 
     xml->setAttribute("SavedMode", static_cast<int>(mode));
 
-    for (int i = 0; i < 5; ++i)
-    {
-        juce::String c = juce::String("ccs_") + std::to_string(i);
-        int v = shiftCCs[i];
-        xml->setAttribute(c, v);
-    }
+    xml->setAttribute("cc", homeCC);
     xml->setAttribute("channel", listenOnChannel);
 
     int n = originalRefNote;
@@ -220,11 +100,37 @@ void LatticesProcessor::getStateInformation(juce::MemoryBlock &destData)
     double f = originalRefFreq;
     xml->setAttribute("freq", f);
 
-    double X = (double)(xParam->get() + maxDistance) / (2 * maxDistance);
-    double Y = (double)(yParam->get() + maxDistance) / (2 * maxDistance);
+    int X = fromParam(xParam->get());
+    int Y = fromParam(yParam->get());
+    int V = fromParam(vParam->get(), true);
 
     xml->setAttribute("xp", X);
     xml->setAttribute("yp", Y);
+    xml->setAttribute("vp", V);
+
+    xml->setAttribute("nvg", numVisitorGroups);
+
+    if (numVisitorGroups > 1) // no need to store number 0 since it's the default
+    {
+        for (int v = 1; v < numVisitorGroups; ++v)
+        {
+            auto vs = juce::String("visitor_") + std::to_string(v) + juce::String("_");
+
+            juce::String n = vs + juce::String("name");
+            juce::String name{visitorGroups[v].name};
+
+            xml->setAttribute(n, name);
+
+            for (int d = 0; d < 12; ++d)
+            {
+                auto b = vs + juce::String("idx_") + std::to_string(d);
+                int i = visitorGroups[v].dimensions[d];
+                xml->setAttribute(b, i);
+            }
+        }
+    }
+
+    xml->setAttribute("md", maxDistance);
 
     copyXmlToBinary(*xml, destData);
 }
@@ -248,28 +154,60 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
                 mode = Duodene;
             }
 
-            for (int i = 0; i < 5; ++i)
-            {
-                juce::String c = juce::String("ccs_") + std::to_string(i);
-                int g = xmlState->getIntAttribute(c);
-                shiftCCs[i] = g;
-            }
-
-            int mc = xmlState->getIntAttribute("channel");
-            listenOnChannel = mc;
+            homeCC = xmlState->getIntAttribute("cc");
+            listenOnChannel = xmlState->getIntAttribute("channel");
 
             originalRefNote = xmlState->getIntAttribute("note");
             originalRefFreq = xmlState->getDoubleAttribute("freq");
 
-            float x = xmlState->getDoubleAttribute("xp");
-            float y = xmlState->getDoubleAttribute("yp");
+            maxDistance = xmlState->getIntAttribute("md");
 
-            xParam->setValueNotifyingHost(x);
-            yParam->setValueNotifyingHost(y);
+            int tx = xmlState->getIntAttribute("xp");
+            int ty = xmlState->getIntAttribute("yp");
+
+            float X = toParam(tx);
+            float Y = toParam(ty);
+
+            xParam->beginChangeGesture();
+            xParam->setValueNotifyingHost(X);
+            xParam->endChangeGesture();
+            yParam->beginChangeGesture();
+            yParam->setValueNotifyingHost(Y);
+            yParam->endChangeGesture();
+
+            numVisitorGroups = xmlState->getIntAttribute("nvg");
+
+            if (numVisitorGroups > 1)
+            {
+                for (int v = 1; v < numVisitorGroups; ++v)
+                {
+                    auto vs = juce::String("visitor_") + std::to_string(v) + juce::String("_");
+                    juce::String n = vs + juce::String("name");
+
+                    juce::String jsn{xmlState->getStringAttribute(n)};
+                    std::string name = jsn.toStdString();
+                    int vds[12]{};
+                    for (int d = 0; d < 12; ++d)
+                    {
+                        auto b = vs + juce::String("idx_") + std::to_string(d);
+                        vds[d] = xmlState->getIntAttribute(b);
+                    }
+                    Visitors ng{name, vds};
+                    visitorGroups.push_back(std::move(ng));
+
+                    hold.emplace_back(false);
+                    wait.emplace_back(false);
+                }
+            }
+
+            int tv = xmlState->getIntAttribute("vp");
+            float V = toParam(tv, true);
+
+            vParam->beginChangeGesture();
+            vParam->setValueNotifyingHost(V);
+            vParam->endChangeGesture();
 
             locate();
-            updateHostDisplay(
-                juce::AudioProcessor::ChangeDetails().withNonParameterStateChanged(true));
         }
     }
     else
@@ -294,6 +232,65 @@ void LatticesProcessor::processBlock(juce::AudioBuffer<float> &buffer,
     }
 }
 
+void LatticesProcessor::respondToMidi(const juce::MidiMessage &m)
+{
+    if (editingVisitors)
+        return;
+
+    if (m.isController() && m.getChannel() == listenOnChannel)
+    {
+        auto num = m.getControllerNumber();
+        auto val = m.getControllerValue();
+
+        int numCCs = 5 + numVisitorGroups - 1;
+
+        for (int i = 0; i < 5; ++i)
+        {
+            if (num == homeCC + i)
+            {
+                if (val == 127 && hold[i] == false)
+                {
+                    shift(i);
+                    hold[i] = true;
+                }
+
+                if (val < 127 && hold[i] == true)
+                {
+                    wait[i] = true;
+                }
+            }
+        }
+
+        for (int i = 5; i < numCCs; ++i)
+        {
+            if (num == homeCC + i)
+            {
+                if (val == 127 && hold[i] == false)
+                {
+                    int cv = fromParam(vParam->get(), true);
+                    int nv = num - homeCC - 4;
+
+                    if (cv == nv)
+                    {
+                        vParam->setValueNotifyingHost(0);
+                    }
+                    else
+                    {
+                        vParam->setValueNotifyingHost(toParam(nv, true));
+                    }
+
+                    hold[i] = true;
+                }
+
+                if (val < 127 && hold[i] == true)
+                {
+                    wait[i] = true;
+                }
+            }
+        }
+    }
+}
+
 void LatticesProcessor::timerCallback(int timerID)
 {
     if (timerID == 0)
@@ -314,6 +311,8 @@ void LatticesProcessor::timerCallback(int timerID)
                 originalRefNote = defaultRefNote;
                 currentRefFreq = originalRefFreq;
                 currentRefNote = originalRefNote;
+                if (visitorGroups.empty())
+                    newVisitorGroup();
                 returnToOrigin();
                 stopTimer(0);
                 startTimer(1, 50);
@@ -333,6 +332,8 @@ void LatticesProcessor::timerCallback(int timerID)
             originalRefNote = defaultRefNote;
             currentRefFreq = originalRefFreq;
             currentRefNote = originalRefNote;
+            if (visitorGroups.empty())
+                newVisitorGroup();
             returnToOrigin();
             stopTimer(0);
             startTimer(1, 50);
@@ -341,7 +342,7 @@ void LatticesProcessor::timerCallback(int timerID)
 
     if (timerID == 1)
     {
-        for (int i = 0; i < 5; ++i)
+        for (int i = 0; i < wait.size(); ++i)
         {
             if (wait[i])
             {
@@ -368,15 +369,11 @@ void LatticesProcessor::modeSwitch(int m)
     returnToOrigin();
 }
 
-void LatticesProcessor::updateMIDI(int wCC, int eCC, int nCC, int sCC, int hCC, int C)
+void LatticesProcessor::updateMIDI(int hCC, int C)
 {
     // TODO: This doesn't set project dirty flags, investigate
 
-    shiftCCs[0] = wCC;
-    shiftCCs[1] = eCC;
-    shiftCCs[2] = nCC;
-    shiftCCs[3] = sCC;
-    shiftCCs[4] = hCC;
+    homeCC = hCC;
     listenOnChannel = C;
 
     updateHostDisplay(juce::AudioProcessor::ChangeDetails().withNonParameterStateChanged(true));
@@ -403,21 +400,63 @@ double LatticesProcessor::updateRoot(int r)
     return nf;
 }
 
-void LatticesProcessor::updateVisitors(int *v)
+void LatticesProcessor::updateDistance(int dist)
 {
-    for (int d = 0; d < 12; ++d)
+    maxDistance = dist;
+    returnToOrigin();
+    updateHostDisplay(juce::AudioProcessor::ChangeDetails().withNonParameterStateChanged(true));
+}
+
+void LatticesProcessor::editVisitors(bool editing, int g)
+{
+    editingVisitors = editing;
+
+    if (editing)
     {
-        visitor[d] = v[d];
-        setVisitorTuning(d, v[d]);
+        priorSelectedGroup = fromParam(vParam->get());
+        selectVisitorGroup(g);
     }
+    else
+    {
+        vParam->setValueNotifyingHost(toParam(priorSelectedGroup));
+        changed = true;
+    }
+}
+
+int *LatticesProcessor::selectVisitorGroup(int g)
+{
+    currentVisitors = &visitorGroups[g];
+
+    float v = toParam(g, true);
+    vParam->setValueNotifyingHost(v);
+
+    return currentVisitors->dimensions;
+}
+
+void LatticesProcessor::newVisitorGroup()
+{
+    Visitors ng{"new"};
+    visitorGroups.push_back(std::move(ng));
+    hold.emplace_back(false);
+    wait.emplace_back(false);
+    ++numVisitorGroups;
+    float v = toParam(numVisitorGroups - 1, true);
+    vParam->setValueNotifyingHost(v);
+}
+
+void LatticesProcessor::updateVisitor(int d, int v)
+{
+    currentVisitors->dimensions[d] = v;
+    setVisitorTuning(d, v);
+
     locate();
 }
 
-void LatticesProcessor::setVisitorTuning(int d, int c)
+inline void LatticesProcessor::setVisitorTuning(int d, int v)
 {
     bool major = (d == 7 || d == 2 || d == 9 || d == 4 || d == 11 || d == 6);
 
-    switch (c)
+    switch (v)
     {
     case 0:
         visitorTuning[d] = 1.0;
@@ -459,78 +498,68 @@ void LatticesProcessor::returnToOrigin()
     yParam->beginChangeGesture();
     yParam->setValueNotifyingHost(0.5);
     yParam->endChangeGesture();
+    vParam->beginChangeGesture();
+    vParam->setValueNotifyingHost(0.0);
+    vParam->endChangeGesture();
 
-    for (int i = 0; i < 12; ++i)
+    for (int d = 0; d < 12; ++d)
     {
-        ratios[i] = duo12[i];
-        coOrds[i] = duoCo[i];
-        setVisitorTuning(i, defvis[i]);
+        ratios[d] = duo12[d];
+        coOrds[d] = duoCo[d];
     }
 
     updateTuning();
 }
 
-void LatticesProcessor::respondToMidi(const juce::MidiMessage &m)
+void LatticesProcessor::parameterValueChanged(int parameterIndex, float newValue)
 {
-    if (m.isController() && m.getChannel() == listenOnChannel)
+    if (parameterIndex == 2)
     {
-        auto num = m.getControllerNumber();
-        auto val = m.getControllerValue();
+        int vis = fromParam(vParam->get(), true);
+        currentVisitors = &visitorGroups[vis];
 
-        for (int i = 0; i < 5; ++i)
+        for (int d = 0; d < 12; ++d)
         {
-            if (num == shiftCCs[i])
-            {
-                if (val == 127 && hold[i] == false)
-                {
-                    shift(i);
-                    hold[i] = true;
-                }
-
-                if (val < 127 && hold[i] == true)
-                {
-                    wait[i] = true;
-                }
-            }
+            setVisitorTuning(d, currentVisitors->dimensions[d]);
         }
     }
-}
 
-void LatticesProcessor::parameterValueChanged(int parameterIndex, float newValue) { locate(); }
+    locate();
+}
 
 void LatticesProcessor::shift(int dir)
 {
-    float X = xParam->get();
-    float Y = yParam->get();
+    double X = fromParam(xParam->get());
+    double Y = fromParam(yParam->get());
 
     switch (dir)
     {
+    case Home:
+        returnToOrigin();
+        break;
     case West:
         xParam->beginChangeGesture();
-        X = GNV(X - 1);
-        xParam->setValueNotifyingHost(X);
+        --X;
+        xParam->setValueNotifyingHost(toParam(X));
         xParam->endChangeGesture();
         break;
     case East:
         xParam->beginChangeGesture();
-        X = GNV(X + 1);
-        xParam->setValueNotifyingHost(X);
+        ++X;
+        xParam->setValueNotifyingHost(toParam(X));
         xParam->endChangeGesture();
         break;
     case North:
         yParam->beginChangeGesture();
-        Y = GNV(Y + 1);
-        yParam->setValueNotifyingHost(Y);
+        ++Y;
+        yParam->setValueNotifyingHost(toParam(Y));
         yParam->endChangeGesture();
         break;
     case South:
         yParam->beginChangeGesture();
-        Y = GNV(Y - 1);
-        yParam->setValueNotifyingHost(Y);
+        --Y;
+        yParam->setValueNotifyingHost(toParam(Y));
         yParam->endChangeGesture();
-        break;
-    case Home:
-        returnToOrigin();
         break;
     };
 
@@ -539,8 +568,8 @@ void LatticesProcessor::shift(int dir)
 
 void LatticesProcessor::locate()
 {
-    positionX = xParam->get();
-    positionY = yParam->get();
+    positionX = fromParam(xParam->get());
+    positionY = fromParam(yParam->get());
 
     if (mode == Syntonic)
     {
@@ -551,83 +580,60 @@ void LatticesProcessor::locate()
         positionY += syntYOff;
     }
 
-    int nn = originalRefNote;
-    double nf = 1.0;
-
-    int absx = std::abs(positionX);
-    double mul = positionX < 0 ? 1 / 1.5 : 1.5; // fifth down : fifth up
-    int add = positionX < 0 ? -7 : 7;
-    for (int i = 0; i < absx; ++i)
+    if (editingVisitors)
     {
-        nn += add;
-        nf *= mul;
+        currentRefNote = originalRefNote;
+        currentRefFreq = originalRefFreq;
     }
-
-    int absy = std::abs(positionY);
-    mul = positionY < 0 ? 1 / 1.25 : 1.25; // third down : third up
-    add = positionY < 0 ? -4 : 4;
-    for (int i = 0; i < absy; ++i)
+    else
     {
-        nn += add;
-        nf *= mul;
-    }
+        int nn = originalRefNote;
+        double nf = 1.0;
 
-    while (nn < 0)
-    {
-        nn += 12;
-        nf *= 2.0;
-    }
-    while (nn >= 12)
-    {
-        nn -= 12;
-        nf *= 0.5;
-    }
-
-    currentRefNote = nn;
-    currentRefFreq = originalRefFreq * nf;
-
-    //    for (int i = 0; i < 12; ++i) // no visitors
-    //    {
-    //        coOrds[i].first = duoCo[i].first + positionX;
-    //        coOrds[i].second = duoCo[i].second + positionY;
-    //
-    //        ratios[i] = duo12[i];
-    //    }
-
-    for (int i = 0; i < 12; ++i) // visitors
-    {
-        auto vx{0};
-        auto vy{0};
-
-        if ((i == 9 || i == 4 || i == 11 || i == 6) && visitor[i] == 0)
+        int absx = std::abs(positionX);
+        double mul = positionX < 0 ? 1 / 1.5 : 1.5; // fifth down : fifth up
+        int add = positionX < 0 ? -7 : 7;
+        for (int i = 0; i < absx; ++i)
         {
-            vx = 4;
-            vy = -1;
-        }
-        if ((i == 5 || i == 0) && visitor[i] != 0)
-        {
-            vx = 4;
-            vy = -1;
-        }
-        if ((i == 7 || i == 2) && visitor[i] != 0)
-        {
-            vx = -4;
-            vy = 1;
-        }
-        if ((i == 1 || i == 8 || i == 3 || i == 10) && visitor[i] == 0)
-        {
-            vx = -4;
-            vy = 1;
+            nn += add;
+            nf *= mul;
         }
 
-        coOrds[i].first = duoCo[i].first + positionX + vx;
-        coOrds[i].second = duoCo[i].second + positionY + vy;
+        int absy = std::abs(positionY);
+        mul = positionY < 0 ? 1 / 1.25 : 1.25; // third down : third up
+        add = positionY < 0 ? -4 : 4;
+        for (int i = 0; i < absy; ++i)
+        {
+            nn += add;
+            nf *= mul;
+        }
 
-        ratios[i] = pyth12[i] * visitorTuning[i];
+        while (nn < 0)
+        {
+            nn += 12;
+            nf *= 2.0;
+        }
+        while (nn >= 12)
+        {
+            nn -= 12;
+            nf *= 0.5;
+        }
+
+        currentRefNote = nn;
+        currentRefFreq = originalRefFreq * nf;
     }
 
     if (mode == Syntonic) // syntonic should ignore visitors
     {
+        currentVisitors = &visitorGroups[0]; // ignore visitors
+
+        for (int d = 0; d < 12; ++d)
+        {
+            coOrds[d].first = duoCo[d].first + positionX;
+            coOrds[d].second = duoCo[d].second + positionY;
+            ratios[d] = duo12[d];
+        }
+
         int syntShape = ((positionX % 4) + 4) % 4;
 
         ratios[6] = (syntShape > 0) ? (double)36 / 25 : (double)45 / 32;
@@ -638,6 +644,54 @@ void LatticesProcessor::locate()
         coOrds[11].second = (syntShape > 1) ? positionY - 2 : positionY + 1;
         coOrds[4].second = (syntShape == 3) ? positionY - 2 : positionY + 1;
     }
+    else
+    {
+        if ((fromParam(vParam->get(), true) == 0) || visitorGroups.empty())
+        {
+            for (int d = 0; d < 12; ++d)
+            {
+
+                coOrds[d].first = duoCo[d].first + positionX;
+                coOrds[d].second = duoCo[d].second + positionY;
+                ratios[d] = duo12[d];
+            }
+        }
+        else
+        {
+            for (int d = 0; d < 12; ++d)
+            {
+                auto vx{0};
+                auto vy{0};
+
+                if ((d == 9 || d == 4 || d == 11 || d == 6) && currentVisitors->dimensions[d] == 0)
+                {
+                    vx = 4;
+                    vy = -1;
+                }
+                if ((d == 5 || d == 0) && currentVisitors->dimensions[d] != 0)
+                {
+                    vx = 4;
+                    vy = -1;
+                }
+                if ((d == 7 || d == 2) && currentVisitors->dimensions[d] != 0)
+                {
+                    vx = -4;
+                    vy = 1;
+                }
+                if ((d == 1 || d == 8 || d == 3 || d == 10) && currentVisitors->dimensions[d] == 0)
+                {
+                    vx = -4;
+                    vy = 1;
+                }
+
+                coOrds[d].first = duoCo[d].first + positionX + vx;
+                coOrds[d].second = duoCo[d].second + positionY + vy;
+
+                ratios[d] = pyth12[d] * visitorTuning[d];
+            }
+        }
+    }
+    updateHostDisplay(juce::AudioProcessor::ChangeDetails().withNonParameterStateChanged(true));
 
     updateTuning();
 }
@@ -664,14 +718,6 @@ void LatticesProcessor::updateTuning()
 
     // later...
     MTS_SetScaleName("JI is nice yeah?");
-}
-
-inline float LatticesProcessor::GNV(int input)
-{
-    float res = input + maxDistance;
-    res /= (2 * maxDistance);
-
-    return res;
 }
 
 //==============================================================================

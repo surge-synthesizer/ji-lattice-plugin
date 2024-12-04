@@ -22,23 +22,15 @@ struct OriginComponent : public juce::Component
 
         for (int i = 0; i < 12; ++i)
         {
-            if (kb[i])
-            {
-                key.add(new juce::ShapeButton(std::to_string(i), b1, b2, sc));
-            }
-            else
-            {
-                key.add(new juce::ShapeButton(std::to_string(i), w1, w2, sc));
-            }
-
+            key.add(new juce::ShapeButton(std::to_string(i), trans, over, over));
             key[i]->setShape(keyshape, true, true, false);
-            addAndMakeVisible(key[i]);
+            addAndMakeVisible(*key[i]);
             key[i]->setRadioGroupId(1);
             key[i]->onClick = [this] { updateRoot(); };
             key[i]->setClickingTogglesState(true);
-            key[i]->setOutline(juce::Colours::lightgrey, 1.5f);
+            key[i]->setOutline(noColour, 0.f);
             key[i]->shouldUseOnColours(true);
-            key[i]->setOnColours(sc, so, sc);
+            key[i]->setOnColours(sel, selover, selover);
 
             if (o == i)
             {
@@ -54,34 +46,48 @@ struct OriginComponent : public juce::Component
         freqEditor.setJustification(juce::Justification::left);
         freqEditor.setSelectAllWhenFocused(true);
         freqEditor.setColour(juce::TextEditor::outlineColourId, noColour);
+        freqEditor.setColour(juce::TextEditor::focusedOutlineColourId, noColour);
         freqEditor.onReturnKey = [this] { returnKeyResponse(&freqEditor); };
         freqEditor.onEscapeKey = [this] { escapeKeyResponse(&freqEditor); };
         freqEditor.onFocusLost = [this] { focusLostResponse(&freqEditor); };
 
         addAndMakeVisible(freqLabel);
         freqLabel.setJustificationType(juce::Justification::left);
-        freqLabel.setColour(juce::Label::backgroundColourId,
-                            findColour(juce::TextEditor::backgroundColourId));
+        freqLabel.setColour(juce::Label::backgroundColourId, menuColour);
+
+        whatFreq = f;
     }
 
     void resized() override
     {
         for (int i = 0; i < 12; ++i)
         {
-            key[i]->setBounds(kw * i, 0, kw, kh);
+            key[i]->setBounds(kw * i + 1, 1, kw, kh);
         }
 
-        freqLabel.setBounds(0, kh, 108, 30);
-        freqEditor.setBounds(kw * 6, kh, 108, 30);
+        freqLabel.setBounds(1, kh, 106, 27);
+        freqEditor.setBounds(kw * 5 + 5, kh, 106, 27);
     }
-
-    void updateRoot() { rootChanged = true; }
 
     void paint(juce::Graphics &g) override
     {
-        g.setColour(findColour(juce::TextEditor::backgroundColourId));
+        g.setColour(menuColour);
         g.fillRect(this->getLocalBounds());
+
+        for (int i = 0; i < 12; ++i)
+        {
+            auto c = (kb[i]) ? juce::Colours::black : juce::Colours::antiquewhite;
+            g.setColour(c);
+            g.fillRect(kw * i + 1, 1, kw, kh);
+        }
+        g.setColour(juce::Colours::black);
+        g.fillRect(kw * 5, 1, 2, kh);
+
+        g.setColour(juce::Colours::ghostwhite);
+        g.drawRect(this->getLocalBounds());
     }
+
+    void updateRoot() { rootChanged = true; }
 
     int whichNote()
     {
@@ -107,10 +113,8 @@ struct OriginComponent : public juce::Component
     }
 
   private:
-    static constexpr int kw = 18;
+    static constexpr int kw = 20;
     static constexpr int kh = 65;
-
-    juce::Label freqLabel{{}, "Ref. Frequency = "};
 
     juce::OwnedArray<juce::ShapeButton> key;
 
@@ -120,17 +124,22 @@ struct OriginComponent : public juce::Component
     std::array<bool, 12> kb = {false, true,  false, true,  false, false,
                                true,  false, true,  false, true,  false};
 
-    juce::Colour w1 = juce::Colours::white;
-    juce::Colour w2 = juce::Colours::antiquewhite;
-    juce::Colour b1 = juce::Colours::black;
-    juce::Colour b2 = juce::Colours::darkgrey;
-    juce::Colour sc = juce::Colours::darkviolet;
-    juce::Colour so = juce::Colours::blueviolet;
+    juce::Colour menuColour{.475f, .5f, 0.2f, 1.f};
 
-    juce::TextEditor freqEditor{"Ref Freq"};
+    juce::Colour white = juce::Colours::antiquewhite;
+    juce::Colour black = juce::Colours::black;
+
+    juce::Colour trans{juce::Colours::transparentWhite};
+    juce::Colour over{juce::Colours::darkgrey.withAlpha(.5f)};
+
+    juce::Colour sel{juce::Colours::darkviolet};
+    juce::Colour selover{juce::Colours::blueviolet};
 
     juce::Range<int> noRange{};
     juce::Colour noColour{};
+
+    juce::Label freqLabel{{}, "Ref. Frequency = "};
+    juce::TextEditor freqEditor{"Ref Freq"};
 
     void returnKeyResponse(juce::TextEditor *e)
     {
