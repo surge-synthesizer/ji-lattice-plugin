@@ -43,8 +43,7 @@ struct MenuBarComponent : juce::Component
         visButton->setToggleState(false, juce::dontSendNotification);
 
         std::string bruh[1] = {"names of groups here eventually"};
-        visC = std::make_unique<VisitorsComponent>(processor.currentVisitors->dimensions,
-                                                   processor.numVisitorGroups, bruh);
+        visC = std::make_unique<VisitorsComponent>(processor.numVisitorGroups, bruh);
         addAndMakeVisible(*visC);
         visC->setVisible(false);
 

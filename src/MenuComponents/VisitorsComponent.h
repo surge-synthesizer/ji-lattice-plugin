@@ -21,7 +21,7 @@
 //==============================================================================
 struct VisitorsComponent : public juce::Component
 {
-    VisitorsComponent(int *v, int ng, std::string names[])
+    VisitorsComponent(int ng, std::string names[])
     {
         juce::Colour n{juce::Colours::transparentWhite};
         juce::Colour o{juce::Colours::ghostwhite.withAlpha(.15f)};
@@ -30,19 +30,14 @@ struct VisitorsComponent : public juce::Component
 
         circle.addEllipse(0, 0, diameter, diameter);
 
-        for (int i = 0; i < 12; ++i)
+        for (int i = 0; i < 7; ++i)
         {
-            dd[i] = v[i];
-
-            if (i < 7)
-            {
-                commas.add(new juce::ShapeButton("option" + std::to_string(i), n, o, o));
-                commas[i]->setShape(circle, true, true, false);
-                addAndMakeVisible(commas[i]);
-                commas[i]->setRadioGroupId(2);
-                commas[i]->onClick = [this] { selectComma(); };
-                commas[i]->setClickingTogglesState(true);
-            }
+            commas.add(new juce::ShapeButton("option" + std::to_string(i), n, o, o));
+            commas[i]->setShape(circle, true, true, false);
+            addAndMakeVisible(commas[i]);
+            commas[i]->setRadioGroupId(2);
+            commas[i]->onClick = [this] { selectComma(); };
+            commas[i]->setClickingTogglesState(true);
         }
 
         miniLattice = std::make_unique<lattice_t>(dd, this, 18);
