@@ -35,6 +35,8 @@ struct LatticeComponent : juce::Component
         }
     }
 
+    LatticeComponent(std::pair<int, int> *c, int *v) { update(c, v); }
+
     void update(std::pair<int, int> *c, int *v)
     {
         for (int i = 0; i < 12; ++i)

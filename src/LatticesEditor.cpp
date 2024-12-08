@@ -15,7 +15,7 @@
 //==============================================================================
 LatticesEditor::LatticesEditor(LatticesProcessor &p) : juce::AudioProcessorEditor(&p), processor(p)
 {
-    latticeComponent = std::make_unique<LatticeComponent>(p.coOrds);
+    latticeComponent = std::make_unique<LatticeComponent>(p.coOrds, p.currentVisitors->dimensions);
     addAndMakeVisible(*latticeComponent);
     latticeComponent->setBufferedToImage(true);
 
