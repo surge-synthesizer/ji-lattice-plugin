@@ -15,7 +15,7 @@
 //==============================================================================
 LatticesEditor::LatticesEditor(LatticesProcessor &p) : juce::AudioProcessorEditor(&p), processor(p)
 {
-    latticeComponent = std::make_unique<LatticeComponent>(p.coOrds, p.currentVisitors->dimensions);
+    latticeComponent = std::make_unique<LatticeComponent>(p.coOrds, p.currentVisitors->vis);
     addAndMakeVisible(*latticeComponent);
     latticeComponent->setBufferedToImage(true);
 
@@ -93,15 +93,13 @@ void LatticesEditor::timerCallback(int timerID)
             processor.editVisitors(edvi, g);
         }
         latticeComponent->setEnabled(!menuComponent->visC->isVisible());
-        latticeComponent->repaint();
+
+        //        latticeComponent->repaint();
 
         if (processor.changed)
         {
-
-            latticeComponent->update(processor.coOrds, processor.currentVisitors->dimensions);
-
+            latticeComponent->update(processor.coOrds, processor.currentVisitors->vis);
             latticeComponent->repaint();
-
             processor.changed = false;
         }
 
@@ -115,6 +113,7 @@ void LatticesEditor::timerCallback(int timerID)
         {
             processor.updateMIDI(menuComponent->settingsC->homeCC,
                                  menuComponent->settingsC->midiChannel);
+            menuComponent->settingsC->settingChanged = false;
         }
 
         if (menuComponent->settingsC->distanceChanged)
@@ -144,6 +143,11 @@ void LatticesEditor::timerCallback(int timerID)
                 processor.newVisitorGroup();
                 menuComponent->visC->madeNewGroup = false;
             }
+            else if (menuComponent->visC->deleteGroupPls > 0)
+            {
+                processor.deleteVisitorGroup(menuComponent->visC->deleteGroupPls);
+                menuComponent->visC->deleteGroupPls = -1;
+            }
             else
             {
                 int g = menuComponent->visC->selectedGroup;
@@ -152,6 +156,13 @@ void LatticesEditor::timerCallback(int timerID)
                 menuComponent->visC->setGroupData(processor.selectVisitorGroup(g));
                 menuComponent->visC->reselect = false;
             }
+        }
+
+        if (menuComponent->visC->resetPls)
+        {
+            processor.resetVisitorGroup();
+            menuComponent->visC->setGroupData(processor.currentVisitors->vis);
+            menuComponent->visC->resetPls = false;
         }
 
         if (menuComponent->visC->update)

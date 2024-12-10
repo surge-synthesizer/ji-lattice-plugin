@@ -57,6 +57,15 @@ struct VisitorsComponent : public juce::Component
             groups[g]->setClickingTogglesState(true);
         }
 
+        deleteButton = std::make_unique<juce::TextButton>("Delete");
+        addAndMakeVisible(*deleteButton);
+        deleteButton->onClick = [this] { deleteGroup(); };
+
+        resetButton = std::make_unique<juce::TextButton>("Reset");
+        addAndMakeVisible(*resetButton);
+        resetButton->onClick = [this] { resetGroup(); };
+
+        groups[selectedGroup]->setToggleState(true, juce::dontSendNotification);
         commas[1]->setToggleState(true, juce::dontSendNotification);
     }
 
@@ -81,6 +90,11 @@ struct VisitorsComponent : public juce::Component
                 groups[i]->setBounds(5 + boxsize * (i + 1), 5, boxsize, boxsize);
             }
             plusButton->setBounds(5 + boxsize * (numGroups + 1), 5, boxsize, boxsize);
+
+            deleteButton->setBounds(5, diameter + 5, 45, 20);
+            deleteButton->setEnabled(numGroups > 1 && selectedGroup != 0);
+            resetButton->setBounds(55, diameter + 5, 45, 20);
+            resetButton->setEnabled(numGroups > 1 && selectedGroup != 0);
         }
     }
 
@@ -123,13 +137,6 @@ struct VisitorsComponent : public juce::Component
         }
     }
 
-    bool update = false;
-    bool reselect = false;
-    int dd[12] = {0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1}; // Dimension of degree
-    bool madeNewGroup = false;
-    int selectedGroup = 0;
-    int selectedNote{0};
-
     void setGroupData(int *v)
     {
         for (int d = 0; d < 12; ++d)
@@ -160,6 +167,15 @@ struct VisitorsComponent : public juce::Component
         repaint();
     }
 
+    bool update = false;
+    bool reselect = false;
+    bool madeNewGroup = false;
+    bool resetPls = false;
+    int deleteGroupPls = -1;
+    int selectedGroup = 0;
+    int selectedNote{0};
+    int dd[12] = {0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1}; // Dimension of degree
+
   private:
     int numGroups{0};
     static constexpr int radius = 20;
@@ -175,6 +191,9 @@ struct VisitorsComponent : public juce::Component
 
     std::unique_ptr<juce::TextButton> plusButton;
     juce::OwnedArray<juce::TextButton> groups;
+
+    std::unique_ptr<juce::TextButton> deleteButton;
+    std::unique_ptr<juce::TextButton> resetButton;
 
     using lattice_t = SmallLatticeComponent<VisitorsComponent>;
     std::unique_ptr<lattice_t> miniLattice;
@@ -266,6 +285,8 @@ struct VisitorsComponent : public juce::Component
         }
     }
 
+    void resetGroup() { resetPls = true; }
+
     void newGroup()
     {
         groups.add(new juce::TextButton(std::to_string(numGroups)));
@@ -277,6 +298,22 @@ struct VisitorsComponent : public juce::Component
 
         madeNewGroup = true;
         ++numGroups;
+        selectGroup();
+    }
+
+    void deleteGroup()
+    {
+        deleteGroupPls = selectedGroup;
+
+        for (int i = selectedGroup; i < groups.size(); ++i)
+        {
+            groups[i]->setButtonText(std::to_string(i - 1));
+        }
+        groups.remove(selectedGroup, true);
+        groups[selectedGroup - 1]->setToggleState(true, juce::sendNotification);
+
+        --selectedGroup;
+        --numGroups;
         selectGroup();
     }
 };

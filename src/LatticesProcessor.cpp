@@ -31,7 +31,7 @@ LatticesProcessor::LatticesProcessor()
     vParam->addListener(this);
 
     numVisitorGroups = 1;
-    Visitors dg{"Nobody Here"};
+    Visitors dg{"Nobody Here", jim};
     visitorGroups.push_back(std::move(dg));
     currentVisitors = &visitorGroups[0];
 
@@ -124,7 +124,7 @@ void LatticesProcessor::getStateInformation(juce::MemoryBlock &destData)
             for (int d = 0; d < 12; ++d)
             {
                 auto b = vs + juce::String("idx_") + std::to_string(d);
-                int i = visitorGroups[v].dimensions[d];
+                int i = visitorGroups[v].vis[d];
                 xml->setAttribute(b, i);
             }
         }
@@ -192,11 +192,8 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
                         auto b = vs + juce::String("idx_") + std::to_string(d);
                         vds[d] = xmlState->getIntAttribute(b);
                     }
-                    Visitors ng{name, vds};
+                    Visitors ng{name, jim, vds};
                     visitorGroups.push_back(std::move(ng));
-
-                    hold.emplace_back(false);
-                    wait.emplace_back(false);
                 }
             }
 
@@ -248,13 +245,13 @@ void LatticesProcessor::respondToMidi(const juce::MidiMessage &m)
         {
             if (num == homeCC + i)
             {
-                if (val == 127 && hold[i] == false)
+                if (val == 127 && !hold[i])
                 {
                     shift(i);
                     hold[i] = true;
                 }
 
-                if (val < 127 && hold[i] == true)
+                if (val < 127 && hold[i])
                 {
                     wait[i] = true;
                 }
@@ -265,7 +262,7 @@ void LatticesProcessor::respondToMidi(const juce::MidiMessage &m)
         {
             if (num == homeCC + i)
             {
-                if (val == 127 && hold[i] == false)
+                if (val == 127 && !hold[5])
                 {
                     int cv = fromParam(vParam->get(), true);
                     int nv = num - homeCC - 4;
@@ -279,12 +276,12 @@ void LatticesProcessor::respondToMidi(const juce::MidiMessage &m)
                         vParam->setValueNotifyingHost(toParam(nv, true));
                     }
 
-                    hold[i] = true;
+                    hold[5] = true;
                 }
 
-                if (val < 127 && hold[i] == true)
+                if (val < 127 && hold[5])
                 {
-                    wait[i] = true;
+                    wait[5] = true;
                 }
             }
         }
@@ -342,7 +339,7 @@ void LatticesProcessor::timerCallback(int timerID)
 
     if (timerID == 1)
     {
-        for (int i = 0; i < wait.size(); ++i)
+        for (int i = 0; i < 6; ++i)
         {
             if (wait[i])
             {
@@ -430,59 +427,40 @@ int *LatticesProcessor::selectVisitorGroup(int g)
     float v = toParam(g, true);
     vParam->setValueNotifyingHost(v);
 
-    return currentVisitors->dimensions;
+    return currentVisitors->vis;
+}
+
+void LatticesProcessor::resetVisitorGroup()
+{
+    currentVisitors->resetToDefault();
+    changed = true;
+    locate();
 }
 
 void LatticesProcessor::newVisitorGroup()
 {
-    Visitors ng{"new"};
+    Visitors ng{"new", jim};
     visitorGroups.push_back(std::move(ng));
-    hold.emplace_back(false);
-    wait.emplace_back(false);
     ++numVisitorGroups;
     float v = toParam(numVisitorGroups - 1, true);
     vParam->setValueNotifyingHost(v);
 }
 
-void LatticesProcessor::updateVisitor(int d, int v)
+void LatticesProcessor::deleteVisitorGroup(int idx)
 {
-    currentVisitors->dimensions[d] = v;
-    setVisitorTuning(d, v);
+    if (idx == 0)
+        return; // illegal, shouldn't happen
 
-    locate();
+    currentVisitors = &visitorGroups[0];
+    visitorGroups.erase(visitorGroups.begin() + idx);
+    --numVisitorGroups;
 }
 
-inline void LatticesProcessor::setVisitorTuning(int d, int v)
+void LatticesProcessor::updateVisitor(int d, int v)
 {
-    bool major = (d == 7 || d == 2 || d == 9 || d == 4 || d == 11 || d == 6);
+    currentVisitors->vis[d] = v;
 
-    switch (v)
-    {
-    case 0:
-        visitorTuning[d] = 1.0;
-        break;
-    case 1:
-        visitorTuning[d] = jim.comma(jim.syntonic, major);
-        break;
-    case 2:
-        visitorTuning[d] = jim.comma(jim.seven, major);
-        break;
-    case 3:
-        visitorTuning[d] = jim.comma(jim.eleven, major);
-        break;
-    case 4:
-        visitorTuning[d] = jim.comma(jim.thirteen, major);
-        break;
-    case 5:
-        visitorTuning[d] = jim.comma(jim.seventeen, major);
-        break;
-    case 6:
-        visitorTuning[d] = jim.comma(jim.nineteen, major);
-        break;
-    case 7:
-        visitorTuning[d] = jim.comma(jim.twentythree, major);
-        break;
-    }
+    locate();
 }
 
 void LatticesProcessor::returnToOrigin()
@@ -517,11 +495,6 @@ void LatticesProcessor::parameterValueChanged(int parameterIndex, float newValue
     {
         int vis = fromParam(vParam->get(), true);
         currentVisitors = &visitorGroups[vis];
-
-        for (int d = 0; d < 12; ++d)
-        {
-            setVisitorTuning(d, currentVisitors->dimensions[d]);
-        }
     }
 
     locate();
@@ -663,22 +636,22 @@ void LatticesProcessor::locate()
                 auto vx{0};
                 auto vy{0};
 
-                if ((d == 9 || d == 4 || d == 11 || d == 6) && currentVisitors->dimensions[d] == 0)
+                if ((d == 9 || d == 4 || d == 11 || d == 6) && currentVisitors->vis[d] == 0)
                 {
                     vx = 4;
                     vy = -1;
                 }
-                if ((d == 5 || d == 0) && currentVisitors->dimensions[d] != 0)
+                if ((d == 5 || d == 0) && currentVisitors->vis[d] != 0)
                 {
                     vx = 4;
                     vy = -1;
                 }
-                if ((d == 7 || d == 2) && currentVisitors->dimensions[d] != 0)
+                if ((d == 7 || d == 2) && currentVisitors->vis[d] != 0)
                 {
                     vx = -4;
                     vy = 1;
                 }
-                if ((d == 1 || d == 8 || d == 3 || d == 10) && currentVisitors->dimensions[d] == 0)
+                if ((d == 1 || d == 8 || d == 3 || d == 10) && currentVisitors->vis[d] == 0)
                 {
                     vx = -4;
                     vy = 1;
@@ -687,7 +660,7 @@ void LatticesProcessor::locate()
                 coOrds[d].first = duoCo[d].first + positionX + vx;
                 coOrds[d].second = duoCo[d].second + positionY + vy;
 
-                ratios[d] = pyth12[d] * visitorTuning[d];
+                ratios[d] = pyth12[d] * currentVisitors->tuning[d];
             }
         }
     }
