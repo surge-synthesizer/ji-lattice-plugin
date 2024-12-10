@@ -72,7 +72,7 @@ struct MenuBarComponent : juce::Component
         auto b = this->getLocalBounds();
 
         visButton->setBounds(visRect);
-        visC->setBounds(0, 30, 600, 300);
+        visC->setBounds(0, 30, 750, 300);
 
         settingsButton->setBounds(settingsRect);
         settingsC->setBounds(600, 30, 120, 200);
