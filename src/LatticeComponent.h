@@ -38,6 +38,32 @@ struct LatticeComponent : juce::Component
         }
     }
 
+    void zoomIn()
+    {
+        if (JIRadius == 42)
+            return;
+
+        ++JIRadius;
+        ellipseRadius = JIRadius * 1.15;
+        stoke.setPointHeight(JIRadius);
+        blackShadow.setRadius(JIRadius / 3);
+        whiteShadow.setRadius(JIRadius / 2);
+        repaint();
+    }
+
+    void zoomOut()
+    {
+        if (JIRadius == 15)
+            return;
+
+        --JIRadius;
+        ellipseRadius = JIRadius * 1.15;
+        stoke.setPointHeight(JIRadius);
+        blackShadow.setRadius(JIRadius / 3);
+        whiteShadow.setRadius(JIRadius / 2);
+        repaint();
+    }
+
     void paint(juce::Graphics &g) override
     {
         bool enabled = this->isEnabled();
@@ -379,7 +405,7 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
 
         JIRadius = size;
         ellipseRadius = JIRadius * 1.15;
-        stoke.setHeight(static_cast<float>(JIRadius));
+        stoke.setPointHeight(JIRadius);
 
         blackShadow.setRadius(JIRadius / 3);
         whiteShadow.setRadius(JIRadius / 2);
