@@ -46,6 +46,14 @@ void LatticesEditor::init()
     addAndMakeVisible(*menuComponent);
     menuComponent->setBounds(this->getLocalBounds());
 
+    zoomOutButton = std::make_unique<juce::TextButton>("-");
+    addAndMakeVisible(*zoomOutButton);
+    zoomOutButton->onClick = [this] { latticeComponent->zoomOut(); };
+
+    zoomInButton = std::make_unique<juce::TextButton>("+");
+    addAndMakeVisible(*zoomInButton);
+    zoomInButton->onClick = [this] { latticeComponent->zoomIn(); };
+
     inited = true;
     startTimer(0, 5);
 }
@@ -61,8 +69,9 @@ void LatticesEditor::resized()
 
     if (inited)
     {
-
         menuComponent->setBounds(b);
+        zoomOutButton->setBounds(20, b.getBottom() - 55, 35, 35);
+        zoomInButton->setBounds(60, b.getBottom() - 55, 35, 35);
     }
     else
     {

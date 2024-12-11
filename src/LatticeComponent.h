@@ -27,14 +27,6 @@ struct LatticeComponent : juce::Component
 {
     LatticeComponent() {} // only really useful in the derived class below
 
-    LatticeComponent(std::pair<int, int> *c)
-    {
-        for (int i = 0; i < 12; ++i)
-        {
-            CoO[i] = c[i];
-        }
-    }
-
     LatticeComponent(std::pair<int, int> *c, int *v) { update(c, v); }
 
     void update(std::pair<int, int> *c, int *v)
@@ -44,6 +36,32 @@ struct LatticeComponent : juce::Component
             CoO[i] = c[i];
             visitor[i] = v[i];
         }
+    }
+
+    void zoomIn()
+    {
+        if (JIRadius == 42)
+            return;
+
+        ++JIRadius;
+        ellipseRadius = JIRadius * 1.15;
+        stoke.setPointHeight(JIRadius);
+        blackShadow.setRadius(JIRadius / 3);
+        whiteShadow.setRadius(JIRadius / 2);
+        repaint();
+    }
+
+    void zoomOut()
+    {
+        if (JIRadius == 15)
+            return;
+
+        --JIRadius;
+        ellipseRadius = JIRadius * 1.15;
+        stoke.setPointHeight(JIRadius);
+        blackShadow.setRadius(JIRadius / 3);
+        whiteShadow.setRadius(JIRadius / 2);
+        repaint();
     }
 
     void paint(juce::Graphics &g) override
@@ -123,25 +141,27 @@ struct LatticeComponent : juce::Component
                     // those numbers will set this
                     float alpha{};
 
+                    float thickness = JIRadius / 9.f;
+
                     // Horizontal Line
                     alpha = 1.f / (std::sqrt(hDist) + 1);
                     lG.setColour(juce::Colours::ghostwhite.withAlpha(alpha));
                     juce::Line<float> horiz(x, y, x + hDistance, y);
-                    lG.drawLine(horiz, 3.f);
+                    lG.drawLine(horiz, thickness);
 
                     // Upward Line
                     alpha = 1.f / (std::sqrt(uDist) + 1);
                     lG.setColour(juce::Colours::ghostwhite.withAlpha(alpha));
                     juce::Line<float> up(x, y, x + (hDistance * .5f), y - vDistance);
                     float ul[2] = {7.f, 3.f};
-                    lG.drawDashedLine(up, ul, 2, 3.f, 1);
+                    lG.drawDashedLine(up, ul, 2, thickness, 1);
 
                     // Downward Line
                     alpha = 1.f / (std::sqrt(dDist) + 1);
                     lG.setColour(juce::Colours::ghostwhite.withAlpha(alpha));
                     juce::Line<float> down(x, y, x + (hDistance * .5f), y + vDistance);
                     float dl[2] = {2.f, 3.f};
-                    lG.drawDashedLine(down, dl, 2, 3.f, 1);
+                    lG.drawDashedLine(down, dl, 2, thickness, 1);
 
                     // Spheres
                     juce::Path e{};
@@ -169,7 +189,7 @@ struct LatticeComponent : juce::Component
                     sG.fillPath(e);
                     sG.setColour(juce::Colours::ghostwhite.withAlpha(alpha));
                     sG.drawEllipse(x - ellipseRadius, y - JIRadius, 2 * ellipseRadius, 2 * JIRadius,
-                                   3);
+                                   thickness);
 
                     // Names or Ratios?
                     auto [n, d] = calculateCell(w, v);
@@ -203,8 +223,8 @@ struct LatticeComponent : juce::Component
         LatticesBinary::Stoke_otf, LatticesBinary::Stoke_otfSize)};
     juce::Font stoke{juce::FontOptions(Stoke).withPointHeight(JIRadius)};
 
-    melatonin::DropShadow blackShadow = {juce::Colours::black, 8};
-    melatonin::DropShadow whiteShadow = {juce::Colours::antiquewhite, 12};
+    melatonin::DropShadow blackShadow = {juce::Colours::black, JIRadius / 3};
+    melatonin::DropShadow whiteShadow = {juce::Colours::ghostwhite, JIRadius / 2};
 
     std::array<std::pair<int, int>, 12> CoO{}; // currently lit co-ordinates
 
@@ -375,6 +395,8 @@ struct LatticeComponent : juce::Component
     }
 };
 
+// =================================================================================================
+
 template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
 {
     SmallLatticeComponent(int *v, buttonUser *bu, int size = 30) : buttonParent(bu)
@@ -383,7 +405,10 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
 
         JIRadius = size;
         ellipseRadius = JIRadius * 1.15;
-        stoke.setHeight(static_cast<float>(JIRadius));
+        stoke.setPointHeight(JIRadius);
+
+        blackShadow.setRadius(JIRadius / 3);
+        whiteShadow.setRadius(JIRadius / 2);
 
         circleShape.addEllipse(0, 0, ellipseRadius, JIRadius);
 
@@ -455,7 +480,7 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
         int shadowSpacing2 = JIRadius / 10;
         auto a = enabled ? 75.f : .5f;
 
-        whiteShadow.setColor(juce::Colours::antiquewhite.withAlpha(a));
+        whiteShadow.setColor(juce::Colours::ghostwhite.withAlpha(a));
         blackShadow.setColor(juce::Colours::black.withAlpha(a));
 
         float ctrDistance{JIRadius * (5.f / 3.f)};
@@ -519,11 +544,13 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
                     bool dLit = calcDist(D) == 0;
                     float alpha = enabled ? .9f : .5f;
 
+                    float thickness = JIRadius / 9.f;
+
                     if (hLit) // Horizontal Line
                     {
                         lG.setColour(juce::Colours::ghostwhite.withAlpha(alpha));
                         juce::Line<float> horiz(x, y, x + hDistance, y);
-                        lG.drawLine(horiz, 3.f);
+                        lG.drawLine(horiz, thickness);
                     }
 
                     if (uLit) // Upward Line
@@ -531,7 +558,7 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
                         lG.setColour(juce::Colours::ghostwhite.withAlpha(alpha));
                         juce::Line<float> up(x, y, x + (hDistance * .5f), y - vDistance);
                         float ul[2] = {7.f, 3.f};
-                        lG.drawDashedLine(up, ul, 2, 3.f, 1);
+                        lG.drawDashedLine(up, ul, 2, thickness, 1);
                     }
 
                     if (dLit) // Downward Line
@@ -539,7 +566,7 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
                         lG.setColour(juce::Colours::ghostwhite.withAlpha(alpha));
                         juce::Line<float> down(x, y, x + (hDistance * .5f), y + vDistance);
                         float dl[2] = {2.f, 3.f};
-                        lG.drawDashedLine(down, dl, 2, 3.f, 1);
+                        lG.drawDashedLine(down, dl, 2, thickness, 1);
                     }
 
                     // Spheres
@@ -573,7 +600,7 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
                     sG.fillPath(e);
                     sG.setColour(juce::Colours::ghostwhite.withAlpha(alpha));
                     sG.drawEllipse(x - ellipseRadius, y - JIRadius, 2 * ellipseRadius, 2 * JIRadius,
-                                   3);
+                                   thickness);
 
                     // Names or Ratios?
                     auto [n, d] = calculateCell(w, v);
