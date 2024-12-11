@@ -66,7 +66,7 @@ struct JIMath
         twentythree
     };
 
-    double comma(Comma_t c, bool major = true)
+    double comma(Comma_t c, bool major = true) const
     {
         uint64_t A = 1;
         uint64_t B = 1;

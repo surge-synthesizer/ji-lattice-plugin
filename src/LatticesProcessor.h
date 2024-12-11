@@ -64,9 +64,10 @@ class LatticesProcessor : public juce::AudioProcessor,
     void updateDistance(int dist);
     void editVisitors(bool editing, int g);
     int *selectVisitorGroup(int g);
+    void resetVisitorGroup();
     void newVisitorGroup();
+    void deleteVisitorGroup(int idx);
     void updateVisitor(int d, int v);
-    inline void setVisitorTuning(int d, int v);
 
     void parameterValueChanged(int parameterIndex, float newValue) override;
 
@@ -99,7 +100,7 @@ class LatticesProcessor : public juce::AudioProcessor,
 
     Visitors *currentVisitors;
     int numVisitorGroups{0};
-    std::atomic<bool> editingVisitors{false};
+    bool editingVisitors{false};
 
     uint16_t maxDistance{24};
 
@@ -107,7 +108,7 @@ class LatticesProcessor : public juce::AudioProcessor,
     static constexpr int defaultRefNote{0};
     static constexpr double defaultRefFreq{261.6255653005986};
 
-    JIMath jim;
+    const JIMath jim;
 
     int currentRefNote{};
     double currentRefFreq{};
@@ -124,8 +125,8 @@ class LatticesProcessor : public juce::AudioProcessor,
     void returnToOrigin();
 
     void respondToMidi(const juce::MidiMessage &m);
-    std::vector<bool> hold = {false, false, false, false, false};
-    std::vector<bool> wait = {false, false, false, false, false};
+    bool hold[6] = {false, false, false, false, false, false};
+    bool wait[6] = {false, false, false, false, false, false};
 
     void shift(int dir);
     void locate();
@@ -156,7 +157,6 @@ class LatticesProcessor : public juce::AudioProcessor,
 
     std::vector<Visitors> visitorGroups;
     int priorSelectedGroup{0};
-    double visitorTuning[12] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
 
     juce::AudioParameterFloat *xParam;
     juce::AudioParameterFloat *yParam;
