@@ -161,6 +161,8 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
             originalRefFreq = xmlState->getDoubleAttribute("freq");
 
             maxDistance = xmlState->getIntAttribute("md");
+            if (maxDistance < 1)
+                maxDistance = 24;
 
             int tx = xmlState->getIntAttribute("xp");
             int ty = xmlState->getIntAttribute("yp");
