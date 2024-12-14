@@ -25,8 +25,6 @@
 //==============================================================================
 struct LatticeComponent : juce::Component
 {
-    LatticeComponent() {} // only really useful in the derived class below
-
     LatticeComponent(std::pair<int, int> *c, int *v) { update(c, v); }
 
     void update(std::pair<int, int> *c, int *v)
@@ -399,7 +397,7 @@ struct LatticeComponent : juce::Component
 
 template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
 {
-    SmallLatticeComponent(int *v, buttonUser *bu, int size = 30) : buttonParent(bu)
+    SmallLatticeComponent(int *v, buttonUser *bu, int size = 30) : LatticeComponent(initCo, homes), buttonParent(bu)
     {
         update(initCo, homes);
 
