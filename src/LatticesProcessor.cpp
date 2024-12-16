@@ -143,7 +143,7 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
     {
         if (xmlState->hasTagName("Lattices"))
         {
-            int m = xmlState->getIntAttribute("SavedMode");
+            int m = xmlState->getIntAttribute("SavedMode", 1);
 
             switch (m)
             {
@@ -154,18 +154,16 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
                 mode = Duodene;
             }
 
-            homeCC = xmlState->getIntAttribute("cc");
-            listenOnChannel = xmlState->getIntAttribute("channel");
+            homeCC = xmlState->getIntAttribute("cc", 5);
+            listenOnChannel = xmlState->getIntAttribute("channel", 1);
 
-            originalRefNote = xmlState->getIntAttribute("note");
-            originalRefFreq = xmlState->getDoubleAttribute("freq");
+            originalRefNote = xmlState->getIntAttribute("note", 0);
+            originalRefFreq = xmlState->getDoubleAttribute("freq", 261.6255653005986);
 
-            maxDistance = xmlState->getIntAttribute("md");
-            if (maxDistance < 1)
-                maxDistance = 24;
+            maxDistance = xmlState->getIntAttribute("md", 24);
 
-            int tx = xmlState->getIntAttribute("xp");
-            int ty = xmlState->getIntAttribute("yp");
+            int tx = xmlState->getIntAttribute("xp", 0);
+            int ty = xmlState->getIntAttribute("yp", 0);
 
             float X = toParam(tx);
             float Y = toParam(ty);
@@ -177,7 +175,7 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
             yParam->setValueNotifyingHost(Y);
             yParam->endChangeGesture();
 
-            numVisitorGroups = xmlState->getIntAttribute("nvg");
+            numVisitorGroups = xmlState->getIntAttribute("nvg", 1);
 
             if (numVisitorGroups > 1)
             {
@@ -199,7 +197,7 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
                 }
             }
 
-            int tv = xmlState->getIntAttribute("vp");
+            int tv = xmlState->getIntAttribute("vp", 0);
             float V = toParam(tv, true);
 
             vParam->beginChangeGesture();
