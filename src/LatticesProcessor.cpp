@@ -205,6 +205,8 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
             vParam->endChangeGesture();
 
             locate();
+
+            loadedState = true;
         }
     }
     else
@@ -366,11 +368,15 @@ void LatticesProcessor::modeSwitch(int m)
     returnToOrigin();
 }
 
-void LatticesProcessor::updateMIDI(int hCC, int C)
+void LatticesProcessor::updateMIDICC(int hCC)
 {
-    // TODO: This doesn't set project dirty flags, investigate
-
     homeCC = hCC;
+
+    updateHostDisplay(juce::AudioProcessor::ChangeDetails().withNonParameterStateChanged(true));
+}
+
+void LatticesProcessor::updateMIDIChannel(int C)
+{
     listenOnChannel = C;
 
     updateHostDisplay(juce::AudioProcessor::ChangeDetails().withNonParameterStateChanged(true));

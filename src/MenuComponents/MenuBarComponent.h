@@ -23,7 +23,7 @@
 //==============================================================================
 struct MenuBarComponent : juce::Component
 {
-    MenuBarComponent(LatticesProcessor &p) : processor(p)
+    MenuBarComponent(LatticesProcessor &p) : proc(p)
     {
         juce::Colour off = juce::Colours::transparentWhite;
         juce::Colour offo = juce::Colours::ghostwhite.withAlpha(.15f);
@@ -42,8 +42,7 @@ struct MenuBarComponent : juce::Component
         visButton->setClickingTogglesState(true);
         visButton->setToggleState(false, juce::dontSendNotification);
 
-        std::string bruh[1] = {"names of groups here eventually"};
-        visC = std::make_unique<VisitorsComponent>(processor.numVisitorGroups, bruh);
+        visC = std::make_unique<VisitorsComponent>(proc);
         addAndMakeVisible(*visC);
         visC->setVisible(false);
 
@@ -56,13 +55,11 @@ struct MenuBarComponent : juce::Component
         settingsButton->setClickingTogglesState(true);
         settingsButton->setToggleState(false, juce::dontSendNotification);
 
-        settingsC = std::make_unique<SettingsComponent>(processor.homeCC, processor.listenOnChannel,
-                                                        processor.mode, processor.maxDistance);
+        settingsC = std::make_unique<SettingsComponent>(proc);
         addAndMakeVisible(*settingsC);
         settingsC->setVisible(false);
 
-        originC =
-            std::make_unique<OriginComponent>(processor.originalRefNote, processor.originalRefFreq);
+        originC = std::make_unique<OriginComponent>(proc);
         addAndMakeVisible(*originC);
         originC->setVisible(false);
     }
@@ -99,11 +96,18 @@ struct MenuBarComponent : juce::Component
 
         g.setFont(stoke);
 
-        if (processor.mode == processor.Mode::Duodene)
+        if (proc.mode == proc.Mode::Duodene)
         {
             g.drawText("Visitors", visRect, 12, false);
         }
         g.drawText("Settings", settingsRect, 12, false);
+    }
+
+    void resetAll()
+    {
+        visC->reset();
+        originC->reset();
+        settingsC->reset();
     }
 
     std::unique_ptr<OriginComponent> originC;
@@ -111,6 +115,8 @@ struct MenuBarComponent : juce::Component
     std::unique_ptr<VisitorsComponent> visC;
 
   private:
+    LatticesProcessor &proc;
+
     juce::ReferenceCountedObjectPtr<juce::Typeface> Stoke{juce::Typeface::createSystemTypefaceFor(
         LatticesBinary::Stoke_otf, LatticesBinary::Stoke_otfSize)};
 
@@ -144,7 +150,7 @@ struct MenuBarComponent : juce::Component
 
     void showVisitorMenu()
     {
-        bool show = (visButton->getToggleState() && processor.mode == processor.Mode::Duodene);
+        bool show = (visButton->getToggleState() && proc.mode == proc.Mode::Duodene);
 
         if (show)
         {
@@ -156,6 +162,4 @@ struct MenuBarComponent : juce::Component
             visC->setVisible(false);
         }
     }
-
-    LatticesProcessor &processor;
 };

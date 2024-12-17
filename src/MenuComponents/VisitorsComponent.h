@@ -17,16 +17,15 @@
 
 #include "Visitors.h"
 #include "LatticeComponent.h"
+#include "LatticesProcessor.h"
 
 //==============================================================================
 struct VisitorsComponent : public juce::Component
 {
-    VisitorsComponent(int ng, std::string names[])
+    VisitorsComponent(LatticesProcessor &p) : proc(&p)
     {
         juce::Colour n{juce::Colours::transparentWhite};
         juce::Colour o{juce::Colours::ghostwhite.withAlpha(.15f)};
-
-        numGroups = ng;
 
         circle.addEllipse(0, 0, diameter, diameter);
 
@@ -40,14 +39,14 @@ struct VisitorsComponent : public juce::Component
             commas[i]->setClickingTogglesState(true);
         }
 
-        miniLattice = std::make_unique<lattice_t>(dd, this, 18);
+        miniLattice = std::make_unique<lattice_t>(proc->currentVisitors->vis, this, 18);
         addAndMakeVisible(*miniLattice);
 
         plusButton = std::make_unique<juce::TextButton>("+");
         addAndMakeVisible(*plusButton);
         plusButton->onClick = [this] { newGroup(); };
 
-        for (int g = 0; g < numGroups; ++g)
+        for (int g = 0; g < proc->numVisitorGroups; ++g)
         {
             auto name = (g == 0) ? "None" : std::to_string(g);
             groups.add(new juce::TextButton(name));
@@ -63,39 +62,63 @@ struct VisitorsComponent : public juce::Component
 
         resetButton = std::make_unique<juce::TextButton>("Reset");
         addAndMakeVisible(*resetButton);
-        resetButton->onClick = [this] { resetGroup(); };
+        resetButton->onClick = [this] { proc->resetVisitorGroup(); };
 
         groups[selectedGroup]->setToggleState(true, juce::dontSendNotification);
         commas[1]->setToggleState(true, juce::dontSendNotification);
     }
 
+    void reset()
+    {
+        groups.clear();
+
+        for (int g = 0; g < proc->numVisitorGroups; ++g)
+        {
+            auto name = (g == 0) ? "None" : std::to_string(g);
+            groups.add(new juce::TextButton(name));
+            addAndMakeVisible(groups[g]);
+            groups[g]->setRadioGroupId(3);
+            groups[g]->onClick = [this] { selectGroup(); };
+            groups[g]->setClickingTogglesState(true);
+        }
+
+        for (int i = 0; i < proc->numVisitorGroups; ++i)
+        {
+            if (proc->currentVisitors == &proc->visitorGroups[i])
+            {
+                selectedGroup = i;
+                break;
+            }
+        }
+
+        groups[selectedGroup]->setToggleState(true, juce::sendNotification);
+        setGroupData();
+    }
+
     void resized() override
     {
-        if (this->isEnabled())
+        auto b = this->getLocalBounds();
+        miniLattice->setBounds(1, diameter, b.getWidth() - 2, diameter * 4.5);
+        miniLattice->setEnabled(proc->numVisitorGroups > 1 && selectedGroup != 0);
+
+        for (int i = 0; i < 7; ++i)
         {
-            auto b = this->getLocalBounds();
-            miniLattice->setBounds(1, diameter, b.getWidth() - 2, diameter * 4.5);
-            miniLattice->setEnabled(numGroups > 1 && selectedGroup != 0);
-
-            for (int i = 0; i < 7; ++i)
-            {
-                commas[i]->setEnabled(selectedGroup != 0);
-                commas[i]->setBounds(5 * (1 + i) + diameter * i, diameter * 5 + boxsize + 5,
-                                     diameter, diameter);
-            }
-
-            groups[0]->setBounds(5, 5, boxsize * 2, boxsize);
-            for (int i = 1; i < numGroups; ++i)
-            {
-                groups[i]->setBounds(5 + boxsize * (i + 1), 5, boxsize, boxsize);
-            }
-            plusButton->setBounds(5 + boxsize * (numGroups + 1), 5, boxsize, boxsize);
-
-            deleteButton->setBounds(5, diameter + 5, 45, 20);
-            deleteButton->setEnabled(numGroups > 1 && selectedGroup != 0);
-            resetButton->setBounds(55, diameter + 5, 45, 20);
-            resetButton->setEnabled(numGroups > 1 && selectedGroup != 0);
+            commas[i]->setEnabled(selectedGroup != 0);
+            commas[i]->setBounds(5 * (1 + i) + diameter * i, diameter * 5 + boxsize + 5, diameter,
+                                 diameter);
         }
+
+        groups[0]->setBounds(5, 5, boxsize * 2, boxsize);
+        for (int i = 1; i < proc->numVisitorGroups; ++i)
+        {
+            groups[i]->setBounds(5 + boxsize * (i + 1), 5, boxsize, boxsize);
+        }
+        plusButton->setBounds(5 + boxsize * (proc->numVisitorGroups + 1), 5, boxsize, boxsize);
+
+        deleteButton->setBounds(5, diameter + 5, 45, 20);
+        deleteButton->setEnabled(proc->numVisitorGroups > 1 && selectedGroup != 0);
+        resetButton->setBounds(55, diameter + 5, 45, 20);
+        resetButton->setEnabled(proc->numVisitorGroups > 1 && selectedGroup != 0);
     }
 
     void paint(juce::Graphics &g) override
@@ -137,47 +160,20 @@ struct VisitorsComponent : public juce::Component
         }
     }
 
-    void setGroupData(int *v)
-    {
-        for (int d = 0; d < 12; ++d)
-        {
-            dd[d] = v[d];
-            miniLattice->updateDegree(d, v[d]);
-        }
-        int idx{};
-        for (int i = 0; i < 7; ++i)
-        {
-            if (dd[selectedNote] == i)
-            {
-                idx = i;
-                break;
-            }
-        }
-        commas[idx]->setToggleState(true, juce::sendNotification);
-
-        resized();
-        repaint();
-    }
-
     void selectNote(int n)
     {
         selectedNote = n;
-        commas[dd[n]]->setToggleState(true, juce::sendNotification);
+        commas[proc->currentVisitors->vis[n]]->setToggleState(true, juce::sendNotification);
         miniLattice->selectedDegree = n;
         repaint();
     }
 
-    bool update = false;
-    bool reselect = false;
-    bool madeNewGroup = false;
-    bool resetPls = false;
-    int deleteGroupPls = -1;
-    int selectedGroup = 0;
+    int selectedGroup{0};
     int selectedNote{0};
-    int dd[12] = {0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1}; // Dimension of degree
 
   private:
-    int numGroups{0};
+    LatticesProcessor *proc;
+
     static constexpr int radius = 20;
     int diameter = 40;
     int boxsize = 30;
@@ -254,6 +250,20 @@ struct VisitorsComponent : public juce::Component
         }
     }
 
+    void setGroupData()
+    {
+        for (int d = 0; d < 12; ++d)
+        {
+            miniLattice->updateDegree(d, proc->currentVisitors->vis[d]);
+        }
+
+        commas[proc->currentVisitors->vis[selectedNote]]->setToggleState(true,
+                                                                         juce::sendNotification);
+
+        resized();
+        repaint();
+    }
+
     void selectComma()
     {
         if (selectedGroup == 0)
@@ -263,10 +273,9 @@ struct VisitorsComponent : public juce::Component
         {
             if (commas[i]->getToggleState())
             {
-                dd[selectedNote] = i;
+                proc->updateVisitor(selectedNote, i);
                 miniLattice->updateDegree(selectedNote, i);
                 repaint();
-                update = true;
                 break;
             }
         }
@@ -274,36 +283,36 @@ struct VisitorsComponent : public juce::Component
 
     void selectGroup()
     {
-        for (int i = 0; i < numGroups; ++i)
+        for (int i = 0; i < proc->numVisitorGroups; ++i)
         {
             if (groups[i]->getToggleState())
             {
                 selectedGroup = i;
-                reselect = true;
+                proc->selectVisitorGroup(i);
                 break;
             }
         }
+        setGroupData();
     }
-
-    void resetGroup() { resetPls = true; }
 
     void newGroup()
     {
-        groups.add(new juce::TextButton(std::to_string(numGroups)));
-        addAndMakeVisible(groups[numGroups]);
-        groups[numGroups]->setRadioGroupId(3);
-        groups[numGroups]->onClick = [this] { selectGroup(); };
-        groups[numGroups]->setClickingTogglesState(true);
-        groups[numGroups]->setToggleState(true, juce::dontSendNotification);
+        proc->newVisitorGroup();
 
-        madeNewGroup = true;
-        ++numGroups;
+        int newidx = groups.size();
+        groups.add(new juce::TextButton(std::to_string(newidx)));
+        addAndMakeVisible(groups[newidx]);
+        groups[newidx]->setRadioGroupId(3);
+        groups[newidx]->onClick = [this] { selectGroup(); };
+        groups[newidx]->setClickingTogglesState(true);
+        groups[newidx]->setToggleState(true, juce::dontSendNotification);
+
         selectGroup();
     }
 
     void deleteGroup()
     {
-        deleteGroupPls = selectedGroup;
+        proc->deleteVisitorGroup(selectedGroup);
 
         for (int i = selectedGroup; i < groups.size(); ++i)
         {
@@ -313,7 +322,6 @@ struct VisitorsComponent : public juce::Component
         groups[selectedGroup - 1]->setToggleState(true, juce::sendNotification);
 
         --selectedGroup;
-        --numGroups;
         selectGroup();
     }
 };
