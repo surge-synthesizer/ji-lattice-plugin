@@ -129,8 +129,8 @@ class LatticesProcessor : public juce::AudioProcessor,
     void returnToOrigin();
 
     void respondToMidi(const juce::MidiMessage &m);
-    bool hold[6] = {false, false, false, false, false, false};
-    bool wait[6] = {false, false, false, false, false, false};
+    std::vector<bool> hold = {false, false, false, false, false};
+    std::vector<bool> wait = {false, false, false, false, false};
 
     void shift(int dir);
     void locate();

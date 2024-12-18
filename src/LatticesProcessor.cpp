@@ -33,6 +33,8 @@ LatticesProcessor::LatticesProcessor()
     numVisitorGroups = 1;
     Visitors dg{"Nobody Here", jim};
     visitorGroups.push_back(std::move(dg));
+    hold.emplace_back(false);
+    wait.emplace_back(false);
     currentVisitors = &visitorGroups[0];
 
     if (MTS_CanRegisterMaster())
@@ -197,6 +199,14 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
                 }
             }
 
+            hold.clear();
+            wait.clear();
+            for (int i = 0; i < 5 + numVisitorGroups - 1; ++i)
+            {
+                hold.emplace_back(false);
+                wait.emplace_back(false);
+            }
+
             int tv = xmlState->getIntAttribute("vp", 0);
             float V = toParam(tv, true);
 
@@ -243,47 +253,19 @@ void LatticesProcessor::respondToMidi(const juce::MidiMessage &m)
 
         int numCCs = 5 + numVisitorGroups - 1;
 
-        for (int i = 0; i < 5; ++i)
+        for (int i = 0; i < 5 + numVisitorGroups - 1; ++i)
         {
             if (num == homeCC + i)
             {
                 if (val == 127 && !hold[i])
                 {
-                    shift(i);
                     hold[i] = true;
                 }
 
-                if (val < 127 && hold[i])
+                if (val < 127 && hold[i] && wait[i])
                 {
-                    wait[i] = true;
-                }
-            }
-        }
-
-        for (int i = 5; i < numCCs; ++i)
-        {
-            if (num == homeCC + i)
-            {
-                if (val == 127 && !hold[5])
-                {
-                    int cv = fromParam(vParam->get(), true);
-                    int nv = num - homeCC - 4;
-
-                    if (cv == nv)
-                    {
-                        vParam->setValueNotifyingHost(0);
-                    }
-                    else
-                    {
-                        vParam->setValueNotifyingHost(toParam(nv, true));
-                    }
-
-                    hold[5] = true;
-                }
-
-                if (val < 127 && hold[5])
-                {
-                    wait[5] = true;
+                    hold[i] = false;
+                    wait[i] = false;
                 }
             }
         }
@@ -341,12 +323,30 @@ void LatticesProcessor::timerCallback(int timerID)
 
     if (timerID == 1)
     {
-        for (int i = 0; i < 6; ++i)
+        for (int i = 0; i < 5 + numVisitorGroups - 1; ++i)
         {
-            if (wait[i])
+            if (hold[i] && !wait[i])
             {
-                wait[i] = false;
-                hold[i] = false;
+                if (i < 5)
+                {
+                    shift(i);
+                    wait[i] = true;
+                }
+                else
+                {
+                    int cv = fromParam(vParam->get(), true);
+                    int nv = i - 4;
+
+                    if (cv == nv)
+                    {
+                        vParam->setValueNotifyingHost(0);
+                    }
+                    else
+                    {
+                        vParam->setValueNotifyingHost(toParam(nv, true));
+                    }
+                    wait[i] = true;
+                }
             }
         }
     }
@@ -447,6 +447,8 @@ void LatticesProcessor::newVisitorGroup()
 {
     Visitors ng{"new", jim};
     visitorGroups.push_back(std::move(ng));
+    hold.emplace_back(false);
+    wait.emplace_back(false);
     ++numVisitorGroups;
     float v = toParam(numVisitorGroups - 1, true);
     vParam->setValueNotifyingHost(v);
@@ -459,6 +461,8 @@ void LatticesProcessor::deleteVisitorGroup(int idx)
 
     currentVisitors = &visitorGroups[0];
     visitorGroups.erase(visitorGroups.begin() + idx);
+    hold.pop_back();
+    wait.pop_back();
     --numVisitorGroups;
 }
 
