@@ -35,13 +35,13 @@ struct OriginComponent : public juce::Component
             key[i]->setOnColours(sel, selover, selover);
         }
 
-        key[proc->currentRefNote]->setToggleState(true, juce::dontSendNotification);
+        key[proc->originalRefNote]->setToggleState(true, juce::dontSendNotification);
 
         addAndMakeVisible(freqEditor);
         freqEditor.setMultiLine(false);
         freqEditor.setReturnKeyStartsNewLine(false);
         freqEditor.setInputRestrictions(17, ".1234567890");
-        freqEditor.setText(std::to_string(proc->currentRefFreq), false);
+        freqEditor.setText(std::to_string(proc->originalRefFreq), false);
         freqEditor.setJustification(juce::Justification::left);
         freqEditor.setSelectAllWhenFocused(true);
         freqEditor.setColour(juce::TextEditor::outlineColourId, noColour);
@@ -53,7 +53,7 @@ struct OriginComponent : public juce::Component
         addAndMakeVisible(freqLabel);
         freqLabel.setJustificationType(juce::Justification::left);
         freqLabel.setColour(juce::Label::backgroundColourId, menuColour);
-        priorFreq = proc->currentRefFreq;
+        priorFreq = proc->originalRefFreq;
     }
 
     void resized() override
@@ -87,9 +87,9 @@ struct OriginComponent : public juce::Component
 
     void reset()
     {
-        freqEditor.setText(std::to_string(proc->currentRefFreq), false);
-        priorFreq = proc->currentRefFreq;
-        key[proc->currentRefNote]->setToggleState(true, juce::dontSendNotification);
+        freqEditor.setText(std::to_string(proc->originalRefFreq), false);
+        priorFreq = proc->originalRefFreq;
+        key[proc->originalRefNote]->setToggleState(true, juce::dontSendNotification);
     }
 
   private:
