@@ -11,17 +11,19 @@
 
 #pragma once
 
+#include "LatticesProcessor.h"
+
 #include <string>
 #include <cstdint>
 
 //==============================================================================
 struct SettingsComponent : public juce::Component // , juce::ToggleButton
 {
-    SettingsComponent(int hCC, int C, int m, int d)
+    SettingsComponent(LatticesProcessor &p) : proc(&p)
     {
-        homeCC = hCC;
-        midiChannel = C;
-        maxDistance = d;
+        priorCC = proc->homeCC;
+        priorChannel = proc->listenOnChannel;
+        priorDistance = proc->maxDistance;
 
         addAndMakeVisible(distLabel);
         distLabel.setJustificationType(juce::Justification::left);
@@ -32,7 +34,7 @@ struct SettingsComponent : public juce::Component // , juce::ToggleButton
         distEditor.setMultiLine(false);
         distEditor.setReturnKeyStartsNewLine(false);
         distEditor.setInputRestrictions(3, "1234567890");
-        distEditor.setText(std::to_string(d), false);
+        distEditor.setText(std::to_string(proc->maxDistance), false);
         distEditor.setJustification(juce::Justification::centred);
         distEditor.setSelectAllWhenFocused(true);
         distEditor.setColour(juce::TextEditor::outlineColourId, ol);
@@ -49,7 +51,7 @@ struct SettingsComponent : public juce::Component // , juce::ToggleButton
         homeEditor.setMultiLine(false);
         homeEditor.setReturnKeyStartsNewLine(false);
         homeEditor.setInputRestrictions(3, "1234567890");
-        homeEditor.setText(std::to_string(hCC), false);
+        homeEditor.setText(std::to_string(proc->homeCC), false);
         homeEditor.setJustification(juce::Justification::centred);
         homeEditor.setSelectAllWhenFocused(true);
         homeEditor.setColour(juce::TextEditor::outlineColourId, ol);
@@ -66,7 +68,7 @@ struct SettingsComponent : public juce::Component // , juce::ToggleButton
         channelEditor.setMultiLine(false);
         channelEditor.setReturnKeyStartsNewLine(false);
         channelEditor.setInputRestrictions(2, "1234567890");
-        channelEditor.setText(std::to_string(C), false);
+        channelEditor.setText(std::to_string(proc->listenOnChannel), false);
         channelEditor.setJustification(juce::Justification::centred);
         channelEditor.setSelectAllWhenFocused(true);
         channelEditor.setColour(juce::TextEditor::outlineColourId, ol);
@@ -84,17 +86,13 @@ struct SettingsComponent : public juce::Component // , juce::ToggleButton
         duodeneButton.setClickingTogglesState(true);
         duodeneButton.setRadioGroupId(1);
 
-        switch (m)
+        if (proc->mode == LatticesProcessor::Syntonic)
         {
-        case LatticesProcessor::Syntonic:
             syntonicButton.setToggleState(true, juce::dontSendNotification);
-            break;
-        case LatticesProcessor::Duodene:
+        }
+        else
+        {
             duodeneButton.setToggleState(true, juce::dontSendNotification);
-            break;
-        default:
-            duodeneButton.setToggleState(true, juce::dontSendNotification);
-            break;
         }
     }
 
@@ -122,27 +120,29 @@ struct SettingsComponent : public juce::Component // , juce::ToggleButton
         channelEditor.setBounds(80, 150, 30, 20);
     }
 
-    int whichMode()
+    void reset()
     {
-        if (duodeneButton.getToggleState() == true)
+        distEditor.setText(std::to_string(proc->maxDistance), false);
+        homeEditor.setText(std::to_string(proc->homeCC), false);
+        channelEditor.setText(std::to_string(proc->listenOnChannel), false);
+
+        if (proc->mode == LatticesProcessor::Syntonic)
         {
-            return 0;
+            syntonicButton.setToggleState(true, juce::dontSendNotification);
         }
-        if (syntonicButton.getToggleState() == true)
+        else
         {
-            return 1;
+            duodeneButton.setToggleState(true, juce::dontSendNotification);
         }
-        return 0;
     }
 
-    std::atomic<bool> settingChanged = false;
-    std::atomic<bool> modeChanged = false;
-    std::atomic<bool> distanceChanged = false;
-    int midiChannel;
-    int homeCC;
-    uint16_t maxDistance;
-
   private:
+    LatticesProcessor *proc;
+
+    uint8_t priorChannel;
+    uint8_t priorCC;
+    uint16_t priorDistance;
+
     juce::Label distLabel{{}, "Max Distance"};
     juce::TextEditor distEditor{"Distance"};
 
@@ -160,7 +160,17 @@ struct SettingsComponent : public juce::Component // , juce::ToggleButton
     juce::Colour ol{juce::Colours::ghostwhite};
     juce::Range<int> noRange{};
 
-    void updateToggleState() { modeChanged = true; }
+    void updateToggleState()
+    {
+        if (duodeneButton.getToggleState() == true)
+        {
+            proc->modeSwitch(0);
+        }
+        if (syntonicButton.getToggleState() == true)
+        {
+            proc->modeSwitch(1);
+        }
+    }
 
     bool rejectBadInput(int input, int type = 0)
     {
@@ -203,36 +213,36 @@ struct SettingsComponent : public juce::Component // , juce::ToggleButton
         {
             if (rejectBadInput(digit))
             {
-                e->setText(std::to_string(homeCC));
+                e->setText(std::to_string(priorCC));
                 return;
             }
 
-            homeCC = digit;
-            settingChanged = true;
+            proc->updateMIDICC(digit);
+            priorCC = digit;
         }
 
         if (e == &channelEditor)
         {
             if (rejectBadInput(digit, 1))
             {
-                e->setText(std::to_string(midiChannel));
+                e->setText(std::to_string(priorChannel));
                 return;
             }
 
-            midiChannel = digit;
-            settingChanged = true;
+            proc->updateMIDIChannel(digit);
+            priorChannel = digit;
         }
 
         if (e == &distEditor)
         {
             if (rejectBadInput(digit, 2))
             {
-                e->setText(std::to_string(maxDistance));
+                e->setText(std::to_string(priorDistance));
                 return;
             }
 
-            maxDistance = digit;
-            distanceChanged = true;
+            proc->updateDistance(digit);
+            priorDistance = digit;
         }
     }
 

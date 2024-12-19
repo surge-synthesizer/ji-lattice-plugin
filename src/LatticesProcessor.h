@@ -18,6 +18,7 @@
 #include <cmath>
 #include <string>
 #include <cstdint>
+#include <mutex>
 
 #include "JIMath.h"
 #include "Visitors.h"
@@ -58,7 +59,8 @@ class LatticesProcessor : public juce::AudioProcessor,
     void timerCallback(int timerID) override;
 
     void modeSwitch(int m);
-    void updateMIDI(int hCC, int C);
+    void updateMIDICC(int hCC);
+    void updateMIDIChannel(int C);
     void updateFreq(double f);
     double updateRoot(int r);
     void updateDistance(int dist);
@@ -97,10 +99,16 @@ class LatticesProcessor : public juce::AudioProcessor,
 
     int originalRefNote{-12};
     double originalRefFreq{-1};
+    int currentRefNote{};
+    double currentRefFreq{};
 
+    std::vector<Visitors> visitorGroups;
     Visitors *currentVisitors;
     int numVisitorGroups{0};
     bool editingVisitors{false};
+    int priorSelectedGroup{0};
+
+    bool loadedState{false};
 
     uint16_t maxDistance{24};
 
@@ -109,9 +117,6 @@ class LatticesProcessor : public juce::AudioProcessor,
     static constexpr double defaultRefFreq{261.6255653005986};
 
     const JIMath jim;
-
-    int currentRefNote{};
-    double currentRefFreq{};
 
     enum Direction
     {
@@ -125,8 +130,10 @@ class LatticesProcessor : public juce::AudioProcessor,
     void returnToOrigin();
 
     void respondToMidi(const juce::MidiMessage &m);
-    bool hold[6] = {false, false, false, false, false, false};
-    bool wait[6] = {false, false, false, false, false, false};
+    std::vector<bool> hold = {false, false, false, false, false};
+    std::vector<bool> wait = {false, false, false, false, false};
+
+    std::mutex visLock;
 
     void shift(int dir);
     void locate();
@@ -154,9 +161,6 @@ class LatticesProcessor : public juce::AudioProcessor,
                       (double)27 / 16,
                       (double)16 / 9,
                       (double)243 / 128};
-
-    std::vector<Visitors> visitorGroups;
-    int priorSelectedGroup{0};
 
     juce::AudioParameterFloat *xParam;
     juce::AudioParameterFloat *yParam;

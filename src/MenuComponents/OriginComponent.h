@@ -11,12 +11,14 @@
 
 #pragma once
 
+#include "LatticesProcessor.h"
+
 #include <string>
 
 //==============================================================================
 struct OriginComponent : public juce::Component
 {
-    OriginComponent(int o, double f)
+    OriginComponent(LatticesProcessor &p) : proc(&p)
     {
         keyshape.addRectangle(keysize);
 
@@ -26,23 +28,20 @@ struct OriginComponent : public juce::Component
             key[i]->setShape(keyshape, true, true, false);
             addAndMakeVisible(*key[i]);
             key[i]->setRadioGroupId(1);
-            key[i]->onClick = [this] { updateRoot(); };
+            key[i]->onClick = [this] { whichNote(); };
             key[i]->setClickingTogglesState(true);
             key[i]->setOutline(noColour, 0.f);
             key[i]->shouldUseOnColours(true);
             key[i]->setOnColours(sel, selover, selover);
-
-            if (o == i)
-            {
-                key[i]->setToggleState(true, juce::dontSendNotification);
-            }
         }
+
+        key[proc->originalRefNote]->setToggleState(true, juce::dontSendNotification);
 
         addAndMakeVisible(freqEditor);
         freqEditor.setMultiLine(false);
         freqEditor.setReturnKeyStartsNewLine(false);
         freqEditor.setInputRestrictions(17, ".1234567890");
-        freqEditor.setText(std::to_string(f), false);
+        freqEditor.setText(std::to_string(proc->originalRefFreq), false);
         freqEditor.setJustification(juce::Justification::left);
         freqEditor.setSelectAllWhenFocused(true);
         freqEditor.setColour(juce::TextEditor::outlineColourId, noColour);
@@ -54,8 +53,7 @@ struct OriginComponent : public juce::Component
         addAndMakeVisible(freqLabel);
         freqLabel.setJustificationType(juce::Justification::left);
         freqLabel.setColour(juce::Label::backgroundColourId, menuColour);
-
-        whatFreq = f;
+        priorFreq = proc->originalRefFreq;
     }
 
     void resized() override
@@ -87,32 +85,16 @@ struct OriginComponent : public juce::Component
         g.drawRect(this->getLocalBounds());
     }
 
-    void updateRoot() { rootChanged = true; }
-
-    int whichNote()
+    void reset()
     {
-        for (int i = 0; i < 12; ++i)
-        {
-            if (key[i]->getToggleState() == true)
-            {
-                return i;
-            }
-        }
-        return 0;
-    }
-
-    bool rootChanged = false;
-    bool freqChanged = false;
-
-    double whatFreq{293.3333333333333};
-
-    void resetFreqOnRootChange(double f)
-    {
-        freqEditor.setText(std::to_string(f), false);
-        rootChanged = false;
+        freqEditor.setText(std::to_string(proc->originalRefFreq), false);
+        priorFreq = proc->originalRefFreq;
+        key[proc->originalRefNote]->setToggleState(true, juce::dontSendNotification);
     }
 
   private:
+    LatticesProcessor *proc;
+
     static constexpr int kw = 20;
     static constexpr int kh = 65;
 
@@ -141,6 +123,8 @@ struct OriginComponent : public juce::Component
     juce::Label freqLabel{{}, "Ref. Frequency = "};
     juce::TextEditor freqEditor{"Ref Freq"};
 
+    double priorFreq{};
+
     void returnKeyResponse(juce::TextEditor *e)
     {
         e->setHighlightedRegion(noRange);
@@ -149,11 +133,12 @@ struct OriginComponent : public juce::Component
 
         if (rejectBadInput(input))
         {
-            e->setText(std::to_string(whatFreq));
+            e->setText(std::to_string(priorFreq));
             return;
         }
-        whatFreq = input;
-        freqChanged = true;
+
+        proc->updateFreq(input);
+        priorFreq = input;
     }
 
     void escapeKeyResponse(juce::TextEditor *e)
@@ -181,5 +166,19 @@ struct OriginComponent : public juce::Component
         }
 
         return false;
+    }
+
+    void whichNote()
+    {
+
+        for (int i = 0; i < 12; ++i)
+        {
+            if (key[i]->getToggleState() == true)
+            {
+                double f = proc->updateRoot(i);
+                freqEditor.setText(std::to_string(f), false);
+                break;
+            }
+        }
     }
 };

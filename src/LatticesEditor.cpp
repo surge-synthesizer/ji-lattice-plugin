@@ -15,7 +15,7 @@
 //==============================================================================
 LatticesEditor::LatticesEditor(LatticesProcessor &p) : juce::AudioProcessorEditor(&p), processor(p)
 {
-    latticeComponent = std::make_unique<LatticeComponent>(p.coOrds, p.currentVisitors->vis);
+    latticeComponent = std::make_unique<LatticeComponent>(p);
     addAndMakeVisible(*latticeComponent);
     latticeComponent->setBufferedToImage(true);
 
@@ -94,93 +94,26 @@ void LatticesEditor::timerCallback(int timerID)
 
     if (timerID == 0)
     {
+        if (processor.loadedState)
+        {
+            menuComponent->resetAll();
+            processor.loadedState = false;
+        }
+
         bool edvi = menuComponent->visC->isVisible();
         menuComponent->visC->setEnabled(edvi);
         if (processor.editingVisitors != edvi)
         {
             int g = menuComponent->visC->selectedGroup;
             processor.editVisitors(edvi, g);
+            latticeComponent->repaint();
         }
         latticeComponent->setEnabled(!menuComponent->visC->isVisible());
 
-        //        latticeComponent->repaint();
-
         if (processor.changed)
         {
-            latticeComponent->update(processor.coOrds, processor.currentVisitors->vis);
             latticeComponent->repaint();
             processor.changed = false;
-        }
-
-        if (menuComponent->settingsC->modeChanged)
-        {
-            processor.modeSwitch(menuComponent->settingsC->whichMode());
-            menuComponent->settingsC->modeChanged = false;
-        }
-
-        if (menuComponent->settingsC->settingChanged)
-        {
-            processor.updateMIDI(menuComponent->settingsC->homeCC,
-                                 menuComponent->settingsC->midiChannel);
-            menuComponent->settingsC->settingChanged = false;
-        }
-
-        if (menuComponent->settingsC->distanceChanged)
-        {
-            processor.updateDistance(menuComponent->settingsC->maxDistance);
-            menuComponent->settingsC->distanceChanged = false;
-        }
-
-        if (menuComponent->originC->freqChanged)
-        {
-            processor.updateFreq(menuComponent->originC->whatFreq);
-            menuComponent->originC->freqChanged = false;
-        }
-
-        if (menuComponent->originC->rootChanged)
-        {
-            int r = menuComponent->originC->whichNote();
-            menuComponent->originC->resetFreqOnRootChange(processor.updateRoot(r));
-            // Updates root in processor, and returns the frequency the note previously
-            // had, which is fed back to the originComponent so it can update its readout
-        }
-
-        if (menuComponent->visC->reselect)
-        {
-            if (menuComponent->visC->madeNewGroup)
-            {
-                processor.newVisitorGroup();
-                menuComponent->visC->madeNewGroup = false;
-            }
-            else if (menuComponent->visC->deleteGroupPls > 0)
-            {
-                processor.deleteVisitorGroup(menuComponent->visC->deleteGroupPls);
-                menuComponent->visC->deleteGroupPls = -1;
-            }
-            else
-            {
-                int g = menuComponent->visC->selectedGroup;
-                // updates processor and returns the array of the selected groups values,
-                // so the visitorComponent can update itself
-                menuComponent->visC->setGroupData(processor.selectVisitorGroup(g));
-                menuComponent->visC->reselect = false;
-            }
-        }
-
-        if (menuComponent->visC->resetPls)
-        {
-            processor.resetVisitorGroup();
-            menuComponent->visC->setGroupData(processor.currentVisitors->vis);
-            menuComponent->visC->resetPls = false;
-        }
-
-        if (menuComponent->visC->update)
-        {
-            int d = menuComponent->visC->selectedNote;
-            int v = menuComponent->visC->dd[d];
-
-            processor.updateVisitor(d, v);
-            menuComponent->visC->update = false;
         }
     }
 }

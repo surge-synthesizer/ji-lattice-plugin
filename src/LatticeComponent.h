@@ -14,6 +14,7 @@
 
 #include "JIMath.h"
 #include "LatticesBinary.h"
+#include "LatticesProcessor.h"
 
 #include <algorithm>
 #include <array>
@@ -25,11 +26,9 @@
 //==============================================================================
 struct LatticeComponent : juce::Component
 {
-    LatticeComponent() {} // only really useful in the derived class below
+    LatticeComponent(LatticesProcessor &p) : proc(&p) {}
 
-    LatticeComponent(std::pair<int, int> *c, int *v) { update(c, v); }
-
-    void update(std::pair<int, int> *c, int *v)
+    LatticeComponent(std::pair<int, int> *c, int *v) : proc(nullptr)
     {
         for (int i = 0; i < 12; ++i)
         {
@@ -37,6 +36,8 @@ struct LatticeComponent : juce::Component
             visitor[i] = v[i];
         }
     }
+
+    ~LatticeComponent() { proc = nullptr; }
 
     void zoomIn()
     {
@@ -118,7 +119,7 @@ struct LatticeComponent : juce::Component
                         {
                             for (int i = 0; i < 12; ++i)
                             {
-                                if (CoO[i] == C)
+                                if (proc->coOrds[i] == C)
                                 {
                                     degree = i;
                                     break;
@@ -175,7 +176,8 @@ struct LatticeComponent : juce::Component
 
                     bool uni = enabled ? ((w + (v * 4)) % 12 == 0) : false;
                     bool lit = enabled ? (dist == 0) : false;
-                    auto gradient = chooseColour(std::abs(v), x, y, lit, visitor[degree], uni);
+                    auto gradient = chooseColour(std::abs(v), x, y, lit,
+                                                 proc->currentVisitors->vis[degree], uni);
 
                     alpha = 1.f / (std::sqrt(dist) + 1);
                     whiteShadow.setOpacity(alpha);
@@ -194,10 +196,10 @@ struct LatticeComponent : juce::Component
                     // Names or Ratios?
                     auto [n, d] = calculateCell(w, v);
 
-                    if (enabled && (dist == 0 && visitor[degree] > 1))
+                    if (enabled && (dist == 0 && proc->currentVisitors->vis[degree] > 1))
 
                     {
-                        reCalculateCell(n, d, visitor[degree], degree);
+                        reCalculateCell(n, d, proc->currentVisitors->vis[degree], degree);
                     }
                     auto s = std::to_string(n) + "/" + std::to_string(d);
                     // std::string s = jim.nameNoteOnLattice(w, v);
@@ -212,9 +214,9 @@ struct LatticeComponent : juce::Component
         g.drawImageAt(Spheres, 0, 0, false);
     }
 
-    int visitor[12] = {0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1};
-
   protected:
+    LatticesProcessor *proc;
+
     int JIRadius{26};
     int ellipseRadius = JIRadius * 1.15;
     JIMath jim;
@@ -226,16 +228,17 @@ struct LatticeComponent : juce::Component
     melatonin::DropShadow blackShadow = {juce::Colours::black, JIRadius / 3};
     melatonin::DropShadow whiteShadow = {juce::Colours::ghostwhite, JIRadius / 2};
 
+    int visitor[12] = {};
     std::array<std::pair<int, int>, 12> CoO{}; // currently lit co-ordinates
 
-    inline int calcDist(std::pair<int, int> xy) // how far is a given coordinate from those?
+    virtual inline int calcDist(std::pair<int, int> xy) // how far is a given coordinate from those?
     {
         int res{INT_MAX};
 
         for (int i = 0; i < 12; ++i)
         {
-            int tx = std::abs(xy.first - CoO[i].first);
-            int ty = std::abs(xy.second - CoO[i].second);
+            int tx = std::abs(xy.first - proc->coOrds[i].first);
+            int ty = std::abs(xy.second - proc->coOrds[i].second);
             int sum = tx + ty;
             if (sum < res)
                 res = sum;
@@ -399,10 +402,9 @@ struct LatticeComponent : juce::Component
 
 template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
 {
-    SmallLatticeComponent(int *v, buttonUser *bu, int size = 30) : buttonParent(bu)
+    SmallLatticeComponent(int *v, buttonUser *bu, int size = 30)
+        : LatticeComponent(initCo, homes), buttonParent(bu)
     {
-        update(initCo, homes);
-
         JIRadius = size;
         ellipseRadius = JIRadius * 1.15;
         stoke.setPointHeight(JIRadius);
@@ -634,6 +636,22 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
     std::pair<int, int> initCo[12]{{0, 0}, {-1, -1}, {2, 0},  {1, -1}, {0, 1},  {-1, 0},
                                    {2, 1}, {1, 0},   {0, -1}, {-1, 1}, {2, -1}, {1, 1}};
 
+    inline int calcDist(std::pair<int, int> xy) override
+    {
+        int res{INT_MAX};
+
+        for (int i = 0; i < 12; ++i)
+        {
+            int tx = std::abs(xy.first - CoO[i].first);
+            int ty = std::abs(xy.second - CoO[i].second);
+            int sum = tx + ty;
+            if (sum < res)
+                res = sum;
+        }
+
+        return res;
+    }
+
     juce::ColourGradient chooseWisely(int row, float x, float y, int visitor)
     {
 
@@ -682,6 +700,7 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
             if (buttons[i]->getToggleState())
             {
                 n = i;
+                break;
             }
         }
         buttonParent->selectNote(n);
