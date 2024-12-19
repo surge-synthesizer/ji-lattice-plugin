@@ -33,7 +33,8 @@ struct Visitors
 
     std::string name = "";
     int vis[12] = {0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1};
-    double tuning[12] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+    double tuning[12] = {1.0, 81.0 / 80.0, 1.0,         81.0 / 80.0, 80.0 / 81.0, 1.0, 80.0 / 81.0,
+                         1.0, 81.0 / 80.0, 80.0 / 81.0, 81.0 / 80.0, 80.0 / 81.0};
     const JIMath *j;
 
     void setTuning(int d, int v)
@@ -93,16 +94,16 @@ struct Visitors
         vis[11] = 1;
 
         tuning[0] = 1.0;
-        tuning[1] = 1.0;
+        tuning[1] = 81.0 / 80.0;
         tuning[2] = 1.0;
-        tuning[3] = 1.0;
-        tuning[4] = 1.0;
+        tuning[3] = 81.0 / 80.0;
+        tuning[4] = 80.0 / 81.0;
         tuning[5] = 1.0;
-        tuning[6] = 1.0;
+        tuning[6] = 80.0 / 81.0;
         tuning[7] = 1.0;
-        tuning[8] = 1.0;
-        tuning[9] = 1.0;
-        tuning[10] = 1.0;
-        tuning[11] = 1.0;
+        tuning[8] = 81.0 / 80.0;
+        tuning[9] = 80.0 / 81.0;
+        tuning[10] = 81.0 / 80.0;
+        tuning[11] = 80.0 / 81.0;
     }
 };

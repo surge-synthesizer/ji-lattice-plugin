@@ -54,7 +54,7 @@ LatticesProcessor::LatticesProcessor()
         originalRefFreq = defaultRefFreq;
         originalRefNote = defaultRefNote;
         returnToOrigin();
-        startTimer(1, 50);
+        startTimer(1, 5);
     }
 }
 
@@ -301,7 +301,7 @@ void LatticesProcessor::timerCallback(int timerID)
                     newVisitorGroup();
                 returnToOrigin();
                 stopTimer(0);
-                startTimer(1, 50);
+                startTimer(1, 5);
             }
             MTStryAgain = false;
         }
@@ -322,7 +322,7 @@ void LatticesProcessor::timerCallback(int timerID)
                 newVisitorGroup();
             returnToOrigin();
             stopTimer(0);
-            startTimer(1, 50);
+            startTimer(1, 5);
         }
     }
 
