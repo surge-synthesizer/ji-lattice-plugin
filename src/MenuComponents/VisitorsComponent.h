@@ -305,7 +305,7 @@ struct VisitorsComponent : public juce::Component
         groups[newidx]->setRadioGroupId(3);
         groups[newidx]->onClick = [this] { selectGroup(); };
         groups[newidx]->setClickingTogglesState(true);
-        groups[newidx]->setToggleState(true, juce::dontSendNotification);
+        groups[newidx]->setToggleState(true, juce::sendNotification);
 
         selectGroup();
     }

@@ -18,6 +18,7 @@
 #include <cmath>
 #include <string>
 #include <cstdint>
+#include <mutex>
 
 #include "JIMath.h"
 #include "Visitors.h"
@@ -131,6 +132,8 @@ class LatticesProcessor : public juce::AudioProcessor,
     void respondToMidi(const juce::MidiMessage &m);
     std::vector<bool> hold = {false, false, false, false, false};
     std::vector<bool> wait = {false, false, false, false, false};
+
+    std::mutex visLock;
 
     void shift(int dir);
     void locate();

@@ -106,6 +106,7 @@ void LatticesEditor::timerCallback(int timerID)
         {
             int g = menuComponent->visC->selectedGroup;
             processor.editVisitors(edvi, g);
+            latticeComponent->repaint();
         }
         latticeComponent->setEnabled(!menuComponent->visC->isVisible());
 

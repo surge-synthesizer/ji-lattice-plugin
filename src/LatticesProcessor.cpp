@@ -179,6 +179,10 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
 
             numVisitorGroups = xmlState->getIntAttribute("nvg", 1);
 
+            visitorGroups.clear();
+            Visitors dg{"Nobody Here", jim};
+            visitorGroups.push_back(std::move(dg));
+
             if (numVisitorGroups > 1)
             {
                 for (int v = 1; v < numVisitorGroups; ++v)
@@ -198,6 +202,8 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
                     visitorGroups.push_back(std::move(ng));
                 }
             }
+
+            std::lock_guard<std::mutex> lock(visLock);
 
             hold.clear();
             wait.clear();
@@ -233,7 +239,6 @@ void LatticesProcessor::processBlock(juce::AudioBuffer<float> &buffer,
     buffer.clear();
     if (!registeredMTS)
         return;
-    numClients = MTS_GetNumClients();
 
     for (const auto metadata : midiMessages)
     {
@@ -339,16 +344,22 @@ void LatticesProcessor::timerCallback(int timerID)
 
                     if (cv == nv)
                     {
+                        vParam->beginChangeGesture();
                         vParam->setValueNotifyingHost(0);
+                        vParam->endChangeGesture();
                     }
                     else
                     {
+                        vParam->beginChangeGesture();
                         vParam->setValueNotifyingHost(toParam(nv, true));
+                        vParam->endChangeGesture();
                     }
                     wait[i] = true;
                 }
             }
         }
+
+        numClients = MTS_GetNumClients();
     }
 }
 
@@ -430,9 +441,6 @@ int *LatticesProcessor::selectVisitorGroup(int g)
 {
     currentVisitors = &visitorGroups[g];
 
-    float v = toParam(g, true);
-    vParam->setValueNotifyingHost(v);
-
     return currentVisitors->vis;
 }
 
@@ -447,11 +455,16 @@ void LatticesProcessor::newVisitorGroup()
 {
     Visitors ng{"new", jim};
     visitorGroups.push_back(std::move(ng));
+    // probably not necessary since process returns early if the visitors
+    // editor is open, but let's do it anyway.
+    std::lock_guard<std::mutex> lock(visLock);
     hold.emplace_back(false);
     wait.emplace_back(false);
     ++numVisitorGroups;
     float v = toParam(numVisitorGroups - 1, true);
     vParam->setValueNotifyingHost(v);
+
+    locate();
 }
 
 void LatticesProcessor::deleteVisitorGroup(int idx)
@@ -459,11 +472,16 @@ void LatticesProcessor::deleteVisitorGroup(int idx)
     if (idx == 0)
         return; // illegal, shouldn't happen
 
-    currentVisitors = &visitorGroups[0];
+    currentVisitors = &visitorGroups[idx - 1];
     visitorGroups.erase(visitorGroups.begin() + idx);
+
+    // probably not necessary etc
+    std::lock_guard<std::mutex> lock(visLock);
     hold.pop_back();
     wait.pop_back();
     --numVisitorGroups;
+
+    locate();
 }
 
 void LatticesProcessor::updateVisitor(int d, int v)
@@ -506,7 +524,6 @@ void LatticesProcessor::parameterValueChanged(int parameterIndex, float newValue
         int vis = fromParam(vParam->get(), true);
         currentVisitors = &visitorGroups[vis];
     }
-
     locate();
 }
 
@@ -606,9 +623,12 @@ void LatticesProcessor::locate()
         currentRefFreq = originalRefFreq * nf;
     }
 
-    if (mode == Syntonic) // syntonic should ignore visitors
+    if (mode == Syntonic)
     {
-        currentVisitors = &visitorGroups[0]; // ignore visitors
+        if (currentVisitors != &visitorGroups[0])
+        {
+            currentVisitors = &visitorGroups[0];
+        }
 
         for (int d = 0; d < 12; ++d)
         {
@@ -629,49 +649,36 @@ void LatticesProcessor::locate()
     }
     else
     {
-        if ((fromParam(vParam->get(), true) == 0) || visitorGroups.empty())
+        for (int d = 0; d < 12; ++d)
         {
-            for (int d = 0; d < 12; ++d)
+            auto vx{0};
+            auto vy{0};
+
+            if ((d == 9 || d == 4 || d == 11 || d == 6) && currentVisitors->vis[d] == 0)
             {
-
-                coOrds[d].first = duoCo[d].first + positionX;
-                coOrds[d].second = duoCo[d].second + positionY;
-                ratios[d] = duo12[d];
+                vx = 4;
+                vy = -1;
             }
-        }
-        else
-        {
-            for (int d = 0; d < 12; ++d)
+            if ((d == 5 || d == 0) && currentVisitors->vis[d] != 0)
             {
-                auto vx{0};
-                auto vy{0};
-
-                if ((d == 9 || d == 4 || d == 11 || d == 6) && currentVisitors->vis[d] == 0)
-                {
-                    vx = 4;
-                    vy = -1;
-                }
-                if ((d == 5 || d == 0) && currentVisitors->vis[d] != 0)
-                {
-                    vx = 4;
-                    vy = -1;
-                }
-                if ((d == 7 || d == 2) && currentVisitors->vis[d] != 0)
-                {
-                    vx = -4;
-                    vy = 1;
-                }
-                if ((d == 1 || d == 8 || d == 3 || d == 10) && currentVisitors->vis[d] == 0)
-                {
-                    vx = -4;
-                    vy = 1;
-                }
-
-                coOrds[d].first = duoCo[d].first + positionX + vx;
-                coOrds[d].second = duoCo[d].second + positionY + vy;
-
-                ratios[d] = pyth12[d] * currentVisitors->tuning[d];
+                vx = 4;
+                vy = -1;
             }
+            if ((d == 7 || d == 2) && currentVisitors->vis[d] != 0)
+            {
+                vx = -4;
+                vy = 1;
+            }
+            if ((d == 1 || d == 8 || d == 3 || d == 10) && currentVisitors->vis[d] == 0)
+            {
+                vx = -4;
+                vy = 1;
+            }
+
+            coOrds[d].first = duoCo[d].first + positionX + vx;
+            coOrds[d].second = duoCo[d].second + positionY + vy;
+
+            ratios[d] = pyth12[d] * currentVisitors->tuning[d];
         }
     }
     updateHostDisplay(juce::AudioProcessor::ChangeDetails().withNonParameterStateChanged(true));
