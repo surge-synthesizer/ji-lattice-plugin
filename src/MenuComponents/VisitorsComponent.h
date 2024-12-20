@@ -306,8 +306,9 @@ struct VisitorsComponent : public juce::Component
         groups[newidx]->onClick = [this] { selectGroup(); };
         groups[newidx]->setClickingTogglesState(true);
         groups[newidx]->setToggleState(true, juce::sendNotification);
+        selectedGroup = newidx;
 
-        selectGroup();
+        setGroupData();
     }
 
     void deleteGroup()
