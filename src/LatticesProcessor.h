@@ -67,7 +67,7 @@ class LatticesProcessor : public juce::AudioProcessor,
     void editVisitors(bool editing, int g);
     int *selectVisitorGroup(int g);
     void resetVisitorGroup();
-    void newVisitorGroup();
+    bool newVisitorGroup();
     void deleteVisitorGroup(int idx);
     void updateVisitor(int d, int v);
 

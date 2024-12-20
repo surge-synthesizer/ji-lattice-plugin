@@ -194,7 +194,7 @@ struct SettingsComponent : public juce::Component // , juce::ToggleButton
             return false;
         }
 
-        if (input < 1 || input > 127)
+        if (input < 1 || input > 89)
         {
             return true;
         }
