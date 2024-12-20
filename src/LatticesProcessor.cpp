@@ -440,6 +440,7 @@ void LatticesProcessor::editVisitors(bool editing, int g)
 int *LatticesProcessor::selectVisitorGroup(int g)
 {
     currentVisitors = &visitorGroups[g];
+    locate();
 
     return currentVisitors->vis;
 }
@@ -453,7 +454,9 @@ void LatticesProcessor::resetVisitorGroup()
 
 void LatticesProcessor::newVisitorGroup()
 {
-    Visitors ng{"new", jim};
+    auto name = std::to_string(numVisitorGroups);
+
+    Visitors ng{name, jim};
     visitorGroups.push_back(std::move(ng));
     // probably not necessary since process returns early if the visitors
     // editor is open, but let's do it anyway.
@@ -461,10 +464,8 @@ void LatticesProcessor::newVisitorGroup()
     hold.emplace_back(false);
     wait.emplace_back(false);
     ++numVisitorGroups;
-    float v = toParam(numVisitorGroups - 1, true);
-    vParam->setValueNotifyingHost(v);
 
-    locate();
+    selectVisitorGroup(numVisitorGroups - 1);
 }
 
 void LatticesProcessor::deleteVisitorGroup(int idx)
@@ -486,8 +487,7 @@ void LatticesProcessor::deleteVisitorGroup(int idx)
 
 void LatticesProcessor::updateVisitor(int d, int v)
 {
-    currentVisitors->vis[d] = v;
-
+    currentVisitors->setDegree(d, v);
     locate();
 }
 
@@ -519,7 +519,7 @@ void LatticesProcessor::returnToOrigin()
 
 void LatticesProcessor::parameterValueChanged(int parameterIndex, float newValue)
 {
-    if (parameterIndex == 2)
+    if (parameterIndex == 2 && !editingVisitors)
     {
         int vis = fromParam(vParam->get(), true);
         currentVisitors = &visitorGroups[vis];
