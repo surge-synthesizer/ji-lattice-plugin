@@ -68,33 +68,6 @@ struct VisitorsComponent : public juce::Component
         commas[1]->setToggleState(true, juce::dontSendNotification);
     }
 
-    void reset()
-    {
-        groups.clear();
-
-        for (int g = 0; g < proc->numVisitorGroups; ++g)
-        {
-            auto name = (g == 0) ? "None" : std::to_string(g);
-            groups.add(new juce::TextButton(name));
-            addAndMakeVisible(groups[g]);
-            groups[g]->setRadioGroupId(3);
-            groups[g]->onClick = [this] { selectGroup(); };
-            groups[g]->setClickingTogglesState(true);
-        }
-
-        for (int i = 0; i < proc->numVisitorGroups; ++i)
-        {
-            if (proc->currentVisitors == &proc->visitorGroups[i])
-            {
-                selectedGroup = i;
-                break;
-            }
-        }
-
-        groups[selectedGroup]->setToggleState(true, juce::sendNotification);
-        setGroupData();
-    }
-
     void resized() override
     {
         auto b = this->getLocalBounds();
@@ -104,16 +77,16 @@ struct VisitorsComponent : public juce::Component
         for (int i = 0; i < 7; ++i)
         {
             commas[i]->setEnabled(selectedGroup != 0);
-            commas[i]->setBounds(5 * (1 + i) + diameter * i, diameter * 5 + boxsize + 5, diameter,
+            commas[i]->setBounds(5 * (1 + i) + diameter * i, diameter * 5 + 30 + 5, diameter,
                                  diameter);
         }
 
-        groups[0]->setBounds(5, 5, boxsize * 2, boxsize);
+        groups[0]->setBounds(5, 5, 60, boxHeight);
         for (int i = 1; i < proc->numVisitorGroups; ++i)
         {
-            groups[i]->setBounds(5 + boxsize * (i + 1), 5, boxsize, boxsize);
+            groups[i]->setBounds(65 + boxWidth * (i - 1), 5, boxWidth, boxHeight);
         }
-        plusButton->setBounds(5 + boxsize * (proc->numVisitorGroups + 1), 5, boxsize, boxsize);
+        plusButton->setBounds(65 + boxWidth * (proc->numVisitorGroups - 1), 5, boxWidth, boxHeight);
 
         deleteButton->setBounds(5, diameter + 5, 45, 20);
         deleteButton->setEnabled(proc->numVisitorGroups > 1 && selectedGroup != 0);
@@ -141,23 +114,50 @@ struct VisitorsComponent : public juce::Component
                 int left2 = 5.f * (1 + i) + diameter * i;
 
                 g.setColour(juce::Colours::black);
-                g.fillEllipse(left2, diameter * 5 + boxsize + 5, diameter, diameter);
+                g.fillEllipse(left2, diameter * 5 + 30 + 5, diameter, diameter);
 
                 g.setGradientFill(chooseColour(i, (float)left2, (float)left2 + diameter));
-                g.fillEllipse(left2, diameter * 5 + boxsize + 5, diameter, diameter);
+                g.fillEllipse(left2, diameter * 5 + 30 + 5, diameter, diameter);
 
                 g.setColour(juce::Colours::white);
                 g.setFont(stoke);
-                g.drawFittedText(names[i], left2 + 2, diameter * 5 + 2 + boxsize + 5, diameter - 4,
+                g.drawFittedText(names[i], left2 + 2, diameter * 5 + 2 + 30 + 5, diameter - 4,
                                  diameter - 4, juce::Justification::centred, 1, .05f);
 
                 if (commas[i]->getToggleState())
                 {
                     g.setColour(outlineColour);
-                    g.drawEllipse(left2, diameter * 5 + boxsize + 5, diameter, diameter, 3.f);
+                    g.drawEllipse(left2, diameter * 5 + boxHeight + 5, diameter, diameter, 3.f);
                 }
             }
         }
+    }
+
+    void reset()
+    {
+        groups.clear();
+
+        for (int g = 0; g < proc->numVisitorGroups; ++g)
+        {
+            auto name = (g == 0) ? "None" : std::to_string(g);
+            groups.add(new juce::TextButton(name));
+            addAndMakeVisible(groups[g]);
+            groups[g]->setRadioGroupId(3);
+            groups[g]->onClick = [this] { selectGroup(); };
+            groups[g]->setClickingTogglesState(true);
+        }
+
+        for (int i = 0; i < proc->numVisitorGroups; ++i)
+        {
+            if (proc->currentVisitors == &proc->visitorGroups[i])
+            {
+                selectedGroup = i;
+                break;
+            }
+        }
+
+        groups[selectedGroup]->setToggleState(true, juce::sendNotification);
+        setGroupData();
     }
 
     void selectNote(int n)
@@ -176,7 +176,8 @@ struct VisitorsComponent : public juce::Component
 
     static constexpr int radius = 20;
     int diameter = 40;
-    int boxsize = 30;
+    int boxHeight = 30;
+    int boxWidth = 40;
 
     juce::ReferenceCountedObjectPtr<juce::Typeface> Stoke{juce::Typeface::createSystemTypefaceFor(
         LatticesBinary::Stoke_otf, LatticesBinary::Stoke_otfSize)};
@@ -297,22 +298,26 @@ struct VisitorsComponent : public juce::Component
 
     void newGroup()
     {
-        proc->newVisitorGroup();
+        if (proc->newVisitorGroup())
+        {
+            int newidx = groups.size();
+            groups.add(new juce::TextButton(std::to_string(newidx)));
+            addAndMakeVisible(groups[newidx]);
+            groups[newidx]->setRadioGroupId(3);
+            groups[newidx]->onClick = [this] { selectGroup(); };
+            groups[newidx]->setClickingTogglesState(true);
+            groups[newidx]->setToggleState(true, juce::sendNotification);
+            selectedGroup = newidx;
 
-        int newidx = groups.size();
-        groups.add(new juce::TextButton(std::to_string(newidx)));
-        addAndMakeVisible(groups[newidx]);
-        groups[newidx]->setRadioGroupId(3);
-        groups[newidx]->onClick = [this] { selectGroup(); };
-        groups[newidx]->setClickingTogglesState(true);
-        groups[newidx]->setToggleState(true, juce::sendNotification);
-        selectedGroup = newidx;
-
-        setGroupData();
+            setGroupData();
+        }
     }
 
     void deleteGroup()
     {
+        if (selectedGroup == 0)
+            return;
+
         proc->deleteVisitorGroup(selectedGroup);
 
         for (int i = selectedGroup; i < groups.size(); ++i)

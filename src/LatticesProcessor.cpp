@@ -452,8 +452,11 @@ void LatticesProcessor::resetVisitorGroup()
     locate();
 }
 
-void LatticesProcessor::newVisitorGroup()
+bool LatticesProcessor::newVisitorGroup()
 {
+    if (visitorGroups.size() > 32) // > 32 because the 0th doesn't count
+        return false;
+
     auto name = std::to_string(numVisitorGroups);
 
     Visitors ng{name, jim};
@@ -466,6 +469,7 @@ void LatticesProcessor::newVisitorGroup()
     ++numVisitorGroups;
 
     selectVisitorGroup(numVisitorGroups - 1);
+    return true;
 }
 
 void LatticesProcessor::deleteVisitorGroup(int idx)
