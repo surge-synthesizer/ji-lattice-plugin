@@ -72,6 +72,7 @@ class LatticesProcessor : public juce::AudioProcessor,
     void updateVisitor(int d, int v);
 
     void parameterValueChanged(int parameterIndex, float newValue) override;
+    void shift(int dir);
 
     bool registeredMTS{false};
     bool MTSreInit{false};
@@ -135,9 +136,7 @@ class LatticesProcessor : public juce::AudioProcessor,
 
     std::mutex visLock;
 
-    void shift(int dir);
     void locate();
-
     void updateTuning();
 
     double ratios[12] = {};
