@@ -24,9 +24,38 @@
 #include <melatonin_blur/melatonin_blur.h>
 
 //==============================================================================
-struct LatticeComponent : juce::Component
+struct LatticeComponent : juce::Component, private juce::Timer
 {
-    LatticeComponent(LatticesProcessor &p) : proc(&p) {}
+    LatticeComponent(LatticesProcessor &p) : proc(&p)
+    {
+        auto gwc = juce::Colours::ghostwhite;
+
+        homeButton = std::make_unique<juce::ShapeButton>("Home", gwc, gwc, gwc);
+        addAndMakeVisible(*homeButton);
+        homeButton->onClick = [this] { proc->shift(0); };
+        juce::Path circle{};
+        circle.addEllipse(0, 0, 24, 24);
+        homeButton->setShape(circle, true, true, false);
+
+        westButton = std::make_unique<juce::ArrowButton>("West", .5f, gwc);
+        addAndMakeVisible(*westButton);
+        westButton->onClick = [this] { proc->shift(1); };
+
+        eastButton = std::make_unique<juce::ArrowButton>("East", 0.f, gwc);
+        addAndMakeVisible(*eastButton);
+        eastButton->onClick = [this] { proc->shift(2); };
+
+        northButton = std::make_unique<juce::ArrowButton>("North", .75f, gwc);
+        addAndMakeVisible(*northButton);
+        northButton->onClick = [this] { proc->shift(3); };
+
+        southButton = std::make_unique<juce::ArrowButton>("South", .25f, gwc);
+        addAndMakeVisible(*southButton);
+        southButton->onClick = [this] { proc->shift(4); };
+
+        setWantsKeyboardFocus(true);
+        startTimer(50);
+    }
 
     LatticeComponent(std::pair<int, int> *c, int *v) : proc(nullptr)
     {
@@ -63,6 +92,68 @@ struct LatticeComponent : juce::Component
         blackShadow.setRadius(JIRadius / 3);
         whiteShadow.setRadius(JIRadius / 2);
         repaint();
+    }
+
+    void resized() override
+    {
+        auto b = this->getLocalBounds();
+
+        homeButton->setBounds(b.getRight() - 72, b.getBottom() - 72, 24, 24);
+        westButton->setBounds(b.getRight() - 104, b.getBottom() - 71, 24, 24);
+        eastButton->setBounds(b.getRight() - 38, b.getBottom() - 71, 24, 24);
+        northButton->setBounds(b.getRight() - 71, b.getBottom() - 104, 24, 24);
+        southButton->setBounds(b.getRight() - 71, b.getBottom() - 38, 24, 24);
+    }
+
+    bool keyPressed(const juce::KeyPress &key) override
+    {
+        if (key == juce::KeyPress::returnKey)
+        {
+            proc->shift(0);
+            return true;
+        }
+
+        if (key == juce::KeyPress::leftKey && !westFlag)
+        {
+            westFlag = true;
+            proc->shift(1);
+            return true;
+        }
+
+        if (key == juce::KeyPress::rightKey && !eastFlag)
+        {
+            eastFlag = true;
+            proc->shift(2);
+            return true;
+        }
+
+        if (key == juce::KeyPress::upKey && !northFlag)
+        {
+            northFlag = true;
+            proc->shift(3);
+            return true;
+        }
+
+        if (key == juce::KeyPress::downKey && !southFlag)
+        {
+            southFlag = true;
+            proc->shift(4);
+            return true;
+        }
+
+        return false;
+    }
+
+    void timerCallback() override
+    {
+        if (westFlag)
+            westFlag = false;
+        if (eastFlag)
+            eastFlag = false;
+        if (northFlag)
+            northFlag = false;
+        if (southFlag)
+            southFlag = false;
     }
 
     void paint(juce::Graphics &g) override
@@ -212,6 +303,12 @@ struct LatticeComponent : juce::Component
         }
         g.drawImageAt(Lines, 0, 0, false);
         g.drawImageAt(Spheres, 0, 0, false);
+
+        auto b = this->getLocalBounds();
+        g.setColour(bg);
+        g.fillRect(b.getRight() - 110, b.getBottom() - 110, 101, 101);
+        g.setColour(juce::Colours::ghostwhite);
+        g.drawRect(b.getRight() - 110, b.getBottom() - 110, 101, 101);
     }
 
   protected:
@@ -246,6 +343,8 @@ struct LatticeComponent : juce::Component
 
         return res;
     }
+
+    juce::Colour bg = juce::Colour{.475f, 1.f, 0.05f, 1.f};
 
     const juce::Colour com1{0.f, .84f, 1.f, 1.f}, com2{.961111f, .79f, .41f, .25f},
         py1{.5f, .51f, .3f, 1.f}, py2{.5277778f, .79f, .41f, .25f}, l1c1{.35f, .75f, .98f, 1.f},
@@ -396,6 +495,16 @@ struct LatticeComponent : juce::Component
         n = n / g;
         d = d / g;
     }
+
+  private:
+    std::unique_ptr<juce::ArrowButton> westButton;
+    std::unique_ptr<juce::ArrowButton> eastButton;
+    std::unique_ptr<juce::ArrowButton> northButton;
+    std::unique_ptr<juce::ArrowButton> southButton;
+
+    bool westFlag{false}, eastFlag{false}, northFlag{false}, southFlag{false};
+
+    std::unique_ptr<juce::ShapeButton> homeButton;
 };
 
 // =================================================================================================
@@ -462,6 +571,8 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
         CoO[d].first = initCo[d].first + vx;
         CoO[d].second = initCo[d].second + vy;
     }
+
+    void resized() override {}
 
     void paint(juce::Graphics &g) override
     {

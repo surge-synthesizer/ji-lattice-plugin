@@ -69,7 +69,17 @@ void LatticesEditor::resized()
 
     if (inited)
     {
-        menuComponent->setBounds(b);
+        auto h = 30;
+        if (menuComponent->visC->isVisible())
+        {
+            h = 300;
+        }
+        else if (menuComponent->settingsC->isVisible())
+        {
+            h = 240;
+        }
+
+        menuComponent->setBounds(0, 0, b.getWidth(), h);
         zoomOutButton->setBounds(20, b.getBottom() - 55, 35, 35);
         zoomInButton->setBounds(60, b.getBottom() - 55, 35, 35);
     }
@@ -102,6 +112,15 @@ void LatticesEditor::timerCallback(int timerID)
 
         bool edvi = menuComponent->visC->isVisible();
         menuComponent->visC->setEnabled(edvi);
+
+        bool mevi = (edvi || menuComponent->settingsC->isVisible());
+
+        if (mevi != menuWasOpen)
+        {
+            resized();
+            menuWasOpen = mevi;
+        }
+
         if (processor.editingVisitors != edvi)
         {
             int g = menuComponent->visC->selectedGroup;

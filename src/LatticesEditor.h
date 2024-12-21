@@ -65,7 +65,7 @@ class LatticesEditor : public juce::AudioProcessorEditor, juce::MultiTimer
 
     void init();
     bool inited{false};
-
+    bool menuWasOpen{false};
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.
     LatticesProcessor &processor;
