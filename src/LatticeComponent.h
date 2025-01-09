@@ -21,10 +21,11 @@
 #include <cmath>
 #include <climits>
 
+#include <juce_animation/juce_animation.h>
 #include <melatonin_blur/melatonin_blur.h>
 
 //==============================================================================
-struct LatticeComponent : juce::Component, private juce::Timer
+struct LatticeComponent : juce::Component, private juce::MultiTimer
 {
     LatticeComponent(LatticesProcessor &p) : proc(&p)
     {
@@ -53,8 +54,10 @@ struct LatticeComponent : juce::Component, private juce::Timer
         addAndMakeVisible(*southButton);
         southButton->onClick = [this] { proc->shift(4); };
 
+        updater.addAnimator(follow);
         setWantsKeyboardFocus(true);
-        startTimer(50);
+        startTimer(0, 50); // for keyboard gestures
+        startTimer(1, 5);  // for following the highlight around
     }
 
     LatticeComponent(std::pair<int, int> *c, int *v) : proc(nullptr)
@@ -109,7 +112,6 @@ struct LatticeComponent : juce::Component, private juce::Timer
     {
         if (key == juce::KeyPress::returnKey)
         {
-//            follow.start();
             proc->shift(0);
             return true;
         }
@@ -145,16 +147,48 @@ struct LatticeComponent : juce::Component, private juce::Timer
         return false;
     }
 
-    void timerCallback() override
+    void timerCallback(int timerID) override
     {
-        if (westFlag)
-            westFlag = false;
-        if (eastFlag)
-            eastFlag = false;
-        if (northFlag)
-            northFlag = false;
-        if (southFlag)
-            southFlag = false;
+        if (timerID == 0)
+        {
+            if (westFlag)
+                westFlag = false;
+            if (eastFlag)
+                eastFlag = false;
+            if (northFlag)
+                northFlag = false;
+            if (southFlag)
+                southFlag = false;
+        }
+
+        if (timerID == 1)
+        {
+            if (proc->changed)
+            {
+                repaint();
+                proc->changed = false;
+
+                int nx = proc->positionX;
+                int ny = proc->positionY;
+
+                bool sH = (procX != nx && nx % 4 == 0);
+                bool sV = (procY != ny && ny % 3 == 0);
+
+                procX = nx;
+                procY = ny;
+
+                if (sH || sV)
+                {
+                    priorX = xShift;
+                    priorY = yShift;
+                    goalX = procX;
+                    goalY = procY;
+
+                    shifting = true;
+                    follow.start();
+                }
+            }
+        }
     }
 
     void paint(juce::Graphics &g) override
@@ -179,19 +213,21 @@ struct LatticeComponent : juce::Component, private juce::Timer
 
         juce::Image Lines{juce::Image::ARGB, getWidth(), getHeight(), true};
         juce::Image Spheres{juce::Image::ARGB, getWidth(), getHeight(), true};
+        juce::Image Text{juce::Image::ARGB, getWidth(), getHeight(), true};
         {
             juce::Graphics lG(Lines);
             juce::Graphics sG(Spheres);
+            juce::Graphics tG(Text);
             for (int v = -nV - 1; v < nV + 1; ++v)
             {
-                float off = v * hDistance * 0.5f * yShift;
-                float y = -v * vDistance + ctrH;
+                float off = v * hDistance * 0.5f;
+                float y = -v * vDistance + ctrH + yShift;
                 if (y < -vDistance || y > getHeight() + vDistance)
                     continue;
 
                 for (int w = -nW - 1; w < nW + 1; ++w)
                 {
-                    float x = w * hDistance + ctrX + off * xShift;
+                    float x = w * hDistance + ctrX + off - xShift;
 
                     if (x < -hDistance || x > getWidth() + hDistance)
                         continue;
@@ -286,17 +322,39 @@ struct LatticeComponent : juce::Component, private juce::Timer
                                    thickness);
 
                     // Names or Ratios?
-                    auto [n, d] = calculateCell(w, v);
+
+                    auto syd = syntonicDrift * 4;
+                    auto did = diesisDrift * 3 - syntonicDrift;
+                    int adj{0}, sydys{syd};
+                    while (sydys > 11)
+                    {
+                        ++adj;
+                        sydys -= 12;
+                    }
+                    while (sydys < -11)
+                    {
+                        --adj;
+                        sydys += 12;
+                    }
+                    did += adj * 3;
+
+                    std::string drifted = "";
+                    if (did != 0 || syd != 0)
+                    {
+                        drifted = "*";
+                    }
+
+                    auto [n, d] = calculateCell(w - syd, v - did);
 
                     if (enabled && (dist == 0 && proc->currentVisitors->vis[degree] > 1))
-
                     {
                         reCalculateCell(n, d, proc->currentVisitors->vis[degree], degree);
                     }
-                    auto s = std::to_string(n) + "/" + std::to_string(d);
+                    auto s = std::to_string(n) + "/" + std::to_string(d) + drifted;
                     // std::string s = jim.nameNoteOnLattice(w, v);
-                    sG.setFont(stoke);
-                    sG.drawFittedText(s, x - ellipseRadius + 3, y - (JIRadius / 3.f),
+                    tG.setColour(juce::Colours::ghostwhite.withAlpha(alpha * animA));
+                    tG.setFont(stoke);
+                    tG.drawFittedText(s, x - ellipseRadius + 3, y - (JIRadius / 3.f),
                                       2.f * (ellipseRadius - 3), .66667f * JIRadius,
                                       juce::Justification::horizontallyCentred, 1, 0.05f);
                 }
@@ -304,29 +362,80 @@ struct LatticeComponent : juce::Component, private juce::Timer
         }
         g.drawImageAt(Lines, 0, 0, false);
         g.drawImageAt(Spheres, 0, 0, false);
+        g.drawImageAt(Text, 0, 0, false);
 
         auto b = this->getLocalBounds();
+
+        if (syntonicDrift != 0 || diesisDrift || 0)
+        {
+            stoke.setPointHeight(15);
+            g.setFont(stoke);
+            g.setColour(bg.withAlpha(animA));
+            g.fillRect(b.getRight() - 160, 40, 150, 90);
+            g.setColour(juce::Colours::ghostwhite.withAlpha(animA));
+            g.drawRect(b.getRight() - 160, 40, 150, 90);
+            auto drif = "*Tonic Drifted";
+            auto synt = std::to_string(syntonicDrift) + " commas";
+            auto dies = std::to_string(-diesisDrift) + " dieses";
+            g.drawText(drif, b.getRight() - 160, 40, 150, 30,
+                       juce::Justification::horizontallyCentred, false);
+            g.drawText(synt, b.getRight() - 160, 70, 150, 30,
+                       juce::Justification::horizontallyCentred, false);
+            g.drawText(dies, b.getRight() - 160, 100, 150, 30,
+                       juce::Justification::horizontallyCentred, false);
+            stoke.setPointHeight(JIRadius);
+        }
+
         g.setColour(bg);
         g.fillRect(b.getRight() - 110, b.getBottom() - 110, 101, 101);
         g.setColour(juce::Colours::ghostwhite);
         g.drawRect(b.getRight() - 110, b.getBottom() - 110, 101, 101);
     }
-    
-private:
-    float xShift = 0;
-    float yShift = 0;
 
-        juce::VBlankAnimatorUpdater updater { this };
-        juce::Animator follow = juce::ValueAnimatorBuilder{}
-                                    .withEasing(juce::Easings::createEaseInOut())
-                                    .withDurationMs(1000)
-                                    .withValueChangedCallback([this] (auto value) {
-                                        xShift = (float)value * JIRadius * 4;
-                                        yShift = (float)value * JIRadius * 3;
-                                        repaint();
-                                    })
-                                    .build();
-    
+  private:
+    int syntonicDrift{0}, diesisDrift{0}, procX{0}, procY{0};
+    float xShift{0}, yShift{0}, priorX{0}, priorY{0}, goalX{0}, goalY{0};
+
+    float animA = 1.f;
+
+    bool shifting{false};
+
+    juce::VBlankAnimatorUpdater updater{this};
+    juce::Animator follow =
+        juce::ValueAnimatorBuilder{}
+            .withEasing(juce::Easings::createEaseInOut())
+            .withDurationMs(1000)
+            .withValueChangedCallback([this](auto value) { shiftToFollow((float)value); })
+            .build();
+
+    void shiftToFollow(const float v)
+    {
+        float dist = JIRadius * 2.f * (5.f / 3.f);
+        auto nv = 1 - v;
+
+        xShift = nv * priorX + v * dist * (goalX + goalY * .5f);
+        yShift = nv * priorY + v * dist * goalY;
+
+        if (v < .5f)
+        {
+            animA = 1 - v * 2.f;
+        }
+        else
+        {
+            syntonicDrift = procX / 4;
+            diesisDrift = procY / 3;
+            animA = (v - .5f) * 2.f;
+        }
+
+        repaint();
+
+        if (follow.isComplete())
+        {
+            shifting = false;
+            animA = 1.f;
+        }
+    }
+
   protected:
     LatticesProcessor *proc;
 

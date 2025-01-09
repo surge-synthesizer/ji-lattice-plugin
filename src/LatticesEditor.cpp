@@ -72,7 +72,7 @@ void LatticesEditor::resized()
         auto h = 30;
         if (menuComponent->visC->isVisible())
         {
-            h = 300;
+            h = 330;
         }
         else if (menuComponent->settingsC->isVisible())
         {
@@ -128,11 +128,5 @@ void LatticesEditor::timerCallback(int timerID)
             latticeComponent->repaint();
         }
         latticeComponent->setEnabled(!menuComponent->visC->isVisible());
-
-        if (processor.changed)
-        {
-            latticeComponent->repaint();
-            processor.changed = false;
-        }
     }
 }
