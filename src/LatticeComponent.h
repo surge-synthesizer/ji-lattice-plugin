@@ -109,6 +109,7 @@ struct LatticeComponent : juce::Component, private juce::Timer
     {
         if (key == juce::KeyPress::returnKey)
         {
+//            follow.start();
             proc->shift(0);
             return true;
         }
@@ -183,14 +184,14 @@ struct LatticeComponent : juce::Component, private juce::Timer
             juce::Graphics sG(Spheres);
             for (int v = -nV - 1; v < nV + 1; ++v)
             {
-                float off = v * hDistance * 0.5f;
+                float off = v * hDistance * 0.5f * yShift;
                 float y = -v * vDistance + ctrH;
                 if (y < -vDistance || y > getHeight() + vDistance)
                     continue;
 
                 for (int w = -nW - 1; w < nW + 1; ++w)
                 {
-                    float x = w * hDistance + ctrX + off;
+                    float x = w * hDistance + ctrX + off * xShift;
 
                     if (x < -hDistance || x > getWidth() + hDistance)
                         continue;
@@ -310,7 +311,22 @@ struct LatticeComponent : juce::Component, private juce::Timer
         g.setColour(juce::Colours::ghostwhite);
         g.drawRect(b.getRight() - 110, b.getBottom() - 110, 101, 101);
     }
+    
+private:
+    float xShift = 0;
+    float yShift = 0;
 
+        juce::VBlankAnimatorUpdater updater { this };
+        juce::Animator follow = juce::ValueAnimatorBuilder{}
+                                    .withEasing(juce::Easings::createEaseInOut())
+                                    .withDurationMs(1000)
+                                    .withValueChangedCallback([this] (auto value) {
+                                        xShift = (float)value * JIRadius * 4;
+                                        yShift = (float)value * JIRadius * 3;
+                                        repaint();
+                                    })
+                                    .build();
+    
   protected:
     LatticesProcessor *proc;
 
