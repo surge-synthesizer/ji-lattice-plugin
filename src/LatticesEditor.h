@@ -60,9 +60,6 @@ class LatticesEditor : public juce::AudioProcessorEditor, juce::MultiTimer
     std::unique_ptr<MTSWarningComponent> warningComponent;
     std::unique_ptr<MenuBarComponent> menuComponent;
 
-    std::unique_ptr<juce::TextButton> zoomOutButton;
-    std::unique_ptr<juce::TextButton> zoomInButton;
-
     void init();
     bool inited{false};
     bool menuWasOpen{false};

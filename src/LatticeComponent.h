@@ -54,10 +54,18 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
         addAndMakeVisible(*southButton);
         southButton->onClick = [this] { proc->shift(4); };
 
+        zoomOutButton = std::make_unique<juce::TextButton>("-");
+        addAndMakeVisible(*zoomOutButton);
+        zoomOutButton->onClick = [this] { zoomOut(); };
+
+        zoomInButton = std::make_unique<juce::TextButton>("+");
+        addAndMakeVisible(*zoomInButton);
+        zoomInButton->onClick = [this] { zoomIn(); };
+
         updater.addAnimator(follow);
         setWantsKeyboardFocus(true);
         startTimer(0, 50); // for keyboard gestures
-        startTimer(1, 5);  // for following the highlight around
+        startTimer(1, 50); // for following the highlight around
     }
 
     LatticeComponent(std::pair<int, int> *c, int *v) : proc(nullptr)
@@ -106,6 +114,9 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
         eastButton->setBounds(b.getRight() - 38, b.getBottom() - 71, 24, 24);
         northButton->setBounds(b.getRight() - 71, b.getBottom() - 104, 24, 24);
         southButton->setBounds(b.getRight() - 71, b.getBottom() - 38, 24, 24);
+
+        zoomOutButton->setBounds(20, b.getBottom() - 55, 35, 35);
+        zoomInButton->setBounds(60, b.getBottom() - 55, 35, 35);
     }
 
     bool keyPressed(const juce::KeyPress &key) override
@@ -151,14 +162,10 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
     {
         if (timerID == 0)
         {
-            if (westFlag)
-                westFlag = false;
-            if (eastFlag)
-                eastFlag = false;
-            if (northFlag)
-                northFlag = false;
-            if (southFlag)
-                southFlag = false;
+            westFlag = false;
+            eastFlag = false;
+            northFlag = false;
+            southFlag = false;
         }
 
         if (timerID == 1)
@@ -200,14 +207,16 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
 
         float ctrDistance{JIRadius * (5.f / 3.f)};
 
-        float vDistance = 2.0f * ctrDistance;
-        float hDistance = 2.0f * ctrDistance;
+        float vhDistance = 2.0f * ctrDistance;
 
         auto ctrX = getWidth() / 2;
         auto ctrH = getHeight() / 2;
 
-        auto nV = std::ceil(getHeight() / vDistance);
-        auto nW = std::ceil(getWidth() / hDistance);
+        int yS = static_cast<int>(std::abs(yShift));
+        int xS = static_cast<int>(std::abs(xShift));
+
+        int nV = std::ceil(getHeight() / vhDistance) + yS;
+        int nW = std::ceil(getWidth() / vhDistance) + xS;
 
         int dist{0}, hDist{0}, uDist{0}, dDist{0};
 
@@ -218,18 +227,18 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
             juce::Graphics lG(Lines);
             juce::Graphics sG(Spheres);
             juce::Graphics tG(Text);
-            for (int v = -nV - 1; v < nV + 1; ++v)
+            for (int v = -nV; v < nV; ++v)
             {
-                float off = v * hDistance * 0.5f;
-                float y = -v * vDistance + ctrH + yShift;
-                if (y < -vDistance || y > getHeight() + vDistance)
+                float off = v * vhDistance * 0.5f;
+                float y = -v * vhDistance + ctrH + yShift;
+                if (y < -ctrDistance || y > getHeight() + ctrDistance)
                     continue;
 
-                for (int w = -nW - 1; w < nW + 1; ++w)
+                for (int w = -nW; w < nW; ++w)
                 {
-                    float x = w * hDistance + ctrX + off - xShift;
+                    float x = w * vhDistance + ctrX + off - xShift;
 
-                    if (x < -hDistance || x > getWidth() + hDistance)
+                    if (x < -ctrDistance || x > getWidth() + ctrDistance)
                         continue;
 
                     int degree{0};
@@ -275,20 +284,20 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
                     // Horizontal Line
                     alpha = 1.f / (std::sqrt(hDist) + 1);
                     lG.setColour(juce::Colours::ghostwhite.withAlpha(alpha));
-                    juce::Line<float> horiz(x, y, x + hDistance, y);
+                    juce::Line<float> horiz(x, y, x + vhDistance, y);
                     lG.drawLine(horiz, thickness);
 
                     // Upward Line
                     alpha = 1.f / (std::sqrt(uDist) + 1);
                     lG.setColour(juce::Colours::ghostwhite.withAlpha(alpha));
-                    juce::Line<float> up(x, y, x + (hDistance * .5f), y - vDistance);
+                    juce::Line<float> up(x, y, x + (vhDistance * .5f), y - vhDistance);
                     float ul[2] = {7.f, 3.f};
                     lG.drawDashedLine(up, ul, 2, thickness, 1);
 
                     // Downward Line
                     alpha = 1.f / (std::sqrt(dDist) + 1);
                     lG.setColour(juce::Colours::ghostwhite.withAlpha(alpha));
-                    juce::Line<float> down(x, y, x + (hDistance * .5f), y + vDistance);
+                    juce::Line<float> down(x, y, x + (vhDistance * .5f), y + vhDistance);
                     float dl[2] = {2.f, 3.f};
                     lG.drawDashedLine(down, dl, 2, thickness, 1);
 
@@ -322,7 +331,7 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
                                    thickness);
 
                     // Names or Ratios?
-
+                    /*
                     auto syd = syntonicDrift * 4;
                     auto did = diesisDrift * 3 - syntonicDrift;
                     int adj{0}, sydys{syd};
@@ -343,16 +352,16 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
                     {
                         drifted = "*";
                     }
-
-                    auto [n, d] = calculateCell(w - syd, v - did);
+                     */
+                    auto [n, d] = calculateCell(w, v);
 
                     if (enabled && (dist == 0 && proc->currentVisitors->vis[degree] > 1))
                     {
                         reCalculateCell(n, d, proc->currentVisitors->vis[degree], degree);
                     }
-                    auto s = std::to_string(n) + "/" + std::to_string(d) + drifted;
+                    auto s = std::to_string(n) + "/" + std::to_string(d);
                     // std::string s = jim.nameNoteOnLattice(w, v);
-                    tG.setColour(juce::Colours::ghostwhite.withAlpha(alpha * animA));
+                    tG.setColour(juce::Colours::ghostwhite.withAlpha(alpha));
                     tG.setFont(stoke);
                     tG.drawFittedText(s, x - ellipseRadius + 3, y - (JIRadius / 3.f),
                                       2.f * (ellipseRadius - 3), .66667f * JIRadius,
@@ -366,7 +375,7 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
 
         auto b = this->getLocalBounds();
 
-        if (syntonicDrift != 0 || diesisDrift || 0)
+        if (syntonicDrift != 0 || diesisDrift != 0)
         {
             stoke.setPointHeight(15);
             g.setFont(stoke);
@@ -418,13 +427,13 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
 
         if (v < .5f)
         {
-            animA = 1 - v * 2.f;
+            // animA = 1 - v * 2.f;
         }
         else
         {
             syntonicDrift = procX / 4;
             diesisDrift = procY / 3;
-            animA = (v - .5f) * 2.f;
+            // animA = (v - .5f) * 2.f;
         }
 
         repaint();
@@ -432,7 +441,7 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
         if (follow.isComplete())
         {
             shifting = false;
-            animA = 1.f;
+            // animA = 1.f;
         }
     }
 
@@ -622,6 +631,9 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
     }
 
   private:
+    std::unique_ptr<juce::TextButton> zoomOutButton;
+    std::unique_ptr<juce::TextButton> zoomInButton;
+
     std::unique_ptr<juce::ArrowButton> westButton;
     std::unique_ptr<juce::ArrowButton> eastButton;
     std::unique_ptr<juce::ArrowButton> northButton;
@@ -723,14 +735,13 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
 
         float ctrDistance{JIRadius * (5.f / 3.f)};
 
-        float vDistance = 2.0f * ctrDistance;
-        float hDistance = 2.0f * ctrDistance;
+        float vhDistance = 2.0f * ctrDistance;
 
         auto ctrX = getWidth() / 2;
         auto ctrH = getHeight() / 2;
 
-        auto nV = std::ceil(getHeight() / vDistance);
-        auto nW = std::ceil(getWidth() / hDistance);
+        auto nV = std::ceil(getHeight() / vhDistance);
+        auto nW = std::ceil(getWidth() / vhDistance);
 
         juce::Image Lines{juce::Image::ARGB, getWidth(), getHeight(), true};
         juce::Image Spheres{juce::Image::ARGB, getWidth(), getHeight(), true};
@@ -739,14 +750,14 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
             juce::Graphics sG(Spheres);
             for (int v = -nV; v < nV; ++v)
             {
-                float off = v * hDistance * 0.5f;
-                float y = -v * vDistance + ctrH;
+                float off = v * vhDistance * 0.5f;
+                float y = -v * vhDistance + ctrH;
                 if (y < 0 || y > getHeight())
                     continue;
 
                 for (int w = -nW; w < nW; ++w)
                 {
-                    float x = w * hDistance + ctrX + off;
+                    float x = w * vhDistance + ctrX + off;
 
                     if (x < 0 || x > getWidth())
                         continue;
@@ -787,14 +798,14 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
                     if (hLit) // Horizontal Line
                     {
                         lG.setColour(juce::Colours::ghostwhite.withAlpha(alpha));
-                        juce::Line<float> horiz(x, y, x + hDistance, y);
+                        juce::Line<float> horiz(x, y, x + vhDistance, y);
                         lG.drawLine(horiz, thickness);
                     }
 
                     if (uLit) // Upward Line
                     {
                         lG.setColour(juce::Colours::ghostwhite.withAlpha(alpha));
-                        juce::Line<float> up(x, y, x + (hDistance * .5f), y - vDistance);
+                        juce::Line<float> up(x, y, x + (vhDistance * .5f), y - vhDistance);
                         float ul[2] = {7.f, 3.f};
                         lG.drawDashedLine(up, ul, 2, thickness, 1);
                     }
@@ -802,7 +813,7 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
                     if (dLit) // Downward Line
                     {
                         lG.setColour(juce::Colours::ghostwhite.withAlpha(alpha));
-                        juce::Line<float> down(x, y, x + (hDistance * .5f), y + vDistance);
+                        juce::Line<float> down(x, y, x + (vhDistance * .5f), y + vhDistance);
                         float dl[2] = {2.f, 3.f};
                         lG.drawDashedLine(down, dl, 2, thickness, 1);
                     }
