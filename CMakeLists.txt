@@ -86,6 +86,7 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
         juce::juce_graphics
+        juce::juce_animation
         juce::juce_audio_utils
         juce::juce_audio_devices
         oddsound-mts-source

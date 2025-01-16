@@ -197,43 +197,6 @@ struct JIMath
         octaveReduceRatio(n, d);
         ratioToMonzo(n, d, m);
     }
-
-    // ============ Note Name Support
-
-    std::string nameNoteOnLattice(int x, int y)
-    {
-        auto location = x + y * 4 + 3;
-
-        auto ml = ((location % 7) + 7) % 7;
-        std::string name = noteNames[ml];
-
-        while (location >= 7)
-        {
-            name += "#";
-            location -= 7;
-        }
-        while (location < 0)
-        {
-            name += "b";
-            location += 7;
-        }
-        auto pom = y;
-        while (pom > 0)
-        {
-            name += "-";
-            --pom;
-        }
-        while (pom < 0)
-        {
-            name += "+";
-            ++pom;
-        }
-
-        return name;
-    }
-
-  private:
-    std::string noteNames[7] = {"F", "C", "G", "D", "A", "E", "B"};
 };
 
 #endif // JI_MTS_SOURCE_JIMATH_H

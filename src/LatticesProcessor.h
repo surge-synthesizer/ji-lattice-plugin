@@ -98,10 +98,12 @@ class LatticesProcessor : public juce::AudioProcessor,
     int homeCC = 5;
     int listenOnChannel = 1;
 
-    int originalRefNote{-12};
-    double originalRefFreq{-1};
-    int currentRefNote{};
-    double currentRefFreq{};
+    int originalRefNote{0};
+    double originalRefFreq{261.6255653005986};
+    int currentRefNote{0};
+    double currentRefFreq{261.6255653005986};
+
+    std::pair<uint8_t, int> originNoteName = {1, 0};
 
     std::vector<Visitors> visitorGroups;
     Visitors *currentVisitors;

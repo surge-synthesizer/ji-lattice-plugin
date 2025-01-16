@@ -24,11 +24,11 @@ LatticesEditor::LatticesEditor(LatticesProcessor &p) : juce::AudioProcessorEdito
 
     if (p.registeredMTS)
     {
-        startTimer(0, 5);
         init();
     }
     else
     {
+        latticeComponent->setEnabled(false);
         startTimer(1, 50);
     }
 
@@ -46,16 +46,9 @@ void LatticesEditor::init()
     addAndMakeVisible(*menuComponent);
     menuComponent->setBounds(this->getLocalBounds());
 
-    zoomOutButton = std::make_unique<juce::TextButton>("-");
-    addAndMakeVisible(*zoomOutButton);
-    zoomOutButton->onClick = [this] { latticeComponent->zoomOut(); };
-
-    zoomInButton = std::make_unique<juce::TextButton>("+");
-    addAndMakeVisible(*zoomInButton);
-    zoomInButton->onClick = [this] { latticeComponent->zoomIn(); };
-
     inited = true;
     startTimer(0, 5);
+    resized();
 }
 
 void LatticesEditor::paint(juce::Graphics &g) { g.fillAll(backgroundColour); }
@@ -72,7 +65,7 @@ void LatticesEditor::resized()
         auto h = 30;
         if (menuComponent->visC->isVisible())
         {
-            h = 300;
+            h = 330;
         }
         else if (menuComponent->settingsC->isVisible())
         {
@@ -80,8 +73,6 @@ void LatticesEditor::resized()
         }
 
         menuComponent->setBounds(0, 0, b.getWidth(), h);
-        zoomOutButton->setBounds(20, b.getBottom() - 55, 35, 35);
-        zoomInButton->setBounds(60, b.getBottom() - 55, 35, 35);
     }
     else
     {
@@ -98,6 +89,7 @@ void LatticesEditor::timerCallback(int timerID)
             warningComponent->setVisible(false);
             warningComponent->setEnabled(false);
             stopTimer(1);
+            latticeComponent->setEnabled(true);
             init();
         }
     }
@@ -128,11 +120,5 @@ void LatticesEditor::timerCallback(int timerID)
             latticeComponent->repaint();
         }
         latticeComponent->setEnabled(!menuComponent->visC->isVisible());
-
-        if (processor.changed)
-        {
-            latticeComponent->repaint();
-            processor.changed = false;
-        }
     }
 }
