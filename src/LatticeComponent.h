@@ -191,7 +191,6 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
                     goalX = procX;
                     goalY = procY;
 
-                    shifting = true;
                     follow.start();
                 }
             }
@@ -332,27 +331,6 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
 
                     // Names or Ratios?
                     /*
-                    auto syd = syntonicDrift * 4;
-                    auto did = diesisDrift * 3 - syntonicDrift;
-                    int adj{0}, sydys{syd};
-                    while (sydys > 11)
-                    {
-                        ++adj;
-                        sydys -= 12;
-                    }
-                    while (sydys < -11)
-                    {
-                        --adj;
-                        sydys += 12;
-                    }
-                    did += adj * 3;
-
-                    std::string drifted = "";
-                    if (did != 0 || syd != 0)
-                    {
-                        drifted = "*";
-                    }
-                     */
                     auto [n, d] = calculateCell(w, v);
 
                     if (enabled && (dist == 0 && proc->currentVisitors->vis[degree] > 1))
@@ -360,7 +338,9 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
                         reCalculateCell(n, d, proc->currentVisitors->vis[degree], degree);
                     }
                     auto s = std::to_string(n) + "/" + std::to_string(d);
-                    // std::string s = jim.nameNoteOnLattice(w, v);
+                    */
+
+                    std::string s = nameNoteOnLattice(w, v);
                     tG.setColour(juce::Colours::ghostwhite.withAlpha(alpha));
                     tG.setFont(stoke);
                     tG.drawFittedText(s, x - ellipseRadius + 3, y - (JIRadius / 3.f),
@@ -375,26 +355,6 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
 
         auto b = this->getLocalBounds();
 
-        if (syntonicDrift != 0 || diesisDrift != 0)
-        {
-            stoke.setPointHeight(15);
-            g.setFont(stoke);
-            g.setColour(bg.withAlpha(animA));
-            g.fillRect(b.getRight() - 160, 40, 150, 90);
-            g.setColour(juce::Colours::ghostwhite.withAlpha(animA));
-            g.drawRect(b.getRight() - 160, 40, 150, 90);
-            auto drif = "*Tonic Drifted";
-            auto synt = std::to_string(syntonicDrift) + " commas";
-            auto dies = std::to_string(-diesisDrift) + " dieses";
-            g.drawText(drif, b.getRight() - 160, 40, 150, 30,
-                       juce::Justification::horizontallyCentred, false);
-            g.drawText(synt, b.getRight() - 160, 70, 150, 30,
-                       juce::Justification::horizontallyCentred, false);
-            g.drawText(dies, b.getRight() - 160, 100, 150, 30,
-                       juce::Justification::horizontallyCentred, false);
-            stoke.setPointHeight(JIRadius);
-        }
-
         g.setColour(bg);
         g.fillRect(b.getRight() - 110, b.getBottom() - 110, 101, 101);
         g.setColour(juce::Colours::ghostwhite);
@@ -404,10 +364,6 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
   private:
     int syntonicDrift{0}, diesisDrift{0}, procX{0}, procY{0};
     float xShift{0}, yShift{0}, priorX{0}, priorY{0}, goalX{0}, goalY{0};
-
-    float animA = 1.f;
-
-    bool shifting{false};
 
     juce::VBlankAnimatorUpdater updater{this};
     juce::Animator follow =
@@ -425,24 +381,44 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
         xShift = nv * priorX + v * dist * (goalX + goalY * .5f);
         yShift = nv * priorY + v * dist * goalY;
 
-        if (v < .5f)
-        {
-            // animA = 1 - v * 2.f;
-        }
-        else
-        {
-            syntonicDrift = procX / 4;
-            diesisDrift = procY / 3;
-            // animA = (v - .5f) * 2.f;
-        }
-
         repaint();
 
-        if (follow.isComplete())
+        // if (follow.isComplete())
+    }
+
+    std::string noteNames[7] = {"F", "C", "G", "D", "A", "E", "B"};
+
+    std::string nameNoteOnLattice(int x, int y)
+    {
+        int origin = proc->originNoteName.first + proc->originNoteName.second * 7;
+        int location = x + y * 4 + origin;
+        int letter = ((location % 7) + 7) % 7;
+        std::string name = noteNames[letter];
+
+        while (location >= 7)
         {
-            shifting = false;
-            // animA = 1.f;
+            name += "#";
+            location -= 7;
         }
+        while (location < 0)
+        {
+            name += "b";
+            location += 7;
+        }
+
+        auto row = y;
+        while (row > 0)
+        {
+            name += "-";
+            --row;
+        }
+        while (row < 0)
+        {
+            name += "+";
+            ++row;
+        }
+
+        return name;
     }
 
   protected:
@@ -851,14 +827,13 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
                     sG.drawEllipse(x - ellipseRadius, y - JIRadius, 2 * ellipseRadius, 2 * JIRadius,
                                    thickness);
 
-                    // Names or Ratios?
                     auto [n, d] = calculateCell(w, v);
                     if (dist == 0 && visitor[degree] > 1)
                     {
                         reCalculateCell(n, d, visitor[degree], degree);
                     }
                     auto s = std::to_string(n) + "/" + std::to_string(d);
-                    // std::string s = jim.nameNoteOnLattice(w, v);
+
                     sG.setFont(stoke);
                     sG.drawFittedText(s, x - ellipseRadius + 3, y - (JIRadius / 3.f),
                                       2.f * (ellipseRadius - 3), .66667f * JIRadius,

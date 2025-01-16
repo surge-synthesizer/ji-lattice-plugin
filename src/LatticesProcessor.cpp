@@ -56,6 +56,8 @@ LatticesProcessor::LatticesProcessor()
         returnToOrigin();
         startTimer(1, 5);
     }
+
+    startTimer(2, 50);
 }
 
 LatticesProcessor::~LatticesProcessor()
@@ -160,6 +162,57 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
             listenOnChannel = xmlState->getIntAttribute("channel", 1);
 
             originalRefNote = xmlState->getIntAttribute("note", 0);
+            switch (originalRefNote)
+            {
+            case 0:
+                originNoteName.first = 1;
+                originNoteName.second = 0;
+                break;
+            case 1:
+                originNoteName.first = 3;
+                originNoteName.second = -1;
+                break;
+            case 2:
+                originNoteName.first = 3;
+                originNoteName.second = 0;
+                break;
+            case 3:
+                originNoteName.first = 5;
+                originNoteName.second = -1;
+                break;
+            case 4:
+                originNoteName.first = 5;
+                originNoteName.second = 0;
+                break;
+            case 5:
+                originNoteName.first = 0;
+                originNoteName.second = 0;
+                break;
+            case 6:
+                originNoteName.first = 0;
+                originNoteName.second = 1;
+                break;
+            case 7:
+                originNoteName.first = 2;
+                originNoteName.second = 0;
+                break;
+            case 8:
+                originNoteName.first = 4;
+                originNoteName.second = -1;
+                break;
+            case 9:
+                originNoteName.first = 4;
+                originNoteName.second = 0;
+                break;
+            case 10:
+                originNoteName.first = 6;
+                originNoteName.second = -1;
+                break;
+            case 11:
+                originNoteName.first = 6;
+                originNoteName.second = 0;
+                break;
+            }
             originalRefFreq = xmlState->getDoubleAttribute("freq", 261.6255653005986);
 
             maxDistance = xmlState->getIntAttribute("md", 24);
@@ -407,6 +460,59 @@ double LatticesProcessor::updateRoot(int r)
 
     originalRefNote = r;
     originalRefFreq = nf;
+
+    switch (r)
+    {
+    case 0:
+        originNoteName.first = 1;
+        originNoteName.second = 0;
+        break;
+    case 1:
+        originNoteName.first = 3;
+        originNoteName.second = -1;
+        break;
+    case 2:
+        originNoteName.first = 3;
+        originNoteName.second = 0;
+        break;
+    case 3:
+        originNoteName.first = 5;
+        originNoteName.second = -1;
+        break;
+    case 4:
+        originNoteName.first = 5;
+        originNoteName.second = 0;
+        break;
+    case 5:
+        originNoteName.first = 0;
+        originNoteName.second = 0;
+        break;
+    case 6:
+        originNoteName.first = 0;
+        originNoteName.second = 1;
+        break;
+    case 7:
+        originNoteName.first = 2;
+        originNoteName.second = 0;
+        break;
+    case 8:
+        originNoteName.first = 4;
+        originNoteName.second = -1;
+        break;
+    case 9:
+        originNoteName.first = 4;
+        originNoteName.second = 0;
+        break;
+    case 10:
+        originNoteName.first = 6;
+        originNoteName.second = -1;
+        break;
+    case 11:
+        originNoteName.first = 6;
+        originNoteName.second = 0;
+        break;
+    }
+
     returnToOrigin();
 
     updateHostDisplay(juce::AudioProcessor::ChangeDetails().withNonParameterStateChanged(true));
