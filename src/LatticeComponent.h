@@ -20,6 +20,8 @@
 #include <array>
 #include <cmath>
 #include <climits>
+// may need this later
+// #include <tuple>
 
 #include <juce_animation/juce_animation.h>
 #include <melatonin_blur/melatonin_blur.h>
@@ -339,13 +341,15 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
                     }
                     auto s = std::to_string(n) + "/" + std::to_string(d);
                     */
-
-                    std::string s = nameNoteOnLattice(w, v);
+                    
+                    auto s = nameNoteOnLattice(w, v);
                     tG.setColour(juce::Colours::ghostwhite.withAlpha(alpha));
                     tG.setFont(stoke);
+                    
                     tG.drawFittedText(s, x - ellipseRadius + 3, y - (JIRadius / 3.f),
                                       2.f * (ellipseRadius - 3), .66667f * JIRadius,
                                       juce::Justification::horizontallyCentred, 1, 0.05f);
+                    
                 }
             }
         }
