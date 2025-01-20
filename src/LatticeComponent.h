@@ -401,12 +401,30 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
 
         while (location >= 7)
         {
-            name += "#";
+            if (name.compare(name.size() - 1, 1, "#") == 0)
+            {
+                name.pop_back();
+                name += "*"; // double sharp
+            }
+            else
+            {
+                name += "#";
+            }
+            
             location -= 7;
         }
         while (location < 0)
         {
-            name += "b";
+            if (name.compare(name.size() - 1, 1, "b") == 0)
+            {
+                name.pop_back();
+                name += "d"; // double flat
+            }
+            else
+            {
+                name += "b";
+            }
+            
             location += 7;
         }
 
