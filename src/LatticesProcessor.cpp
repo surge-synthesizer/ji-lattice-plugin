@@ -45,6 +45,7 @@ LatticesProcessor::LatticesProcessor()
     }
     else
     {
+        suspendState = true; // don't get/set until we're good to go
         startTimer(0, 50);
     }
 
@@ -91,6 +92,9 @@ void LatticesProcessor::parameterGestureChanged(int parameterIndex, bool gesture
 
 void LatticesProcessor::getStateInformation(juce::MemoryBlock &destData)
 {
+    if (suspendState)
+        return;
+
     std::unique_ptr<juce::XmlElement> xml(new juce::XmlElement("Lattices"));
 
     xml->setAttribute("SavedMode", static_cast<int>(mode));
@@ -345,15 +349,8 @@ void LatticesProcessor::timerCallback(int timerID)
             if (registeredMTS)
             {
                 std::cout << "registered OK" << std::endl;
-                mode = Duodene;
-                originalRefFreq = defaultRefFreq;
-                originalRefNote = defaultRefNote;
-                currentRefFreq = originalRefFreq;
-                currentRefNote = originalRefNote;
-                if (visitorGroups.empty())
-                    newVisitorGroup();
-                returnToOrigin();
                 stopTimer(0);
+                suspendState = false;
                 startTimer(1, 5);
             }
             MTStryAgain = false;
@@ -366,15 +363,8 @@ void LatticesProcessor::timerCallback(int timerID)
             registeredMTS = true;
             MTSreInit = false;
             std::cout << "registered OK" << std::endl;
-            mode = Duodene;
-            originalRefFreq = defaultRefFreq;
-            originalRefNote = defaultRefNote;
-            currentRefFreq = originalRefFreq;
-            currentRefNote = originalRefNote;
-            if (visitorGroups.empty())
-                newVisitorGroup();
-            returnToOrigin();
             stopTimer(0);
+            suspendState = false;
             startTimer(1, 5);
         }
     }
@@ -817,7 +807,7 @@ void LatticesProcessor::updateTuning()
     MTS_SetNoteTunings(freqs);
 
     // later...
-    MTS_SetScaleName("JI is nice yeah?");
+    MTS_SetScaleName((whereAreWe(xParam->get(), yParam->get()).c_str()));
 }
 
 //==============================================================================

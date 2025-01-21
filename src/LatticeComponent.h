@@ -65,6 +65,7 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
         zoomInButton->onClick = [this] { zoomIn(); };
 
         updater.addAnimator(follow);
+        firstRun = true;
         setWantsKeyboardFocus(true);
         startTimer(0, 50); // for keyboard gestures
         startTimer(1, 50); // for following the highlight around
@@ -172,7 +173,7 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
 
         if (timerID == 1)
         {
-            if (proc->changed)
+            if (proc->changed || firstRun)
             {
                 repaint();
                 proc->changed = false;
@@ -180,8 +181,8 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
                 int nx = proc->positionX;
                 int ny = proc->positionY;
 
-                bool sH = (procX != nx && nx % 4 == 0);
-                bool sV = (procY != ny && ny % 3 == 0);
+                bool sH = (goalX != nx && nx % 4 == 0);
+                bool sV = (goalY != ny && ny % 3 == 0);
 
                 procX = nx;
                 procY = ny;
@@ -342,7 +343,7 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
                     auto s = std::to_string(n) + "/" + std::to_string(d);
                     */
 
-                    auto s = nameNoteOnLattice(w, v, proc->currentVisitors->vis[degree], degree);
+                    auto s = nameNoteOnLattice(w, v, degree, lit);
                     tG.setColour(juce::Colours::ghostwhite.withAlpha(alpha));
                     tG.setFont(stoke);
 
@@ -367,6 +368,7 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
   private:
     int syntonicDrift{0}, diesisDrift{0}, procX{0}, procY{0};
     float xShift{0}, yShift{0}, priorX{0}, priorY{0}, goalX{0}, goalY{0};
+    bool firstRun{false};
 
     juce::VBlankAnimatorUpdater updater{this};
     juce::Animator follow =
@@ -391,7 +393,7 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
 
     std::string noteNames[7] = {"F", "C", "G", "D", "A", "E", "B"};
 
-    std::string nameNoteOnLattice(int x, int y, int visitor, int degree)
+    std::string nameNoteOnLattice(int x, int y, int degree, bool lit = false)
     {
         int origin = proc->originNoteName.first + proc->originNoteName.second * 7;
         int location = x + y * 4 + origin;
@@ -418,7 +420,7 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
             if (name.compare(name.size() - 1, 1, "b") == 0)
             {
                 name.pop_back();
-                name += "d";
+                name += "c";
             }
             else
             {
@@ -430,7 +432,9 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
 
         auto row = y;
 
-        if (visitor > 1)
+        int visitor = proc->currentVisitors->vis[degree];
+
+        if (lit && visitor > 1)
         {
             bool major = (degree == 7 || degree == 2 || degree == 9 || degree == 4 ||
                           degree == 11 || degree == 6);

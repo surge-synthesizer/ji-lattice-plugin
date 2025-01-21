@@ -94,13 +94,18 @@ struct MenuBarComponent : juce::Component
         g.drawRect(visRect);
         g.drawRect(settingsRect);
 
-        g.setFont(stoke);
+        g.setFont(stoke.withPointHeight(20));
 
         if (proc.mode == proc.Mode::Duodene)
         {
             g.drawText("Visitors", visRect, 12, false);
         }
         g.drawText("Settings", settingsRect, 12, false);
+
+        juce::Rectangle clre(b.getWidth() - 150, 0, 150, 30);
+        auto nC = "MTS-ESP has " + std::to_string(proc.numClients) + " Clients";
+        g.setFont(stoke.withPointHeight(12));
+        g.drawFittedText(nC, clre, juce::Justification::centred, 1, .1f);
     }
 
     void resetAll()
