@@ -341,15 +341,14 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
                     }
                     auto s = std::to_string(n) + "/" + std::to_string(d);
                     */
-                    
-                    auto s = nameNoteOnLattice(w, v);
+
+                    auto s = nameNoteOnLattice(w, v, proc->currentVisitors->vis[degree], degree);
                     tG.setColour(juce::Colours::ghostwhite.withAlpha(alpha));
                     tG.setFont(stoke);
-                    
+
                     tG.drawFittedText(s, x - ellipseRadius + 3, y - (JIRadius / 3.f),
                                       2.f * (ellipseRadius - 3), .66667f * JIRadius,
                                       juce::Justification::horizontallyCentred, 1, 0.05f);
-                    
                 }
             }
         }
@@ -392,7 +391,7 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
 
     std::string noteNames[7] = {"F", "C", "G", "D", "A", "E", "B"};
 
-    std::string nameNoteOnLattice(int x, int y)
+    std::string nameNoteOnLattice(int x, int y, int visitor, int degree)
     {
         int origin = proc->originNoteName.first + proc->originNoteName.second * 7;
         int location = x + y * 4 + origin;
@@ -401,16 +400,17 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
 
         while (location >= 7)
         {
+            // if it already has a sharp
             if (name.compare(name.size() - 1, 1, "#") == 0)
             {
-                name.pop_back();
-                name += "*"; // double sharp
+                name.pop_back(); // replace it
+                name += "*";     // with a double sharp
             }
             else
             {
                 name += "#";
             }
-            
+
             location -= 7;
         }
         while (location < 0)
@@ -418,17 +418,51 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
             if (name.compare(name.size() - 1, 1, "b") == 0)
             {
                 name.pop_back();
-                name += "d"; // double flat
+                name += "d";
             }
             else
             {
                 name += "b";
             }
-            
+
             location += 7;
         }
 
         auto row = y;
+
+        if (visitor > 1)
+        {
+            bool major = (degree == 7 || degree == 2 || degree == 9 || degree == 4 ||
+                          degree == 11 || degree == 6);
+
+            auto visAcc = ""; // visitor Accidental
+
+            switch (visitor)
+            {
+            case 2:
+                visAcc = (major) ? ")" : "(";
+                break;
+            case 3:
+                visAcc = (major) ? ">" : "<";
+                break;
+            case 4:
+                visAcc = (major) ? "{" : "}";
+                break;
+            case 5:
+                visAcc = (major) ? ":" : ";";
+                break;
+            case 6:
+                visAcc = (major) ? "," : ".";
+                break;
+            default:
+                break;
+            }
+
+            // Remove a plus/minus when adding another accidental
+            row += (major) ? -1 : 1;
+            name += visAcc;
+        }
+
         while (row > 0)
         {
             name += "-";
