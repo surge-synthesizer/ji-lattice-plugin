@@ -116,6 +116,7 @@ class LatticesProcessor : public juce::AudioProcessor,
     uint16_t maxDistance{24};
 
   private:
+    bool suspendState{false};
     static constexpr int defaultRefNote{0};
     static constexpr double defaultRefFreq{261.6255653005986};
 
@@ -201,34 +202,83 @@ class LatticesProcessor : public juce::AudioProcessor,
         }
     }
 
+    juce::String toStringX(float value)
+    {
+        int v = fromParam(value);
+
+        juce::String dir{};
+        if (v == 0)
+        {
+            dir = "Home";
+            return dir;
+        }
+
+        if (v == 1)
+        {
+            dir = "1 Step East";
+            return dir;
+        }
+        else if (v == -1)
+        {
+            dir = "1 Step West";
+            return dir;
+        }
+
+        dir = std::to_string(std::abs(v)) + ((v > 1) ? " Steps East" : " Steps West");
+        return dir;
+    }
+
+    juce::String toStringY(float value)
+    {
+        int v = fromParam(value);
+
+        juce::String dir{};
+        if (v == 0)
+        {
+            dir = "Home";
+            return dir;
+        }
+        if (v == 1)
+        {
+            dir = "1 Step North";
+            return dir;
+        }
+        else if (v == -1)
+        {
+            dir = "1 Step South";
+            return dir;
+        }
+
+        dir = std::to_string(std::abs(v)) + ((v > 1) ? " Steps North" : " Steps South");
+        return dir;
+    }
+
+    std::string whereAreWe(float VX, float VY)
+    {
+        auto tmpX = toStringX(VX).toStdString();
+        auto EW = (tmpX != "Home") ? tmpX : "";
+
+        auto tmpY = toStringY(VY).toStdString();
+        auto NS = (tmpY != "Home") ? tmpY : "";
+
+        if (EW.empty() && NS.empty())
+        {
+            return "Home";
+        }
+        else
+        {
+            EW += (EW.empty() == NS.empty()) ? ", " : "";
+            EW += NS;
+
+            return EW.c_str();
+        }
+    }
+
     const juce::AudioParameterFloatAttributes distanceReadoutX =
         juce::AudioParameterFloatAttributes{}
             .withStringFromValueFunction(
                 [this](float value, int maximumStringLength) -> juce::String
-                {
-                    int v = fromParam(value);
-
-                    juce::String dir{};
-                    if (v == 0)
-                    {
-                        dir = "Home";
-                        return dir;
-                    }
-
-                    if (v == 1)
-                    {
-                        dir = "1 Step East";
-                        return dir;
-                    }
-                    else if (v == -1)
-                    {
-                        dir = "1 Step West";
-                        return dir;
-                    }
-
-                    dir = std::to_string(std::abs(v)) + ((v > 1) ? " Steps East" : " Steps West");
-                    return dir;
-                })
+                { return toStringX(value); })
             .withValueFromStringFunction(
                 [this](juce::String str)
                 {
@@ -268,29 +318,7 @@ class LatticesProcessor : public juce::AudioProcessor,
         juce::AudioParameterFloatAttributes{}
             .withStringFromValueFunction(
                 [this](float value, int maximumStringLength) -> juce::String
-                {
-                    int v = fromParam(value);
-
-                    juce::String dir{};
-                    if (v == 0)
-                    {
-                        dir = "Home";
-                        return dir;
-                    }
-                    if (v == 1)
-                    {
-                        dir = "1 Step North";
-                        return dir;
-                    }
-                    else if (v == -1)
-                    {
-                        dir = "1 Step South";
-                        return dir;
-                    }
-
-                    dir = std::to_string(std::abs(v)) + ((v > 1) ? " Steps North" : " Steps South");
-                    return dir;
-                })
+                { return toStringY(value); })
             .withValueFromStringFunction(
                 [this](juce::String str)
                 {
