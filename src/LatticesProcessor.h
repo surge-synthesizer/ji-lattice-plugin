@@ -116,7 +116,7 @@ class LatticesProcessor : public juce::AudioProcessor,
     uint16_t maxDistance{24};
 
   private:
-    bool suspendState{false};
+    bool suspendState{true};
     static constexpr int defaultRefNote{0};
     static constexpr double defaultRefFreq{261.6255653005986};
 

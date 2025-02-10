@@ -41,6 +41,7 @@ LatticesProcessor::LatticesProcessor()
     {
         MTS_RegisterMaster();
         registeredMTS = true;
+        suspendState = false;
         std::cout << "registered OK" << std::endl;
     }
     else
@@ -52,13 +53,12 @@ LatticesProcessor::LatticesProcessor()
     if (registeredMTS == true)
     {
         mode = Duodene;
+        suspendState = false;
         originalRefFreq = defaultRefFreq;
         originalRefNote = defaultRefNote;
         returnToOrigin();
         startTimer(1, 5);
     }
-
-    startTimer(2, 50);
 }
 
 LatticesProcessor::~LatticesProcessor()
@@ -221,19 +221,6 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
 
             maxDistance = xmlState->getIntAttribute("md", 24);
 
-            int tx = xmlState->getIntAttribute("xp", 0);
-            int ty = xmlState->getIntAttribute("yp", 0);
-
-            float X = toParam(tx);
-            float Y = toParam(ty);
-
-            xParam->beginChangeGesture();
-            xParam->setValueNotifyingHost(X);
-            xParam->endChangeGesture();
-            yParam->beginChangeGesture();
-            yParam->setValueNotifyingHost(Y);
-            yParam->endChangeGesture();
-
             numVisitorGroups = xmlState->getIntAttribute("nvg", 1);
 
             visitorGroups.clear();
@@ -259,7 +246,7 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
                     visitorGroups.push_back(std::move(ng));
                 }
             }
-
+            
             std::lock_guard<std::mutex> lock(visLock);
 
             hold.clear();
@@ -271,15 +258,26 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
             }
 
             int tv = xmlState->getIntAttribute("vp", 0);
+            int tx = xmlState->getIntAttribute("xp", 0);
+            int ty = xmlState->getIntAttribute("yp", 0);
+
+            float X = toParam(tx);
+            float Y = toParam(ty);
             float V = toParam(tv, true);
-
+            
+            xParam->beginChangeGesture();
+            yParam->beginChangeGesture();
             vParam->beginChangeGesture();
+            
+            xParam->setValueNotifyingHost(X);
+            yParam->setValueNotifyingHost(Y);
             vParam->setValueNotifyingHost(V);
+            
+            xParam->endChangeGesture();
+            yParam->endChangeGesture();
             vParam->endChangeGesture();
-
-            locate();
-
-            loadedState = true;
+            
+             // no need for locate() since paramChanged calls it;
         }
     }
     else
@@ -350,7 +348,6 @@ void LatticesProcessor::timerCallback(int timerID)
             {
                 std::cout << "registered OK" << std::endl;
                 stopTimer(0);
-                suspendState = false;
                 startTimer(1, 5);
             }
             MTStryAgain = false;
@@ -364,13 +361,18 @@ void LatticesProcessor::timerCallback(int timerID)
             MTSreInit = false;
             std::cout << "registered OK" << std::endl;
             stopTimer(0);
-            suspendState = false;
             startTimer(1, 5);
         }
     }
 
     if (timerID == 1)
     {
+        if (suspendState)
+        {
+            updateHostDisplay(juce::AudioProcessor::ChangeDetails().withNonParameterStateChanged(true));
+            suspendState = false;
+        }
+        
         for (int i = 0; i < 5 + numVisitorGroups - 1; ++i)
         {
             if (hold[i] && !wait[i])
