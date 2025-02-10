@@ -246,7 +246,7 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
                     visitorGroups.push_back(std::move(ng));
                 }
             }
-            
+
             std::lock_guard<std::mutex> lock(visLock);
 
             hold.clear();
@@ -264,20 +264,20 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
             float X = toParam(tx);
             float Y = toParam(ty);
             float V = toParam(tv, true);
-            
+
             xParam->beginChangeGesture();
             yParam->beginChangeGesture();
             vParam->beginChangeGesture();
-            
+
             xParam->setValueNotifyingHost(X);
             yParam->setValueNotifyingHost(Y);
             vParam->setValueNotifyingHost(V);
-            
+
             xParam->endChangeGesture();
             yParam->endChangeGesture();
             vParam->endChangeGesture();
-            
-             // no need for locate() since paramChanged calls it;
+
+            // no need for locate(); since paramChanged calls it
         }
     }
     else
@@ -369,10 +369,11 @@ void LatticesProcessor::timerCallback(int timerID)
     {
         if (suspendState)
         {
-            updateHostDisplay(juce::AudioProcessor::ChangeDetails().withNonParameterStateChanged(true));
+            updateHostDisplay(
+                juce::AudioProcessor::ChangeDetails().withNonParameterStateChanged(true));
             suspendState = false;
         }
-        
+
         for (int i = 0; i < 5 + numVisitorGroups - 1; ++i)
         {
             if (hold[i] && !wait[i])
