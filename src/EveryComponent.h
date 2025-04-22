@@ -31,13 +31,20 @@ struct EveryComponent : public juce::Component, juce::MultiTimer
         warningComponent = std::make_unique<MTSWarningComponent>(p);
         addAndMakeVisible(*warningComponent);
 
+        menuComponent = std::make_unique<MenuBarComponent>(processor);
+        addAndMakeVisible(*menuComponent);
+        menuComponent->setBounds(0, 0, this->getLocalBounds().getWidth(), 30);
+
         if (p.registeredMTS)
         {
-            init();
+            inited = true;
+            startTimer(0, 5);
+            resized();
         }
         else
         {
             latticeComponent->setEnabled(false);
+            menuComponent->setVisible(false);
             startTimer(1, 50);
         }
     }
@@ -80,18 +87,9 @@ struct EveryComponent : public juce::Component, juce::MultiTimer
     std::unique_ptr<MenuBarComponent> menuComponent;
 
     bool inited{false};
-    void init()
-    {
-        menuComponent = std::make_unique<MenuBarComponent>(processor);
-        addAndMakeVisible(*menuComponent);
-        menuComponent->setBounds(this->getLocalBounds());
 
-        inited = true;
-        startTimer(0, 5);
-        resized();
-    }
-
-    bool menuWasOpen{false};
+    bool setOpen{false};
+    bool visOpen{false};
     void timerCallback(int timerID) override
     {
         if (timerID == 1)
@@ -102,7 +100,10 @@ struct EveryComponent : public juce::Component, juce::MultiTimer
                 warningComponent->setEnabled(false);
                 stopTimer(1);
                 latticeComponent->setEnabled(true);
-                init();
+                menuComponent->setVisible(true);
+                inited = true;
+                startTimer(0, 5);
+                resized();
             }
         }
 
@@ -115,14 +116,13 @@ struct EveryComponent : public juce::Component, juce::MultiTimer
             }
 
             bool edvi = menuComponent->visC->isVisible();
-            menuComponent->visC->setEnabled(edvi);
+            bool edse = menuComponent->settingsC->isVisible();
 
-            bool mevi = (edvi || menuComponent->settingsC->isVisible());
-
-            if (mevi != menuWasOpen)
+            if (edvi != visOpen || edse != setOpen)
             {
                 resized();
-                menuWasOpen = mevi;
+                visOpen = edvi;
+                setOpen = edse;
             }
 
             if (processor.editingVisitors != edvi)

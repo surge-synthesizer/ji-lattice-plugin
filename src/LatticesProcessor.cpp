@@ -42,23 +42,13 @@ LatticesProcessor::LatticesProcessor()
         MTS_RegisterMaster();
         registeredMTS = true;
         std::cout << "registered OK" << std::endl;
-    }
-    else
-    {
-        suspendState = true; // don't get/set until we're good to go
-        startTimer(0, 50);
-    }
-
-    if (registeredMTS == true)
-    {
-        mode = Duodene;
-        originalRefFreq = defaultRefFreq;
-        originalRefNote = defaultRefNote;
         returnToOrigin();
         startTimer(1, 5);
     }
-
-    startTimer(2, 50);
+    else
+    {
+        startTimer(0, 50);
+    }
 }
 
 LatticesProcessor::~LatticesProcessor()
@@ -92,9 +82,6 @@ void LatticesProcessor::parameterGestureChanged(int parameterIndex, bool gesture
 
 void LatticesProcessor::getStateInformation(juce::MemoryBlock &destData)
 {
-    if (suspendState)
-        return;
-
     std::unique_ptr<juce::XmlElement> xml(new juce::XmlElement("Lattices"));
 
     xml->setAttribute("SavedMode", static_cast<int>(mode));
@@ -221,19 +208,6 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
 
             maxDistance = xmlState->getIntAttribute("md", 24);
 
-            int tx = xmlState->getIntAttribute("xp", 0);
-            int ty = xmlState->getIntAttribute("yp", 0);
-
-            float X = toParam(tx);
-            float Y = toParam(ty);
-
-            xParam->beginChangeGesture();
-            xParam->setValueNotifyingHost(X);
-            xParam->endChangeGesture();
-            yParam->beginChangeGesture();
-            yParam->setValueNotifyingHost(Y);
-            yParam->endChangeGesture();
-
             numVisitorGroups = xmlState->getIntAttribute("nvg", 1);
 
             visitorGroups.clear();
@@ -271,15 +245,29 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
             }
 
             int tv = xmlState->getIntAttribute("vp", 0);
+            int tx = xmlState->getIntAttribute("xp", 0);
+            int ty = xmlState->getIntAttribute("yp", 0);
+
+            float X = toParam(tx);
+            float Y = toParam(ty);
             float V = toParam(tv, true);
 
+            xParam->beginChangeGesture();
+            yParam->beginChangeGesture();
             vParam->beginChangeGesture();
+
+            xParam->setValueNotifyingHost(X);
+            yParam->setValueNotifyingHost(Y);
             vParam->setValueNotifyingHost(V);
+
+            xParam->endChangeGesture();
+            yParam->endChangeGesture();
             vParam->endChangeGesture();
 
-            locate();
-
             loadedState = true;
+            changed = true;
+
+            // no need for locate(); since paramChanged calls it
         }
     }
     else
@@ -344,15 +332,12 @@ void LatticesProcessor::timerCallback(int timerID)
             {
                 MTS_RegisterMaster();
                 registeredMTS = true;
-            }
-
-            if (registeredMTS)
-            {
                 std::cout << "registered OK" << std::endl;
                 stopTimer(0);
-                suspendState = false;
                 startTimer(1, 5);
+                locate();
             }
+
             MTStryAgain = false;
         }
 
@@ -364,8 +349,8 @@ void LatticesProcessor::timerCallback(int timerID)
             MTSreInit = false;
             std::cout << "registered OK" << std::endl;
             stopTimer(0);
-            suspendState = false;
             startTimer(1, 5);
+            locate();
         }
     }
 
