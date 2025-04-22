@@ -16,7 +16,7 @@
 #include <string>
 
 //==============================================================================
-struct OriginComponent : public juce::Component
+struct OriginComponent : public juce::Component, juce::Timer
 {
     OriginComponent(LatticesProcessor &p) : proc(&p)
     {
@@ -38,22 +38,26 @@ struct OriginComponent : public juce::Component
         key[proc->originalRefNote]->setToggleState(true, juce::dontSendNotification);
 
         addAndMakeVisible(freqEditor);
-        freqEditor.setMultiLine(false);
-        freqEditor.setReturnKeyStartsNewLine(false);
-        freqEditor.setInputRestrictions(17, ".1234567890");
-        freqEditor.setText(std::to_string(proc->originalRefFreq), false);
-        freqEditor.setJustification(juce::Justification::left);
-        freqEditor.setSelectAllWhenFocused(true);
-        freqEditor.setColour(juce::TextEditor::outlineColourId, noColour);
-        freqEditor.setColour(juce::TextEditor::focusedOutlineColourId, noColour);
-        freqEditor.onReturnKey = [this] { returnKeyResponse(&freqEditor); };
-        freqEditor.onEscapeKey = [this] { escapeKeyResponse(&freqEditor); };
-        freqEditor.onFocusLost = [this] { focusLostResponse(&freqEditor); };
 
-        addAndMakeVisible(freqLabel);
-        freqLabel.setJustificationType(juce::Justification::left);
-        freqLabel.setColour(juce::Label::backgroundColourId, menuColour);
+        freqEditor.setRange(100.0, 1000.0);
+        freqEditor.setTextValueSuffix(" Hz");
+        freqEditor.setSkewFactor(0.5);
+        freqEditor.setNumDecimalPlacesToDisplay(3);
+
+        freqEditor.setColour(juce::Slider::textBoxTextColourId, gwhite);
+        freqEditor.setColour(juce::Slider::textBoxOutlineColourId, gwhite);
+        freqEditor.setColour(juce::Slider::thumbColourId, gwhite);
+        freqEditor.onValueChange = [this] { editFrequency(&freqEditor); };
+        freqEditor.setValue(proc->originalRefFreq);
+        freqEditor.setVelocityBasedMode(true);
+
+        //        addAndMakeVisible(freqLabel);
+        //        freqLabel.setJustificationType(juce::Justification::left);
+        //        freqLabel.setColour(juce::Label::backgroundColourId, menuColour);
+
         priorFreq = proc->originalRefFreq;
+
+        startTimer(5);
     }
 
     void resized() override
@@ -63,8 +67,8 @@ struct OriginComponent : public juce::Component
             key[i]->setBounds(kw * i + 1, 1, kw, kh);
         }
 
-        freqLabel.setBounds(1, kh, 106, 27);
-        freqEditor.setBounds(kw * 5 + 5, kh, 106, 27);
+        //        freqLabel.setBounds(1, kh, 106, 27);
+        freqEditor.setBounds(5, kh, 200, 30);
     }
 
     void paint(juce::Graphics &g) override
@@ -87,7 +91,7 @@ struct OriginComponent : public juce::Component
 
     void reset()
     {
-        freqEditor.setText(std::to_string(proc->originalRefFreq), false);
+        freqEditor.setValue(proc->originalRefFreq);
         priorFreq = proc->originalRefFreq;
         key[proc->originalRefNote]->setToggleState(true, juce::dontSendNotification);
     }
@@ -108,6 +112,8 @@ struct OriginComponent : public juce::Component
 
     juce::Colour menuColour{.475f, .5f, 0.2f, 1.f};
 
+    juce::Colour gwhite = juce::Colours::ghostwhite;
+
     juce::Colour white = juce::Colours::antiquewhite;
     juce::Colour black = juce::Colours::black;
 
@@ -120,65 +126,46 @@ struct OriginComponent : public juce::Component
     juce::Range<int> noRange{};
     juce::Colour noColour{};
 
-    juce::Label freqLabel{{}, "Ref. Frequency = "};
-    juce::TextEditor freqEditor{"Ref Freq"};
+    //    juce::Label freqLabel{{}, "Ref. Frequency = "};
+    juce::Slider freqEditor{"Ref Freq"};
 
     double priorFreq{};
 
-    void returnKeyResponse(juce::TextEditor *e)
+    void editFrequency(juce::Slider *s)
     {
-        e->setHighlightedRegion(noRange);
-        this->unfocusAllComponents();
-        auto input = e->getText().getDoubleValue();
-
-        if (rejectBadInput(input))
-        {
-            e->setText(std::to_string(priorFreq));
-            return;
-        }
-
+        auto input = s->getValue();
         proc->updateFreq(input);
         priorFreq = input;
     }
 
-    void escapeKeyResponse(juce::TextEditor *e)
-    {
-        e->setHighlightedRegion(noRange);
-        this->unfocusAllComponents();
-    }
-
-    void focusLostResponse(juce::TextEditor *e)
-    {
-        e->setHighlightedRegion(noRange);
-        this->unfocusAllComponents();
-    }
-
-    bool rejectBadInput(double input)
-    {
-        if (input <= 0)
-        {
-            return true;
-        }
-
-        if (input >= 10000)
-        {
-            return true;
-        }
-
-        return false;
-    }
+    //    void freqFromText(juce::Slider *e)
+    //    {
+    //    }
+    //
+    //    void freqToText(juce::Slider *e)
+    //    {
+    //    }
 
     void whichNote()
     {
-
         for (int i = 0; i < 12; ++i)
         {
             if (key[i]->getToggleState() == true)
             {
                 double f = proc->updateRoot(i);
-                freqEditor.setText(std::to_string(f), false);
+                freqEditor.setValue(f);
+                priorFreq = f;
                 break;
             }
+        }
+    }
+
+    void timerCallback() override
+    {
+        if (proc->originalRefFreq != priorFreq)
+        {
+            priorFreq = proc->originalRefFreq;
+            freqEditor.setValue(priorFreq);
         }
     }
 };

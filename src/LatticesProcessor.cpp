@@ -25,10 +25,13 @@ LatticesProcessor::LatticesProcessor()
     addParameter(yParam =
                      new juce::AudioParameterFloat("py", "Y Position", r, 0.5, distanceReadoutY));
     addParameter(vParam = new juce::AudioParameterFloat("pv", "Visitors", r, 0, visitorsReadout));
+    addParameter(fParam = new juce::AudioParameterFloat(
+                     "pf", "Reference Frequency", r, toFreqParam(261.6255653), frequencyReadout));
 
     xParam->addListener(this);
     yParam->addListener(this);
     vParam->addListener(this);
+    fParam->addListener(this);
 
     numVisitorGroups = 1;
     Visitors dg{"Nobody Here", jim};
@@ -56,6 +59,7 @@ LatticesProcessor::~LatticesProcessor()
     xParam->removeListener(this);
     yParam->removeListener(this);
     vParam->removeListener(this);
+    fParam->removeListener(this);
 
     if (registeredMTS)
         MTS_DeregisterMaster();
@@ -92,16 +96,15 @@ void LatticesProcessor::getStateInformation(juce::MemoryBlock &destData)
     int n = originalRefNote;
     xml->setAttribute("note", n);
 
-    double f = originalRefFreq;
-    xml->setAttribute("freq", f);
-
     int X = fromParam(xParam->get());
     int Y = fromParam(yParam->get());
     int V = fromParam(vParam->get(), true);
+    double F = fromFreqParam(fParam->get());
 
     xml->setAttribute("xp", X);
     xml->setAttribute("yp", Y);
     xml->setAttribute("vp", V);
+    xml->setAttribute("freq", F);
 
     xml->setAttribute("nvg", numVisitorGroups);
 
@@ -204,7 +207,6 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
                 originNoteName.second = 0;
                 break;
             }
-            originalRefFreq = xmlState->getDoubleAttribute("freq", 261.6255653005986);
 
             maxDistance = xmlState->getIntAttribute("md", 24);
 
@@ -247,22 +249,27 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
             int tv = xmlState->getIntAttribute("vp", 0);
             int tx = xmlState->getIntAttribute("xp", 0);
             int ty = xmlState->getIntAttribute("yp", 0);
+            originalRefFreq = xmlState->getDoubleAttribute("freq", 261.6255653005986);
 
             float X = toParam(tx);
             float Y = toParam(ty);
             float V = toParam(tv, true);
+            float F = toFreqParam(originalRefFreq);
 
             xParam->beginChangeGesture();
             yParam->beginChangeGesture();
             vParam->beginChangeGesture();
+            fParam->beginChangeGesture();
 
             xParam->setValueNotifyingHost(X);
             yParam->setValueNotifyingHost(Y);
             vParam->setValueNotifyingHost(V);
+            fParam->setValueNotifyingHost(F);
 
             xParam->endChangeGesture();
             yParam->endChangeGesture();
             vParam->endChangeGesture();
+            fParam->endChangeGesture();
 
             loadedState = true;
             changed = true;
@@ -423,18 +430,22 @@ void LatticesProcessor::updateMIDIChannel(int C)
 
 void LatticesProcessor::updateFreq(double f)
 {
+    fParam->beginChangeGesture();
+    fParam->setValueNotifyingHost(toFreqParam(f));
     originalRefFreq = f;
-    returnToOrigin();
-
-    updateHostDisplay(juce::AudioProcessor::ChangeDetails().withNonParameterStateChanged(true));
+    fParam->endChangeGesture();
 }
 
 double LatticesProcessor::updateRoot(int r)
 {
+    originalRefNote = r;
+
     double nf = freqs[60 + r];
 
-    originalRefNote = r;
+    fParam->beginChangeGesture();
+    fParam->setValueNotifyingHost(toFreqParam(nf));
     originalRefFreq = nf;
+    fParam->endChangeGesture();
 
     switch (r)
     {
@@ -579,7 +590,7 @@ void LatticesProcessor::updateVisitor(int d, int v)
 void LatticesProcessor::returnToOrigin()
 {
     currentRefNote = originalRefNote;
-    currentRefFreq = originalRefFreq;
+    ratioToOriginal = 1.0;
     positionX = 0;
     positionY = 0;
 
@@ -604,12 +615,27 @@ void LatticesProcessor::returnToOrigin()
 
 void LatticesProcessor::parameterValueChanged(int parameterIndex, float newValue)
 {
-    if (parameterIndex == 2 && !editingVisitors)
+    switch (parameterIndex)
     {
-        int vis = fromParam(vParam->get(), true);
-        currentVisitors = &visitorGroups[vis];
+    case 0:
+        locate();
+        break;
+    case 1:
+        locate();
+        break;
+    case 2:
+        if (!editingVisitors)
+        {
+            int vis = fromParam(vParam->get(), true);
+            currentVisitors = &visitorGroups[vis];
+            locate();
+        }
+        break;
+    case 3:
+        originalRefFreq = fromFreqParam(fParam->get());
+        updateTuning();
+        break;
     }
-    locate();
 }
 
 void LatticesProcessor::shift(int dir)
@@ -668,7 +694,7 @@ void LatticesProcessor::locate()
     if (editingVisitors)
     {
         currentRefNote = originalRefNote;
-        currentRefFreq = originalRefFreq;
+        ratioToOriginal = 1.0;
     }
     else
     {
@@ -705,7 +731,7 @@ void LatticesProcessor::locate()
         }
 
         currentRefNote = nn;
-        currentRefFreq = originalRefFreq * nf;
+        ratioToOriginal = nf;
     }
 
     if (mode == Syntonic)
@@ -786,7 +812,7 @@ void LatticesProcessor::updateTuning()
             degree += 12;
         }
 
-        freqs[note] = currentRefFreq * ratios[degree] * octaveShift;
+        freqs[note] = originalRefFreq * ratioToOriginal * ratios[degree] * octaveShift;
     }
 
     MTS_SetNoteTunings(freqs);
