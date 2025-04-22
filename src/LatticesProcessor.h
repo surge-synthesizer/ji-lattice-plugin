@@ -166,6 +166,7 @@ class LatticesProcessor : public juce::AudioProcessor,
     juce::AudioParameterFloat *xParam;
     juce::AudioParameterFloat *yParam;
     juce::AudioParameterFloat *vParam;
+    juce::AudioParameterFloat *fParam;
 
     // define these here lest the lambda functions
     // below throw an annoying "not defined" warning
@@ -185,7 +186,7 @@ class LatticesProcessor : public juce::AudioProcessor,
             return static_cast<double>(input + maxDistance) / (2.0 * maxDistance);
         }
     }
-    inline int fromParam(double input, bool v = false)
+    inline int fromParam(float input, bool v = false)
     {
         if (v)
         {
@@ -200,7 +201,7 @@ class LatticesProcessor : public juce::AudioProcessor,
             return static_cast<int>(std::round((input - 0.5) * 2 * maxDistance));
         }
     }
-
+    
     juce::String toStringX(float value)
     {
         int v = fromParam(value);
@@ -271,6 +272,16 @@ class LatticesProcessor : public juce::AudioProcessor,
 
             return EW.c_str();
         }
+    }
+    
+    inline float toFreqParam(double input)
+    {
+        return std::sqrt((input - 100.0) / 900.0);
+    }
+
+    inline double fromFreqParam(float input)
+    {
+        return 100.0 + 900.0 * input * input;
     }
 
     const juce::AudioParameterFloatAttributes distanceReadoutX =
@@ -361,6 +372,18 @@ class LatticesProcessor : public juce::AudioProcessor,
                 { return std::to_string(fromParam(value, true)); })
             .withValueFromStringFunction([this](juce::String str)
                                          { return toParam(str.getIntValue(), true); });
+    
+    const juce::AudioParameterFloatAttributes frequencyReadout =
+        juce::AudioParameterFloatAttributes{}
+            .withStringFromValueFunction(
+                [this](float value, int maximumStringLength) -> juce::String
+                {
+                    return std::to_string(fromFreqParam(value));
+                })
+            .withValueFromStringFunction([this](juce::String str)
+                {
+                    return toFreqParam(str.getDoubleValue());
+                });
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LatticesProcessor)
