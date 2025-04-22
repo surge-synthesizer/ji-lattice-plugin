@@ -144,12 +144,16 @@ struct MenuBarComponent : juce::Component
         {
             settingsC->setVisible(true);
             originC->setVisible(true);
+            settingsC->setEnabled(true);
+            originC->setEnabled(true);
             visButton->setToggleState(false, juce::sendNotification);
         }
         else
         {
             settingsC->setVisible(false);
             originC->setVisible(false);
+            settingsC->setEnabled(false);
+            originC->setEnabled(false);
         }
     }
 
@@ -160,11 +164,13 @@ struct MenuBarComponent : juce::Component
         if (show)
         {
             visC->setVisible(true);
+            visC->setEnabled(true);
             settingsButton->setToggleState(false, juce::sendNotification);
         }
         else
         {
             visC->setVisible(false);
+            visC->setEnabled(false);
         }
     }
 };

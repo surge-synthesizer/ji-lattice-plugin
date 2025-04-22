@@ -41,23 +41,13 @@ LatticesProcessor::LatticesProcessor()
     {
         MTS_RegisterMaster();
         registeredMTS = true;
-        suspendState = false;
         std::cout << "registered OK" << std::endl;
+        returnToOrigin();
+        startTimer(1, 5);
     }
     else
     {
-        suspendState = true; // don't get/set until we're good to go
         startTimer(0, 50);
-    }
-
-    if (registeredMTS == true)
-    {
-        mode = Duodene;
-        suspendState = false;
-        originalRefFreq = defaultRefFreq;
-        originalRefNote = defaultRefNote;
-        returnToOrigin();
-        startTimer(1, 5);
     }
 }
 
@@ -92,9 +82,6 @@ void LatticesProcessor::parameterGestureChanged(int parameterIndex, bool gesture
 
 void LatticesProcessor::getStateInformation(juce::MemoryBlock &destData)
 {
-    if (suspendState)
-        return;
-
     std::unique_ptr<juce::XmlElement> xml(new juce::XmlElement("Lattices"));
 
     xml->setAttribute("SavedMode", static_cast<int>(mode));
@@ -277,6 +264,9 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
             yParam->endChangeGesture();
             vParam->endChangeGesture();
 
+            loadedState = true;
+            changed = true;
+
             // no need for locate(); since paramChanged calls it
         }
     }
@@ -342,14 +332,12 @@ void LatticesProcessor::timerCallback(int timerID)
             {
                 MTS_RegisterMaster();
                 registeredMTS = true;
-            }
-
-            if (registeredMTS)
-            {
                 std::cout << "registered OK" << std::endl;
                 stopTimer(0);
                 startTimer(1, 5);
+                locate();
             }
+
             MTStryAgain = false;
         }
 
@@ -362,18 +350,12 @@ void LatticesProcessor::timerCallback(int timerID)
             std::cout << "registered OK" << std::endl;
             stopTimer(0);
             startTimer(1, 5);
+            locate();
         }
     }
 
     if (timerID == 1)
     {
-        if (suspendState)
-        {
-            updateHostDisplay(
-                juce::AudioProcessor::ChangeDetails().withNonParameterStateChanged(true));
-            suspendState = false;
-        }
-
         for (int i = 0; i < 5 + numVisitorGroups - 1; ++i)
         {
             if (hold[i] && !wait[i])
