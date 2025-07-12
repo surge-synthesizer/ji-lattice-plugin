@@ -48,8 +48,8 @@ Here's what that means in this case:
 This works on Mac and Linux and probably Windows. If you just wanna use it you can grab a nightly build from releases.
 
 ```
-git clone https://github.com/Andreya-Autumn/lattices.git
-cd lattices
+git clone https://github.com/surge-synthesizer/ji-lattice-plugin.git
+cd ji-lattice-plugin
 git submodule update --init --recursive
 cmake -Bignore/build -DCMAKE_BUILD_TYPE=RELEASE
 cmake --build ignore/build
