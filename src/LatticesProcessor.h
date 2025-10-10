@@ -78,9 +78,6 @@ class LatticesProcessor : public juce::AudioProcessor,
     bool MTSreInit{false};
     bool MTStryAgain{false};
 
-    std::atomic<int> positionX{0};
-    std::atomic<int> positionY{0};
-
     enum Mode
     {
         Duodene,
@@ -90,20 +87,22 @@ class LatticesProcessor : public juce::AudioProcessor,
     std::atomic<bool> changed{false};
     std::atomic<int> numClients{0};
 
-    std::pair<int, int> coOrds[12]{};
-
-    int syntonicDrift = 0;
-    int diesisDrift = 0;
-
     int homeCC = 5;
     int listenOnChannel = 1;
 
+    // key, frequency and name of the origin note
     int originalRefNote{0};
     double originalRefFreq{261.6255653005986};
+    std::pair<uint8_t, int> originNoteName = {1, 0};
+
+    // key, ratio and coordinates of the current center note
     int currentRefNote{0};
     double ratioToOriginal{1.0};
+    std::atomic<int> positionX{0};
+    std::atomic<int> positionY{0};
 
-    std::pair<uint8_t, int> originNoteName = {1, 0};
+    // coordinates of current scale
+    std::pair<int, int> coOrds[12]{};
 
     std::vector<Visitors> visitorGroups;
     Visitors *currentVisitors;
@@ -116,8 +115,10 @@ class LatticesProcessor : public juce::AudioProcessor,
     uint16_t maxDistance{24};
 
   private:
+    // fallbacks for the origin
     static constexpr int defaultRefNote{0};
     static constexpr double defaultRefFreq{261.6255653005986};
+    std::pair<uint8_t, int> defaultOriginNoteName = {1, 0};
 
     const JIMath jim;
 
@@ -170,41 +171,34 @@ class LatticesProcessor : public juce::AudioProcessor,
 
     // define these here lest the lambda functions
     // below throw an annoying "not defined" warning
-    inline double toParam(int input, bool v = false)
-    {
-        if (v)
-        {
-            if (visitorGroups.size() <= 1)
-            {
-                return 0.0;
-            }
 
-            return static_cast<double>(input) / (visitorGroups.size() - 1);
-        }
-        else
-        {
-            return static_cast<double>(input + maxDistance) / (2.0 * maxDistance);
-        }
-    }
-    inline int fromParam(float input, bool v = false)
+    double toVisitorParam(int input)
     {
-        if (v)
-        {
-            if (visitorGroups.size() <= 1)
-            {
-                return 0;
-            }
-            return static_cast<int>(std::round(input * (visitorGroups.size() - 1)));
-        }
-        else
-        {
-            return static_cast<int>(std::round((input - 0.5) * 2 * maxDistance));
-        }
+        if (visitorGroups.size() <= 1)
+            return 0.0;
+        return static_cast<double>(input) / (visitorGroups.size() - 1);
+    }
+
+    inline int fromVisitorParam(float input)
+    {
+        if (visitorGroups.size() <= 1)
+            return 0;
+        return static_cast<int>(std::round(input * (visitorGroups.size() - 1)));
+    }
+
+    inline double toXYParam(int input, bool v = false)
+    {
+        return static_cast<double>(input + maxDistance) / (2.0 * maxDistance);
+    }
+
+    inline int fromXYParam(float input, bool v = false)
+    {
+        return static_cast<int>(std::round((input - 0.5) * 2 * maxDistance));
     }
 
     juce::String toStringX(float value)
     {
-        int v = fromParam(value);
+        int v = fromXYParam(value);
 
         juce::String dir{};
         if (v == 0)
@@ -230,7 +224,7 @@ class LatticesProcessor : public juce::AudioProcessor,
 
     juce::String toStringY(float value)
     {
-        int v = fromParam(value);
+        int v = fromXYParam(value);
 
         juce::String dir{};
         if (v == 0)
@@ -302,25 +296,25 @@ class LatticesProcessor : public juce::AudioProcessor,
 
                     if (str == "1 Step East")
                     {
-                        return toParam(1);
+                        return toXYParam(1);
                     }
 
                     if (str == "1 Step West")
                     {
-                        return toParam(-1);
+                        return toXYParam(-1);
                     }
 
                     double res{};
                     if (str.endsWith("East"))
                     {
                         str = str.trimCharactersAtEnd(" Steps East");
-                        res = toParam(str.getIntValue());
+                        res = toXYParam(str.getIntValue());
                     }
 
                     if (str.endsWith("East"))
                     {
                         str = str.trimCharactersAtEnd(" Steps West");
-                        res = toParam(str.getIntValue());
+                        res = toXYParam(str.getIntValue());
                         res *= -1;
                     }
 
@@ -342,26 +336,26 @@ class LatticesProcessor : public juce::AudioProcessor,
 
                     if (str == "1 Step North")
                     {
-                        return toParam(1);
+                        return toXYParam(1);
                     }
 
                     if (str == "1 Step South")
                     {
-                        return toParam(-1);
+                        return toXYParam(-1);
                     }
 
                     double res{};
                     if (str.endsWith("North"))
                     {
                         str = str.trimCharactersAtEnd(" Steps North");
-                        res = toParam(str.getIntValue());
+                        res = toXYParam(str.getIntValue());
                         return res;
                     }
 
                     if (str.endsWith("South"))
                     {
                         str = str.trimCharactersAtEnd(" Steps South");
-                        res = toParam(str.getIntValue());
+                        res = toXYParam(str.getIntValue());
                         res *= -1;
                     }
 
@@ -372,9 +366,9 @@ class LatticesProcessor : public juce::AudioProcessor,
         juce::AudioParameterFloatAttributes{}
             .withStringFromValueFunction(
                 [this](float value, int maximumStringLength) -> juce::String
-                { return std::to_string(fromParam(value, true)); })
+                { return std::to_string(fromVisitorParam(value)); })
             .withValueFromStringFunction([this](juce::String str)
-                                         { return toParam(str.getIntValue(), true); });
+                                         { return toVisitorParam(str.getIntValue()); });
 
     const juce::AudioParameterFloatAttributes frequencyReadout =
         juce::AudioParameterFloatAttributes{}

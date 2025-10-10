@@ -16,9 +16,9 @@
 //==============================================================================
 struct Visitors
 {
-    Visitors(std::string n, const JIMath &jim, int *v = nullptr) : name(n)
+    Visitors(std::string n, const JIMath &j, const int *v = nullptr) : name(n)
     {
-        j = &jim;
+        jim = &j;
 
         if (v != nullptr)
         {
@@ -29,13 +29,13 @@ struct Visitors
         }
     }
 
-    ~Visitors() { j = nullptr; }
+    ~Visitors() { jim = nullptr; }
 
     std::string name = "";
     int vis[12] = {0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1};
     double tuning[12] = {1.0, 81.0 / 80.0, 1.0,         81.0 / 80.0, 80.0 / 81.0, 1.0, 80.0 / 81.0,
                          1.0, 81.0 / 80.0, 80.0 / 81.0, 81.0 / 80.0, 80.0 / 81.0};
-    const JIMath *j;
+    const JIMath *jim;
 
     void setTuning(int d, int v)
     {
@@ -47,25 +47,25 @@ struct Visitors
             tuning[d] = 1.0;
             break;
         case 1:
-            tuning[d] = j->comma(j->syntonic, major);
+            tuning[d] = jim->comma(jim->syntonic, major);
             break;
         case 2:
-            tuning[d] = j->comma(j->seven, major);
+            tuning[d] = jim->comma(jim->seven, major);
             break;
         case 3:
-            tuning[d] = j->comma(j->eleven, major);
+            tuning[d] = jim->comma(jim->eleven, major);
             break;
         case 4:
-            tuning[d] = j->comma(j->thirteen, major);
+            tuning[d] = jim->comma(jim->thirteen, major);
             break;
         case 5:
-            tuning[d] = j->comma(j->seventeen, major);
+            tuning[d] = jim->comma(jim->seventeen, major);
             break;
         case 6:
-            tuning[d] = j->comma(j->nineteen, major);
+            tuning[d] = jim->comma(jim->nineteen, major);
             break;
         case 7:
-            tuning[d] = j->comma(j->twentythree, major);
+            tuning[d] = jim->comma(jim->twentythree, major);
             break;
         }
     }
@@ -106,4 +106,19 @@ struct Visitors
         tuning[10] = 81.0 / 80.0;
         tuning[11] = 80.0 / 81.0;
     }
+
+protected:
+    // this pythagorean scale is the baseline we use to calculate
+    double pyth12[12]{1.0,
+                  (double)256 / 243,
+                  (double)9 / 8,
+                  (double)32 / 27,
+                  (double)81 / 64,
+                  (double)4 / 3,
+                  (double)729 / 512,
+                  (double)3 / 2,
+                  (double)128 / 81,
+                  (double)27 / 16,
+                  (double)16 / 9,
+                  (double)243 / 128};
 };

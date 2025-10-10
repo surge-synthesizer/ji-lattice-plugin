@@ -96,9 +96,9 @@ void LatticesProcessor::getStateInformation(juce::MemoryBlock &destData)
     int n = originalRefNote;
     xml->setAttribute("note", n);
 
-    int X = fromParam(xParam->get());
-    int Y = fromParam(yParam->get());
-    int V = fromParam(vParam->get(), true);
+    int X = fromXYParam(xParam->get());
+    int Y = fromXYParam(yParam->get());
+    int V = fromVisitorParam(vParam->get());
     double F = fromFreqParam(fParam->get());
 
     xml->setAttribute("xp", X);
@@ -251,9 +251,9 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
             int ty = xmlState->getIntAttribute("yp", 0);
             originalRefFreq = xmlState->getDoubleAttribute("freq", 261.6255653005986);
 
-            float X = toParam(tx);
-            float Y = toParam(ty);
-            float V = toParam(tv, true);
+            float X = toXYParam(tx);
+            float Y = toXYParam(ty);
+            float V = toVisitorParam(tv);
             float F = toFreqParam(originalRefFreq);
 
             xParam->beginChangeGesture();
@@ -374,7 +374,7 @@ void LatticesProcessor::timerCallback(int timerID)
                 }
                 else
                 {
-                    int cv = fromParam(vParam->get(), true);
+                    int cv = fromVisitorParam(vParam->get());
                     int nv = i - 4;
 
                     if (cv == nv)
@@ -386,7 +386,7 @@ void LatticesProcessor::timerCallback(int timerID)
                     else
                     {
                         vParam->beginChangeGesture();
-                        vParam->setValueNotifyingHost(toParam(nv, true));
+                        vParam->setValueNotifyingHost(toVisitorParam(nv));
                         vParam->endChangeGesture();
                     }
                     wait[i] = true;
@@ -519,12 +519,12 @@ void LatticesProcessor::editVisitors(bool editing, int g)
 
     if (editing)
     {
-        priorSelectedGroup = fromParam(vParam->get());
+        priorSelectedGroup = fromVisitorParam(vParam->get());
         selectVisitorGroup(g);
     }
     else
     {
-        vParam->setValueNotifyingHost(toParam(priorSelectedGroup));
+        vParam->setValueNotifyingHost(toVisitorParam(priorSelectedGroup));
         changed = true;
     }
 }
@@ -626,7 +626,7 @@ void LatticesProcessor::parameterValueChanged(int parameterIndex, float newValue
     case 2:
         if (!editingVisitors)
         {
-            int vis = fromParam(vParam->get(), true);
+            int vis = fromVisitorParam(vParam->get());
             currentVisitors = &visitorGroups[vis];
             locate();
         }
@@ -640,8 +640,8 @@ void LatticesProcessor::parameterValueChanged(int parameterIndex, float newValue
 
 void LatticesProcessor::shift(int dir)
 {
-    double X = fromParam(xParam->get());
-    double Y = fromParam(yParam->get());
+    double X = fromXYParam(xParam->get());
+    double Y = fromXYParam(yParam->get());
 
     switch (dir)
     {
@@ -651,25 +651,25 @@ void LatticesProcessor::shift(int dir)
     case West:
         xParam->beginChangeGesture();
         --X;
-        xParam->setValueNotifyingHost(toParam(X));
+        xParam->setValueNotifyingHost(toXYParam(X));
         xParam->endChangeGesture();
         break;
     case East:
         xParam->beginChangeGesture();
         ++X;
-        xParam->setValueNotifyingHost(toParam(X));
+        xParam->setValueNotifyingHost(toXYParam(X));
         xParam->endChangeGesture();
         break;
     case North:
         yParam->beginChangeGesture();
         ++Y;
-        yParam->setValueNotifyingHost(toParam(Y));
+        yParam->setValueNotifyingHost(toXYParam(Y));
         yParam->endChangeGesture();
         break;
     case South:
         yParam->beginChangeGesture();
         --Y;
-        yParam->setValueNotifyingHost(toParam(Y));
+        yParam->setValueNotifyingHost(toXYParam(Y));
         yParam->endChangeGesture();
         break;
     };
@@ -679,16 +679,17 @@ void LatticesProcessor::shift(int dir)
 
 void LatticesProcessor::locate()
 {
-    positionX = fromParam(xParam->get());
-    positionY = fromParam(yParam->get());
+    positionX = fromXYParam(xParam->get());
+    positionY = fromXYParam(yParam->get());
 
     if (mode == Syntonic)
     {
         float quarter = static_cast<float>(positionX) / 4;
         int syntYOff = std::floor(quarter);
+        // FIXME: why am I like this?
         syntYOff *= -1;
 
-        positionY += syntYOff;
+        positionY -= syntYOff;
     }
 
     if (editingVisitors)

@@ -498,7 +498,7 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
     int visitor[12] = {};
     std::array<std::pair<int, int>, 12> CoO{}; // currently lit co-ordinates
 
-    virtual inline int calcDist(std::pair<int, int> xy) // how far is a given coordinate from those?
+    virtual int calcDist(std::pair<int, int> xy) // how far is a given coordinate from those?
     {
         int res{INT_MAX};
 

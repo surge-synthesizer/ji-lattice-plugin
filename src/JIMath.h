@@ -21,14 +21,10 @@ struct JIMath
     uint64_t horizNum{3}, horizDen{2}, diagNum{5}, diagDen{4};
 
     JIMath(uint64_t horizN = 3, uint64_t horizD = 2, uint64_t diagN = 5, uint64_t diagD = 4)
-        : horizNum(horizN), horizDen(horizD), diagNum(diagN), diagDen(horizD)
+        : horizNum(horizN), horizDen(horizD), diagNum(diagN), diagDen(diagD)
     {
     }
 
-    static constexpr int limit = 9;
-    typedef int monzo[limit];
-
-    static constexpr int primes[limit] = {2, 3, 5, 7, 11, 13, 17, 19, 23};
     static constexpr std::pair<uint64_t, uint64_t> Commas[21] = {
         {531441, 524288}, // 3
         {80, 81},         // 5
@@ -55,6 +51,7 @@ struct JIMath
 
     enum Comma_t
     {
+        none,
         pyth,
         syntonic,
         diesis,
@@ -68,11 +65,14 @@ struct JIMath
 
     double comma(Comma_t c, bool major = true) const
     {
-        uint64_t A = 1;
-        uint64_t B = 1;
+        uint64_t A, B;
 
         switch (c)
         {
+        case none:
+            A = 1;
+            B = 1;
+            break;
         case pyth:
             A = Commas[0].first;
             B = Commas[0].second;
@@ -116,7 +116,7 @@ struct JIMath
 
     // Maybe move these to the tuning library on Tones one day?
     // 3/2 up by 3/2 is 9/4
-    std::pair<uint64_t, uint64_t> multiplyRatio(uint64_t N1, uint64_t D1, uint64_t N2, uint64_t D2)
+    static std::pair<uint64_t, uint64_t> multiplyRatio(uint64_t N1, uint64_t D1, uint64_t N2, uint64_t D2)
     {
         auto nR = N1 * N2;
         auto dR = D1 * D2;
@@ -129,7 +129,7 @@ struct JIMath
         return {nR, dR};
     }
 
-    std::pair<uint64_t, uint64_t> divideRatio(uint64_t N1, uint64_t D1, uint64_t N2, uint64_t D2)
+    static std::pair<uint64_t, uint64_t> divideRatio(uint64_t N1, uint64_t D1, uint64_t N2, uint64_t D2)
     {
         auto nR = N1 * D2;
         auto dR = D1 * N2;
@@ -142,7 +142,26 @@ struct JIMath
         return {nR, dR};
     }
 
-    void monzoToRatio(monzo m, uint64_t &num, uint64_t &denom)
+    inline void octaveReduceRatio(uint64_t &num, uint64_t &denom)
+    {
+        while (num < denom)
+        {
+            num *= 2;
+        }
+        while (num > denom * 2)
+        {
+            denom *= 2;
+        }
+    }
+
+    // Monzo support
+
+    static constexpr int limit = 9;
+    typedef int monzo[limit];
+
+    static constexpr int primes[limit] = {2, 3, 5, 7, 11, 13, 17, 19, 23};
+
+    inline void monzoToRatio(monzo m, uint64_t &num, uint64_t &denom)
     {
         for (int i = 0; i < limit; ++i)
         {
@@ -174,18 +193,6 @@ struct JIMath
                 m[i]--;
                 d /= primes[i];
             }
-        }
-    }
-
-    inline void octaveReduceRatio(uint64_t &num, uint64_t &denom)
-    {
-        while (num < denom)
-        {
-            num *= 2;
-        }
-        while (num > denom * 2)
-        {
-            denom *= 2;
         }
     }
 

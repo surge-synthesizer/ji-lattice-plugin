@@ -18,6 +18,7 @@
 #include "Visitors.h"
 #include "LatticeComponent.h"
 #include "LatticesProcessor.h"
+#include "LatticesColours.h"
 
 //==============================================================================
 struct VisitorsComponent : public juce::Component
@@ -158,7 +159,7 @@ struct VisitorsComponent : public juce::Component
                 g.setColour(juce::Colours::black);
                 g.fillEllipse(left2, diameter * 5 + 30 + 5, diameter, diameter);
 
-                g.setGradientFill(chooseColour(i, (float)left2, (float)left2 + diameter));
+                g.setGradientFill(lattices::colours::sphereColour(i, (float)left2, (float)left2 + diameter));
                 g.fillEllipse(left2, diameter * 5 + 30 + 5, diameter, diameter);
 
                 g.setColour(juce::Colours::white);
@@ -246,56 +247,6 @@ struct VisitorsComponent : public juce::Component
 
     juce::Colour menuColour{.475f, .5f, 0.2f, 1.f};
     juce::Colour outlineColour{juce::Colours::ghostwhite};
-
-    const juce::Colour py1{.5f, .51f, .3f, 1.f};
-    const juce::Colour py2{.5277778f, .79f, .41f, .25f};
-
-    const juce::Colour pe1{.35f, .75f, .98f, 1.f};
-    const juce::Colour pe2{.5277778f, .79f, .41f, .25f};
-
-    const juce::Colour sep1{.8138889f, 1.f, .8f, 1.f};
-    const juce::Colour sep2{.6166667, 1.f, .8f, .1f};
-
-    const juce::Colour und1{.15f, 1.f, 1.f, 1.f};
-    const juce::Colour und2{0.f, .84f, 1.f, .02f};
-
-    const juce::Colour trid1{0.f, 1.f, 1.f, 1.f};
-    const juce::Colour trid2{.6888889f, 1.f, .96f, .38f};
-
-    const juce::Colour sed1{.4722222f, 1.f, .51f, 1.f};
-    const juce::Colour sed2{.1666667f, 1.f, .8f, .71f};
-
-    const juce::Colour nod1{0.f, .84f, 1.f, .02f};
-    const juce::Colour nod2{.7361111f, 1.f, 1.f, 1.f};
-
-    //    const juce::Colour vct1{.3833333f, 1.f, .1f, 1.f};
-    //    const juce::Colour vct2{.6861111f, .55f, .96f, .48f};
-
-    juce::ColourGradient chooseColour(int c, float left, float right)
-    {
-        float d = static_cast<float>(diameter);
-        juce::Rectangle<float> a{left, right, d, d};
-
-        switch (c)
-        {
-        case 0:
-            return juce::ColourGradient::horizontal(py1, py2, a);
-        case 1:
-            return juce::ColourGradient::horizontal(pe1, pe2, a);
-        case 2:
-            return juce::ColourGradient::horizontal(sep1, sep2, a);
-        case 3:
-            return juce::ColourGradient::horizontal(und1, und2, a);
-        case 4:
-            return juce::ColourGradient::horizontal(trid1, trid2, a);
-        case 5:
-            return juce::ColourGradient::horizontal(sed1, sed2, a);
-        case 6:
-            return juce::ColourGradient::horizontal(nod1, nod2, a);
-        default:
-            return juce::ColourGradient::horizontal(py1, py2, a);
-        }
-    }
 
     void setGroupData()
     {
