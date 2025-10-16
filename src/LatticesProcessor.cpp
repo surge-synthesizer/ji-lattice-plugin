@@ -34,11 +34,12 @@ LatticesProcessor::LatticesProcessor()
     fParam->addListener(this);
 
     numVisitorGroups = 1;
-    Visitors dg{"Nobody Here", jim};
+    lattices::scaledata::ScaleData dg{"Nobody Here"};
     visitorGroups.push_back(std::move(dg));
     hold.emplace_back(false);
     wait.emplace_back(false);
     currentVisitors = &visitorGroups[0];
+    updateAllCoords();
 
     if (MTS_CanRegisterMaster())
     {
@@ -93,8 +94,8 @@ void LatticesProcessor::getStateInformation(juce::MemoryBlock &destData)
     xml->setAttribute("cc", homeCC);
     xml->setAttribute("channel", listenOnChannel);
 
-    int n = originalRefNote;
-    xml->setAttribute("note", n);
+    int rn = originalRefNote;
+    xml->setAttribute("note", rn);
 
     int X = fromXYParam(xParam->get());
     int Y = fromXYParam(yParam->get());
@@ -115,14 +116,14 @@ void LatticesProcessor::getStateInformation(juce::MemoryBlock &destData)
             auto vs = juce::String("visitor_") + std::to_string(v) + juce::String("_");
 
             juce::String n = vs + juce::String("name");
-            juce::String name{visitorGroups[v].name};
+            juce::String name{visitorGroups[v].ScaleName};
 
             xml->setAttribute(n, name);
 
             for (int d = 0; d < 12; ++d)
             {
                 auto b = vs + juce::String("idx_") + std::to_string(d);
-                int i = visitorGroups[v].vis[d];
+                int i = visitorGroups[v].CC[d].nameIndex;
                 xml->setAttribute(b, i);
             }
         }
@@ -137,7 +138,7 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
 {
     std::unique_ptr<juce::XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
 
-    if (xmlState.get() != nullptr)
+    if (xmlState != nullptr)
     {
         if (xmlState->hasTagName("Lattices"))
         {
@@ -213,7 +214,7 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
             numVisitorGroups = xmlState->getIntAttribute("nvg", 1);
 
             visitorGroups.clear();
-            Visitors dg{"Nobody Here", jim};
+            lattices::scaledata::ScaleData dg{"Nobody Here"};
             visitorGroups.push_back(std::move(dg));
 
             if (numVisitorGroups > 1)
@@ -231,7 +232,7 @@ void LatticesProcessor::setStateInformation(const void *data, int sizeInBytes)
                         auto b = vs + juce::String("idx_") + std::to_string(d);
                         vds[d] = xmlState->getIntAttribute(b);
                     }
-                    Visitors ng{name, jim, vds};
+                    lattices::scaledata::ScaleData ng{name, vds};
                     visitorGroups.push_back(std::move(ng));
                 }
             }
@@ -310,7 +311,7 @@ void LatticesProcessor::respondToMidi(const juce::MidiMessage &m)
 
         int numCCs = 5 + numVisitorGroups - 1;
 
-        for (int i = 0; i < 5 + numVisitorGroups - 1; ++i)
+        for (int i = 0; i < numCCs; ++i)
         {
             if (num == homeCC + i)
             {
@@ -513,6 +514,55 @@ void LatticesProcessor::updateDistance(int dist)
     updateHostDisplay(juce::AudioProcessor::ChangeDetails().withNonParameterStateChanged(true));
 }
 
+bool LatticesProcessor::newVisitorGroup()
+{
+    if (visitorGroups.size() > 32) // > 32 because the 0th doesn't count
+        return false;
+
+    auto name = std::to_string(numVisitorGroups);
+
+    lattices::scaledata::ScaleData ng{name};
+    visitorGroups.push_back(std::move(ng));
+    // probably not necessary since process returns early if the visitors
+    // editor is open, but let's do it anyway.
+    std::lock_guard lock(visLock);
+    hold.emplace_back(false);
+    wait.emplace_back(false);
+    ++numVisitorGroups;
+
+    selectVisitorGroup(numVisitorGroups - 1);
+    return true;
+}
+void LatticesProcessor::resetVisitorGroup()
+{
+    currentVisitors->resetToDefault();
+    updateAllCoords();
+    changed = true;
+    locate();
+}
+void LatticesProcessor::deleteVisitorGroup(int idx)
+{
+    if (idx == 0)
+        return; // illegal, shouldn't happen
+
+    currentVisitors = &visitorGroups[idx - 1];
+    visitorGroups.erase(visitorGroups.begin() + idx);
+
+    // probably not necessary etc
+    std::lock_guard<std::mutex> lock(visLock);
+    hold.pop_back();
+    wait.pop_back();
+    --numVisitorGroups;
+
+    updateAllCoords();
+    locate();
+}
+void LatticesProcessor::selectVisitorGroup(int g)
+{
+    currentVisitors = &visitorGroups[g];
+    updateAllCoords();
+    locate();
+}
 void LatticesProcessor::editVisitors(bool editing, int g)
 {
     editingVisitors = editing;
@@ -528,71 +578,32 @@ void LatticesProcessor::editVisitors(bool editing, int g)
         changed = true;
     }
 }
-
-int *LatticesProcessor::selectVisitorGroup(int g)
-{
-    currentVisitors = &visitorGroups[g];
-    locate();
-
-    return currentVisitors->vis;
-}
-
-void LatticesProcessor::resetVisitorGroup()
-{
-    currentVisitors->resetToDefault();
-    changed = true;
-    locate();
-}
-
-bool LatticesProcessor::newVisitorGroup()
-{
-    if (visitorGroups.size() > 32) // > 32 because the 0th doesn't count
-        return false;
-
-    auto name = std::to_string(numVisitorGroups);
-
-    Visitors ng{name, jim};
-    visitorGroups.push_back(std::move(ng));
-    // probably not necessary since process returns early if the visitors
-    // editor is open, but let's do it anyway.
-    std::lock_guard<std::mutex> lock(visLock);
-    hold.emplace_back(false);
-    wait.emplace_back(false);
-    ++numVisitorGroups;
-
-    selectVisitorGroup(numVisitorGroups - 1);
-    return true;
-}
-
-void LatticesProcessor::deleteVisitorGroup(int idx)
-{
-    if (idx == 0)
-        return; // illegal, shouldn't happen
-
-    currentVisitors = &visitorGroups[idx - 1];
-    visitorGroups.erase(visitorGroups.begin() + idx);
-
-    // probably not necessary etc
-    std::lock_guard<std::mutex> lock(visLock);
-    hold.pop_back();
-    wait.pop_back();
-    --numVisitorGroups;
-
-    locate();
-}
-
 void LatticesProcessor::updateVisitor(int d, int v)
 {
-    currentVisitors->setDegree(d, v);
+    currentVisitors->setDegree(d, static_cast<lattices::scaledata::CommaNames>(v));
+    updateDegreeCoord(d);
     locate();
+}
+
+void LatticesProcessor::updateDegreeCoord(int d)
+{
+    coOrds[d].first = positionXY.first + currentVisitors->CO[d].first;
+    coOrds[d].second = positionXY.second + currentVisitors->CO[d].second;
+}
+void LatticesProcessor::updateAllCoords()
+{
+    for (int d = 0; d < 12; ++d)
+    {
+        updateDegreeCoord(d);
+    }
 }
 
 void LatticesProcessor::returnToOrigin()
 {
     currentRefNote = originalRefNote;
     ratioToOriginal = 1.0;
-    positionX = 0;
-    positionY = 0;
+    positionXY = std::make_pair(0, 0);
+    updateAllCoords();
 
     xParam->beginChangeGesture();
     xParam->setValueNotifyingHost(0.5);
@@ -604,12 +615,6 @@ void LatticesProcessor::returnToOrigin()
     vParam->setValueNotifyingHost(0.0);
     vParam->endChangeGesture();
 
-    for (int d = 0; d < 12; ++d)
-    {
-        ratios[d] = duo12[d];
-        coOrds[d] = duoCo[d];
-    }
-
     updateTuning();
 }
 
@@ -618,8 +623,6 @@ void LatticesProcessor::parameterValueChanged(int parameterIndex, float newValue
     switch (parameterIndex)
     {
     case 0:
-        locate();
-        break;
     case 1:
         locate();
         break;
@@ -679,18 +682,8 @@ void LatticesProcessor::shift(int dir)
 
 void LatticesProcessor::locate()
 {
-    positionX = fromXYParam(xParam->get());
-    positionY = fromXYParam(yParam->get());
-
-    if (mode == Syntonic)
-    {
-        float quarter = static_cast<float>(positionX) / 4;
-        int syntYOff = std::floor(quarter);
-        // FIXME: why am I like this?
-        syntYOff *= -1;
-
-        positionY -= syntYOff;
-    }
+    positionXY.first = fromXYParam(xParam->get());
+    positionXY.second = fromXYParam(yParam->get());
 
     if (editingVisitors)
     {
@@ -702,18 +695,18 @@ void LatticesProcessor::locate()
         int nn = originalRefNote;
         double nf = 1.0;
 
-        int absx = std::abs(positionX);
-        double mul = positionX < 0 ? 1 / 1.5 : 1.5; // fifth down : fifth up
-        int add = positionX < 0 ? -7 : 7;
+        int absx = std::abs(positionXY.first);
+        double mul = positionXY.first < 0 ? 1 / 1.5 : 1.5; // fifth down : fifth up
+        int add = positionXY.first < 0 ? -7 : 7;
         for (int i = 0; i < absx; ++i)
         {
             nn += add;
             nf *= mul;
         }
 
-        int absy = std::abs(positionY);
-        mul = positionY < 0 ? 1 / 1.25 : 1.25; // third down : third up
-        add = positionY < 0 ? -4 : 4;
+        int absy = std::abs(positionXY.second);
+        mul = positionXY.second < 0 ? 1 / 1.25 : 1.25; // third down : third up
+        add = positionXY.second < 0 ? -4 : 4;
         for (int i = 0; i < absy; ++i)
         {
             nn += add;
@@ -742,59 +735,28 @@ void LatticesProcessor::locate()
             currentVisitors = &visitorGroups[0];
         }
 
-        for (int d = 0; d < 12; ++d)
-        {
-            coOrds[d].first = duoCo[d].first + positionX;
-            coOrds[d].second = duoCo[d].second + positionY;
-            ratios[d] = duo12[d];
-        }
+        float quarter = static_cast<float>(positionXY.first) / 4;
+        int syntYOff = std::floor(quarter);
 
-        int syntShape = ((positionX % 4) + 4) % 4;
+        positionXY.second -= syntYOff;
 
-        ratios[6] = (syntShape > 0) ? (double)36 / 25 : (double)45 / 32;
-        ratios[11] = (syntShape > 1) ? (double)48 / 25 : (double)15 / 8;
-        ratios[4] = (syntShape == 3) ? (double)32 / 25 : (double)5 / 4;
+        int syntShape = ((positionXY.first % 4) + 4) % 4;
 
-        coOrds[6].second = (syntShape > 0) ? positionY - 2 : positionY + 1;
-        coOrds[11].second = (syntShape > 1) ? positionY - 2 : positionY + 1;
-        coOrds[4].second = (syntShape == 3) ? positionY - 2 : positionY + 1;
+        if (syntShape > 0)
+            currentVisitors->CC[6].enableDiesis(6);
+        else
+            currentVisitors->CC[6].disableDiesis(6);
+        if (syntShape > 1)
+            currentVisitors->CC[11].enableDiesis(11);
+        else
+            currentVisitors->CC[11].disableDiesis(11);
+        if (syntShape == 3)
+            currentVisitors->CC[4].enableDiesis(4);
+        else
+            currentVisitors->CC[4].disableDiesis(4);
     }
-    else
-    {
-        for (int d = 0; d < 12; ++d)
-        {
-            auto vx{0};
-            auto vy{0};
-
-            if ((d == 9 || d == 4 || d == 11 || d == 6) && currentVisitors->vis[d] == 0)
-            {
-                vx = 4;
-                vy = -1;
-            }
-            if ((d == 5 || d == 0) && currentVisitors->vis[d] != 0)
-            {
-                vx = 4;
-                vy = -1;
-            }
-            if ((d == 7 || d == 2) && currentVisitors->vis[d] != 0)
-            {
-                vx = -4;
-                vy = 1;
-            }
-            if ((d == 1 || d == 8 || d == 3 || d == 10) && currentVisitors->vis[d] == 0)
-            {
-                vx = -4;
-                vy = 1;
-            }
-
-            coOrds[d].first = duoCo[d].first + positionX + vx;
-            coOrds[d].second = duoCo[d].second + positionY + vy;
-
-            ratios[d] = pyth12[d] * currentVisitors->tuning[d];
-        }
-    }
+    updateAllCoords();
     updateHostDisplay(juce::AudioProcessor::ChangeDetails().withNonParameterStateChanged(true));
-
     updateTuning();
 }
 
@@ -813,7 +775,7 @@ void LatticesProcessor::updateTuning()
             degree += 12;
         }
 
-        freqs[note] = originalRefFreq * ratioToOriginal * ratios[degree] * octaveShift;
+        freqs[note] = originalRefFreq * ratioToOriginal * currentVisitors->CT[degree] * octaveShift;
     }
 
     MTS_SetNoteTunings(freqs);
@@ -823,5 +785,5 @@ void LatticesProcessor::updateTuning()
 }
 
 //==============================================================================
-// This creates new instances of the plugin..
+// This creates new instances of the plugin.
 juce::AudioProcessor *JUCE_CALLTYPE createPluginFilter() { return new LatticesProcessor(); }

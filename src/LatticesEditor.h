@@ -19,8 +19,6 @@
 #include "EveryComponent.h"
 
 //==============================================================================
-/**
- */
 class LatticesEditor : public juce::AudioProcessorEditor
 {
   public:

@@ -25,98 +25,10 @@ struct JIMath
     {
     }
 
-    static constexpr std::pair<uint64_t, uint64_t> Commas[21] = {
-        {531441, 524288}, // 3
-        {80, 81},         // 5
-        {125, 128},       // 5
-        {64, 63},         // 7
-        {32, 33},         // 11
-        {1024, 1053},     // 13
-        {2176, 2187},     // 17
-        {512, 513},       // 19
-        {736, 729},       // 23
-        {352, 351},       // 13/11
-        {40, 39},         // 13/10
-        {3584, 3645},     // 7/5
-        {1701, 1664},     // 14/13
-        {44, 45},         // 11/10
-        {896, 891},       // 14/11
-        {352, 351},       // 13/11
-        {896, 891},       // 14/11
-        {40, 39},         // 13/10
-        {3584, 3645},     // 7/5
-        {1701, 1664},     // 14/13
-        {44, 45},         // 11/10
-    };
-
-    enum Comma_t
-    {
-        none,
-        pyth,
-        syntonic,
-        diesis,
-        seven,
-        eleven,
-        thirteen,
-        seventeen,
-        nineteen,
-        twentythree
-    };
-
-    double comma(Comma_t c, bool major = true) const
-    {
-        uint64_t A, B;
-
-        switch (c)
-        {
-        case none:
-            A = 1;
-            B = 1;
-            break;
-        case pyth:
-            A = Commas[0].first;
-            B = Commas[0].second;
-            break;
-        case syntonic:
-            A = Commas[1].first;
-            B = Commas[1].second;
-            break;
-        case diesis:
-            A = Commas[2].first;
-            B = Commas[2].second;
-            break;
-        case seven:
-            A = Commas[3].first;
-            B = Commas[3].second;
-            break;
-        case eleven:
-            A = Commas[4].first;
-            B = Commas[4].second;
-            break;
-        case thirteen:
-            A = Commas[5].first;
-            B = Commas[5].second;
-            break;
-        case seventeen:
-            A = Commas[6].first;
-            B = Commas[6].second;
-            break;
-        case nineteen:
-            A = Commas[7].first;
-            B = Commas[7].second;
-            break;
-        case twentythree:
-            A = Commas[8].first;
-            B = Commas[8].second;
-            break;
-        }
-
-        return (major) ? (double)A / B : (double)B / A;
-    }
-
     // Maybe move these to the tuning library on Tones one day?
     // 3/2 up by 3/2 is 9/4
-    static std::pair<uint64_t, uint64_t> multiplyRatio(uint64_t N1, uint64_t D1, uint64_t N2, uint64_t D2)
+    static std::pair<uint64_t, uint64_t> multiplyRatio(uint64_t N1, uint64_t D1, uint64_t N2,
+                                                       uint64_t D2)
     {
         auto nR = N1 * N2;
         auto dR = D1 * D2;
@@ -129,7 +41,8 @@ struct JIMath
         return {nR, dR};
     }
 
-    static std::pair<uint64_t, uint64_t> divideRatio(uint64_t N1, uint64_t D1, uint64_t N2, uint64_t D2)
+    static std::pair<uint64_t, uint64_t> divideRatio(uint64_t N1, uint64_t D1, uint64_t N2,
+                                                     uint64_t D2)
     {
         auto nR = N1 * D2;
         auto dR = D1 * N2;
