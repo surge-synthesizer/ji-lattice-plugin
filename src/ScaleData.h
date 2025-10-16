@@ -233,8 +233,8 @@ struct SyntonicData
         auto sxr = sx > 0 ? sRatio : 1 / sRatio;
         while (sxit != 0)
         {
-            auto shit = (sxsi > 0) ? -1 : 0;
-            auto c = ((sxit + shit) % 4 + 4) % 4;
+            auto c = (sxsi > 0) ? -1 : 0;
+            c = ((c + sxit) % 4 + 4) % 4;
             std::cout << c << std::endl;
             for (int r = 0; r < 3; ++r)
             {
@@ -251,8 +251,8 @@ struct SyntonicData
         auto syr = sy > 0 ? dRatio : 1 / dRatio;
         while (syit != 0)
         {
-            auto fuck = (sysi > 0) ? -1 : 0;
-            auto r = ((fuck + syit) % 3 + 3) % 3;
+            auto r = (sysi > 0) ? -1 : 0;
+            r = ((r + syit) % 3 + 3) % 3;
             std::cout << r << std::endl;
             for (int c = 0; c < 4; ++c)
             {
