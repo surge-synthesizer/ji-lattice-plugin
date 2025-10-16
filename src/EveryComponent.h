@@ -133,7 +133,7 @@ struct EveryComponent : public juce::Component, juce::MultiTimer
                 processor.editVisitors(edvi, g);
                 latticeComponent->repaint();
             }
-            latticeComponent->setEnabled(!(edvi || edse));
+            latticeComponent->setEnabled(!edvi);
         }
     }
 };

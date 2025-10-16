@@ -48,13 +48,6 @@ struct GradientProvider
         size = r * 2.f;
     }
 
-    JCG_t rootGrad(float p)
-    {
-
-        juce::Rectangle a{p - radius, p + radius, size, size};
-        return JCG_t::horizontal(basic[4].first, basic[4].second, a);
-    }
-
     JCG_t commaGrad(int idx, float p)
     {
         juce::Rectangle a{p - radius, p + radius, size, size};
@@ -62,10 +55,14 @@ struct GradientProvider
         return JCG_t::horizontal(comma[idx].first, comma[idx].second, a);
     }
 
-    JCG_t latticeGrad(int row, float p)
+    JCG_t latticeGrad(int row, float p, int degree)
     {
         juce::Rectangle a{p - radius, p + radius, size, size};
-        int r = std::abs(row % 3);
+        int r{4};
+        if (degree != 0)
+        {
+            r = std::abs(row % 3);
+        }
 
         return JCG_t::horizontal(basic[r].first, basic[r].second, a);
     }

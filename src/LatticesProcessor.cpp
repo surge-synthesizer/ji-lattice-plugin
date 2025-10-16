@@ -33,6 +33,8 @@ LatticesProcessor::LatticesProcessor()
     vParam->addListener(this);
     fParam->addListener(this);
 
+    syntonicGroup = std::make_unique<lattices::scaledata::SyntonicData>();
+
     numVisitorGroups = 1;
     lattices::scaledata::ScaleData dg{"Nobody Here"};
     visitorGroups.push_back(std::move(dg));
@@ -401,18 +403,22 @@ void LatticesProcessor::timerCallback(int timerID)
 
 void LatticesProcessor::modeSwitch(int m)
 {
+
     switch (m)
     {
     case Syntonic:
         mode = Syntonic;
+        editVisitors(true, 0);
+        returnToOrigin();
         break;
     case Duodene:
         mode = Duodene;
+        editVisitors(false, 0);
+        returnToOrigin();
+        break;
+    default:
+        break;
     }
-
-    updateHostDisplay(juce::AudioProcessor::ChangeDetails().withNonParameterStateChanged(true));
-
-    returnToOrigin();
 }
 
 void LatticesProcessor::updateMIDICC(int hCC)
@@ -516,6 +522,8 @@ void LatticesProcessor::updateDistance(int dist)
 
 bool LatticesProcessor::newVisitorGroup()
 {
+    if (mode == Syntonic)
+        return false;
     if (visitorGroups.size() > 32) // > 32 because the 0th doesn't count
         return false;
 
@@ -535,6 +543,9 @@ bool LatticesProcessor::newVisitorGroup()
 }
 void LatticesProcessor::resetVisitorGroup()
 {
+    if (mode == Syntonic)
+        return;
+
     currentVisitors->resetToDefault();
     updateAllCoords();
     changed = true;
@@ -542,7 +553,7 @@ void LatticesProcessor::resetVisitorGroup()
 }
 void LatticesProcessor::deleteVisitorGroup(int idx)
 {
-    if (idx == 0)
+    if (idx == 0 || mode == Syntonic)
         return; // illegal, shouldn't happen
 
     currentVisitors = &visitorGroups[idx - 1];
@@ -559,6 +570,9 @@ void LatticesProcessor::deleteVisitorGroup(int idx)
 }
 void LatticesProcessor::selectVisitorGroup(int g)
 {
+    if (mode == Syntonic)
+        return;
+
     currentVisitors = &visitorGroups[g];
     updateAllCoords();
     locate();
@@ -590,11 +604,27 @@ void LatticesProcessor::updateDegreeCoord(int d)
     coOrds[d].first = positionXY.first + currentVisitors->CO[d].first;
     coOrds[d].second = positionXY.second + currentVisitors->CO[d].second;
 }
+void LatticesProcessor::updateSyntonicCoord(int d)
+{
+    auto cd = syntonicGroup->getCoord(d);
+    coOrds[d].first = cd.first;
+    coOrds[d].second = cd.second;
+}
 void LatticesProcessor::updateAllCoords()
 {
-    for (int d = 0; d < 12; ++d)
+    if (mode == Syntonic)
     {
-        updateDegreeCoord(d);
+        for (int d = 0; d < 12; ++d)
+        {
+            updateSyntonicCoord(d);
+        }
+    }
+    else
+    {
+        for (int d = 0; d < 12; ++d)
+        {
+            updateDegreeCoord(d);
+        }
     }
 }
 
@@ -685,78 +715,57 @@ void LatticesProcessor::locate()
     positionXY.first = fromXYParam(xParam->get());
     positionXY.second = fromXYParam(yParam->get());
 
-    if (editingVisitors)
+    if (mode == Syntonic)
     {
-        currentRefNote = originalRefNote;
-        ratioToOriginal = 1.0;
+        syntonicGroup->calculateSteps(positionXY.first, positionXY.second);
     }
     else
     {
-        int nn = originalRefNote;
-        double nf = 1.0;
-
-        int absx = std::abs(positionXY.first);
-        double mul = positionXY.first < 0 ? 1 / 1.5 : 1.5; // fifth down : fifth up
-        int add = positionXY.first < 0 ? -7 : 7;
-        for (int i = 0; i < absx; ++i)
+        if (editingVisitors)
         {
-            nn += add;
-            nf *= mul;
+            currentRefNote = originalRefNote;
+            ratioToOriginal = 1.0;
         }
-
-        int absy = std::abs(positionXY.second);
-        mul = positionXY.second < 0 ? 1 / 1.25 : 1.25; // third down : third up
-        add = positionXY.second < 0 ? -4 : 4;
-        for (int i = 0; i < absy; ++i)
+        else
         {
-            nn += add;
-            nf *= mul;
-        }
+            int nn = originalRefNote;
+            double nf = 1.0;
 
-        while (nn < 0)
-        {
-            nn += 12;
-            nf *= 2.0;
-        }
-        while (nn >= 12)
-        {
-            nn -= 12;
-            nf *= 0.5;
-        }
+            int absx = std::abs(positionXY.first);
+            double mul = positionXY.first < 0 ? 1 / 1.5 : 1.5; // fifth down : fifth up
+            int add = positionXY.first < 0 ? -7 : 7;
+            for (int i = 0; i < absx; ++i)
+            {
+                nn += add;
+                nf *= mul;
+            }
 
-        currentRefNote = nn;
-        ratioToOriginal = nf;
+            int absy = std::abs(positionXY.second);
+            mul = positionXY.second < 0 ? 1 / 1.25 : 1.25; // third down : third up
+            add = positionXY.second < 0 ? -4 : 4;
+            for (int i = 0; i < absy; ++i)
+            {
+                nn += add;
+                nf *= mul;
+            }
+
+            while (nn < 0)
+            {
+                nn += 12;
+                nf *= 2.0;
+            }
+            while (nn >= 12)
+            {
+                nn -= 12;
+                nf *= 0.5;
+            }
+
+            currentRefNote = nn;
+            ratioToOriginal = nf;
+        }
     }
 
-    if (mode == Syntonic)
-    {
-        if (currentVisitors != &visitorGroups[0])
-        {
-            currentVisitors = &visitorGroups[0];
-        }
-
-        float quarter = static_cast<float>(positionXY.first) / 4;
-        int syntYOff = std::floor(quarter);
-
-        positionXY.second -= syntYOff;
-
-        int syntShape = ((positionXY.first % 4) + 4) % 4;
-
-        if (syntShape > 0)
-            currentVisitors->CC[6].enableDiesis(6);
-        else
-            currentVisitors->CC[6].disableDiesis(6);
-        if (syntShape > 1)
-            currentVisitors->CC[11].enableDiesis(11);
-        else
-            currentVisitors->CC[11].disableDiesis(11);
-        if (syntShape == 3)
-            currentVisitors->CC[4].enableDiesis(4);
-        else
-            currentVisitors->CC[4].disableDiesis(4);
-    }
     updateAllCoords();
-    updateHostDisplay(juce::AudioProcessor::ChangeDetails().withNonParameterStateChanged(true));
     updateTuning();
 }
 
@@ -764,24 +773,45 @@ void LatticesProcessor::updateTuning()
 {
     changed = true;
 
-    int refMidiNote = currentRefNote + 60;
-    for (int note = 0; note < 128; ++note)
+    if (mode == Syntonic)
     {
-        double octaveShift = std::pow(2, std::floor(((double)note - refMidiNote) / 12.0));
-
-        int degree = (note - refMidiNote) % 12;
-        if (degree < 0)
+        int refMidiNote = originalRefNote + 60;
+        for (int note = 0; note < 128; ++note)
         {
-            degree += 12;
-        }
+            double octaveShift = std::pow(2, std::floor(((double)note - refMidiNote) / 12.0));
 
-        freqs[note] = originalRefFreq * ratioToOriginal * currentVisitors->CT[degree] * octaveShift;
+            int degree = (note - refMidiNote) % 12;
+            if (degree < 0)
+            {
+                degree += 12;
+            }
+
+            freqs[note] = originalRefFreq * syntonicGroup->getTuning(degree) * octaveShift;
+        }
+    }
+    else
+    {
+        int refMidiNote = currentRefNote + 60;
+        for (int note = 0; note < 128; ++note)
+        {
+            double octaveShift = std::pow(2, std::floor(((double)note - refMidiNote) / 12.0));
+
+            int degree = (note - refMidiNote) % 12;
+            if (degree < 0)
+            {
+                degree += 12;
+            }
+
+            freqs[note] =
+                originalRefFreq * ratioToOriginal * currentVisitors->CT[degree] * octaveShift;
+        }
     }
 
     MTS_SetNoteTunings(freqs);
 
     // later...
     MTS_SetScaleName((whereAreWe(xParam->get(), yParam->get()).c_str()));
+    updateHostDisplay(juce::AudioProcessor::ChangeDetails().withNonParameterStateChanged(true));
 }
 
 //==============================================================================

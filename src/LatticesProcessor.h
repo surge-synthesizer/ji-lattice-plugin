@@ -71,6 +71,7 @@ class LatticesProcessor : public juce::AudioProcessor,
     void editVisitors(bool editing, int g);
     void updateVisitor(int d, int v);
     void updateDegreeCoord(int d);
+    void updateSyntonicCoord(int d);
     void updateAllCoords();
 
     void parameterValueChanged(int parameterIndex, float newValue) override;
@@ -111,6 +112,8 @@ class LatticesProcessor : public juce::AudioProcessor,
     bool editingVisitors{false};
     int priorSelectedGroup{0};
 
+    std::unique_ptr<lattices::scaledata::SyntonicData> syntonicGroup;
+
     bool loadedState{false};
 
     uint16_t maxDistance{24};
@@ -120,7 +123,6 @@ class LatticesProcessor : public juce::AudioProcessor,
     static constexpr int defaultRefNote{0};
     static constexpr double defaultRefFreq{261.6255653005986};
     std::pair<uint8_t, int> defaultOriginNoteName = {1, 0};
-
     const JIMath jim;
 
     enum Direction
