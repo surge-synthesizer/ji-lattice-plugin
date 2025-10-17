@@ -13,11 +13,8 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <memory>
-#include <set>
 #include <atomic>
-#include <cmath>
 #include <string>
-#include <cstdint>
 #include <mutex>
 
 #include "JIMath.h"
@@ -68,7 +65,7 @@ class LatticesProcessor : public juce::AudioProcessor,
     void resetVisitorGroup();
     void deleteVisitorGroup(int idx);
     void selectVisitorGroup(int g);
-    void editVisitors(bool editing, int g);
+    void editVisitorsFromUI(bool editing, int g);
     void updateVisitor(int d, int v);
     void updateDegreeCoord(int d);
     void updateSyntonicCoord(int d);
@@ -108,9 +105,10 @@ class LatticesProcessor : public juce::AudioProcessor,
 
     std::vector<lattices::scaledata::ScaleData> visitorGroups;
     lattices::scaledata::ScaleData *currentVisitors;
-    int numVisitorGroups{0};
+    uint8_t numVisitorGroups{0};
     bool editingVisitors{false};
-    int priorSelectedGroup{0};
+    bool suspendedVisitors{false};
+    uint8_t priorSelectedGroup{0};
 
     std::unique_ptr<lattices::scaledata::SyntonicData> syntonicGroup;
 

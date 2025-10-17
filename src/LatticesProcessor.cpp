@@ -408,12 +408,12 @@ void LatticesProcessor::modeSwitch(int m)
     {
     case Syntonic:
         mode = Syntonic;
-        editVisitors(true, 0);
+        editVisitorsFromUI(true, 0);
         returnToOrigin();
         break;
     case Duodene:
         mode = Duodene;
-        editVisitors(false, 0);
+        editVisitorsFromUI(false, 0);
         returnToOrigin();
         break;
     default:
@@ -547,8 +547,6 @@ void LatticesProcessor::resetVisitorGroup()
         return;
 
     currentVisitors->resetToDefault();
-    updateAllCoords();
-    changed = true;
     locate();
 }
 void LatticesProcessor::deleteVisitorGroup(int idx)
@@ -565,7 +563,6 @@ void LatticesProcessor::deleteVisitorGroup(int idx)
     wait.pop_back();
     --numVisitorGroups;
 
-    updateAllCoords();
     locate();
 }
 void LatticesProcessor::selectVisitorGroup(int g)
@@ -574,10 +571,10 @@ void LatticesProcessor::selectVisitorGroup(int g)
         return;
 
     currentVisitors = &visitorGroups[g];
-    updateAllCoords();
+
     locate();
 }
-void LatticesProcessor::editVisitors(bool editing, int g)
+void LatticesProcessor::editVisitorsFromUI(bool editing, int g)
 {
     editingVisitors = editing;
 

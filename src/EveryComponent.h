@@ -130,7 +130,7 @@ struct EveryComponent : public juce::Component, juce::MultiTimer
             if (processor.editingVisitors != edvi)
             {
                 int g = menuComponent->visC->selectedGroup;
-                processor.editVisitors(edvi, g);
+                processor.editVisitorsFromUI(edvi, g);
                 latticeComponent->repaint();
             }
             latticeComponent->setEnabled(!edvi);

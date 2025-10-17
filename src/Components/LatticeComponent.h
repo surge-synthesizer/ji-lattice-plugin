@@ -326,14 +326,14 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
 
                     // Names or Ratios?
 
-                    auto [n, d] = calculateCell(w, v);
-                    if (rcs && dist == 0)
-                    {
-                        reCalculateCell(n, d, degree);
-                    }
-                    auto s = std::to_string(n) + "/" + std::to_string(d);
+                    // auto [n, d] = calculateCell(w, v);
+                    // if (rcs && dist == 0)
+                    // {
+                    //     reCalculateCell(n, d, degree);
+                    // }
+                    // auto s = std::to_string(n) + "/" + std::to_string(d);
 
-                    // auto s = nameNoteOnLattice(w, v, degree, lit);
+                    auto s = nameNoteOnLattice(w, v, degree, dist == 0);
                     tG.setColour(juce::Colours::ghostwhite.withAlpha(alpha));
                     tG.setFont(stoke);
 

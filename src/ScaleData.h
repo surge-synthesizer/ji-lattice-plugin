@@ -219,14 +219,18 @@ struct ScaleData
 
 struct SyntonicData
 {
-    void calculateSteps(const int sx, const int sy)
+    void reset()
     {
-        std::cout << "calcluatilsdgn" << std::endl;
         for (int d = 0; d < 12; ++d)
         {
             CT[d] = 1.0;
             CO[d] = {0, 0};
         }
+    }
+
+    void calculateSteps(const int sx, const int sy)
+    {
+        reset();
 
         auto sxit = sx;
         auto sxsi = sx > 0 ? 1 : -1;
@@ -235,7 +239,6 @@ struct SyntonicData
         {
             auto c = (sxsi > 0) ? -1 : 0;
             c = ((c + sxit) % 4 + 4) % 4;
-            std::cout << c << std::endl;
             for (int r = 0; r < 3; ++r)
             {
                 int d = fDRC(r, c);
@@ -253,7 +256,6 @@ struct SyntonicData
         {
             auto r = (sysi > 0) ? -1 : 0;
             r = ((r + syit) % 3 + 3) % 3;
-            std::cout << r << std::endl;
             for (int c = 0; c < 4; ++c)
             {
                 int d = fDRC(r, c);
