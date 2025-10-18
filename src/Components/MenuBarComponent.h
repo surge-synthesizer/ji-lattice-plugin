@@ -159,7 +159,7 @@ struct MenuBarComponent : juce::Component
 
     void showVisitorMenu()
     {
-        bool show = (visButton->getToggleState() && proc.mode == proc.Mode::Duodene);
+        bool show = (visButton->getToggleState() && proc.mode == LatticesProcessor::Duodene);
 
         if (show)
         {

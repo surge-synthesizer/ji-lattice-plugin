@@ -13,15 +13,12 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <memory>
-#include <set>
 #include <atomic>
-#include <cmath>
 #include <string>
-#include <cstdint>
 #include <mutex>
 
 #include "JIMath.h"
-#include "Visitors.h"
+#include "ScaleData.h"
 
 class LatticesProcessor : public juce::AudioProcessor,
                           juce::MultiTimer,
@@ -64,12 +61,15 @@ class LatticesProcessor : public juce::AudioProcessor,
     void updateFreq(double f);
     double updateRoot(int r);
     void updateDistance(int dist);
-    void editVisitors(bool editing, int g);
-    int *selectVisitorGroup(int g);
-    void resetVisitorGroup();
     bool newVisitorGroup();
+    void resetVisitorGroup();
     void deleteVisitorGroup(int idx);
+    void selectVisitorGroup(int g);
+    void editVisitorsFromUI(bool editing, int g);
     void updateVisitor(int d, int v);
+    void updateDegreeCoord(int d);
+    void updateSyntonicCoord(int d);
+    void updateAllCoords();
 
     void parameterValueChanged(int parameterIndex, float newValue) override;
     void shift(int dir);
@@ -77,9 +77,6 @@ class LatticesProcessor : public juce::AudioProcessor,
     bool registeredMTS{false};
     bool MTSreInit{false};
     bool MTStryAgain{false};
-
-    std::atomic<int> positionX{0};
-    std::atomic<int> positionY{0};
 
     enum Mode
     {
@@ -90,35 +87,41 @@ class LatticesProcessor : public juce::AudioProcessor,
     std::atomic<bool> changed{false};
     std::atomic<int> numClients{0};
 
-    std::pair<int, int> coOrds[12]{};
-
-    int syntonicDrift = 0;
-    int diesisDrift = 0;
-
     int homeCC = 5;
     int listenOnChannel = 1;
 
+    // key, frequency and name of the origin note
     int originalRefNote{0};
     double originalRefFreq{261.6255653005986};
+    std::pair<uint8_t, int> originNoteName = {1, 0};
+
+    // key, ratio and coordinates of the current center note
     int currentRefNote{0};
     double ratioToOriginal{1.0};
 
-    std::pair<uint8_t, int> originNoteName = {1, 0};
+    std::pair<int, int> positionXY{0, 0};
+    // coordinates of current scale
+    std::pair<int, int> coOrds[12]{};
 
-    std::vector<Visitors> visitorGroups;
-    Visitors *currentVisitors;
-    int numVisitorGroups{0};
+    std::vector<lattices::scaledata::ScaleData> visitorGroups;
+    lattices::scaledata::ScaleData *currentVisitors;
+    uint8_t numVisitorGroups{0};
     bool editingVisitors{false};
-    int priorSelectedGroup{0};
+    bool suspendedVisitors{false};
+    uint8_t priorSelectedGroup{0};
+    bool onOriginReturn{false};
+
+    lattices::scaledata::SyntonicData syntonicGroup;
 
     bool loadedState{false};
 
     uint16_t maxDistance{24};
 
   private:
+    // fallbacks for the origin
     static constexpr int defaultRefNote{0};
     static constexpr double defaultRefFreq{261.6255653005986};
-
+    std::pair<uint8_t, int> defaultOriginNoteName = {1, 0};
     const JIMath jim;
 
     enum Direction
@@ -141,27 +144,7 @@ class LatticesProcessor : public juce::AudioProcessor,
     void locate();
     void updateTuning();
 
-    double ratios[12] = {};
     double freqs[128]{};
-
-    double duo12[12]{1.0,           (double)16 / 15, (double)9 / 8,   (double)6 / 5,
-                     (double)5 / 4, (double)4 / 3,   (double)45 / 32, (double)3 / 2,
-                     (double)8 / 5, (double)5 / 3,   (double)9 / 5,   (double)15 / 8};
-    std::pair<int, int> duoCo[12]{{0, 0}, {-1, -1}, {2, 0},  {1, -1}, {0, 1},  {-1, 0},
-                                  {2, 1}, {1, 0},   {0, -1}, {-1, 1}, {2, -1}, {1, 1}};
-
-    double pyth12[12]{1.0,
-                      (double)256 / 243,
-                      (double)9 / 8,
-                      (double)32 / 27,
-                      (double)81 / 64,
-                      (double)4 / 3,
-                      (double)729 / 512,
-                      (double)3 / 2,
-                      (double)128 / 81,
-                      (double)27 / 16,
-                      (double)16 / 9,
-                      (double)243 / 128};
 
     juce::AudioParameterFloat *xParam;
     juce::AudioParameterFloat *yParam;
@@ -170,41 +153,34 @@ class LatticesProcessor : public juce::AudioProcessor,
 
     // define these here lest the lambda functions
     // below throw an annoying "not defined" warning
-    inline double toParam(int input, bool v = false)
-    {
-        if (v)
-        {
-            if (visitorGroups.size() <= 1)
-            {
-                return 0.0;
-            }
 
-            return static_cast<double>(input) / (visitorGroups.size() - 1);
-        }
-        else
-        {
-            return static_cast<double>(input + maxDistance) / (2.0 * maxDistance);
-        }
-    }
-    inline int fromParam(float input, bool v = false)
+    double toVisitorParam(int input)
     {
-        if (v)
-        {
-            if (visitorGroups.size() <= 1)
-            {
-                return 0;
-            }
-            return static_cast<int>(std::round(input * (visitorGroups.size() - 1)));
-        }
-        else
-        {
-            return static_cast<int>(std::round((input - 0.5) * 2 * maxDistance));
-        }
+        if (visitorGroups.size() <= 1)
+            return 0.0;
+        return static_cast<double>(input) / (visitorGroups.size() - 1);
+    }
+
+    inline int fromVisitorParam(float input)
+    {
+        if (visitorGroups.size() <= 1)
+            return 0;
+        return static_cast<int>(std::round(input * (visitorGroups.size() - 1)));
+    }
+
+    inline double toXYParam(int input, bool v = false)
+    {
+        return static_cast<double>(input + maxDistance) / (2.0 * maxDistance);
+    }
+
+    inline int fromXYParam(float input, bool v = false)
+    {
+        return static_cast<int>(std::round((input - 0.5) * 2 * maxDistance));
     }
 
     juce::String toStringX(float value)
     {
-        int v = fromParam(value);
+        int v = fromXYParam(value);
 
         juce::String dir{};
         if (v == 0)
@@ -230,7 +206,7 @@ class LatticesProcessor : public juce::AudioProcessor,
 
     juce::String toStringY(float value)
     {
-        int v = fromParam(value);
+        int v = fromXYParam(value);
 
         juce::String dir{};
         if (v == 0)
@@ -302,25 +278,25 @@ class LatticesProcessor : public juce::AudioProcessor,
 
                     if (str == "1 Step East")
                     {
-                        return toParam(1);
+                        return toXYParam(1);
                     }
 
                     if (str == "1 Step West")
                     {
-                        return toParam(-1);
+                        return toXYParam(-1);
                     }
 
                     double res{};
                     if (str.endsWith("East"))
                     {
                         str = str.trimCharactersAtEnd(" Steps East");
-                        res = toParam(str.getIntValue());
+                        res = toXYParam(str.getIntValue());
                     }
 
                     if (str.endsWith("East"))
                     {
                         str = str.trimCharactersAtEnd(" Steps West");
-                        res = toParam(str.getIntValue());
+                        res = toXYParam(str.getIntValue());
                         res *= -1;
                     }
 
@@ -342,26 +318,26 @@ class LatticesProcessor : public juce::AudioProcessor,
 
                     if (str == "1 Step North")
                     {
-                        return toParam(1);
+                        return toXYParam(1);
                     }
 
                     if (str == "1 Step South")
                     {
-                        return toParam(-1);
+                        return toXYParam(-1);
                     }
 
                     double res{};
                     if (str.endsWith("North"))
                     {
                         str = str.trimCharactersAtEnd(" Steps North");
-                        res = toParam(str.getIntValue());
+                        res = toXYParam(str.getIntValue());
                         return res;
                     }
 
                     if (str.endsWith("South"))
                     {
                         str = str.trimCharactersAtEnd(" Steps South");
-                        res = toParam(str.getIntValue());
+                        res = toXYParam(str.getIntValue());
                         res *= -1;
                     }
 
@@ -372,9 +348,9 @@ class LatticesProcessor : public juce::AudioProcessor,
         juce::AudioParameterFloatAttributes{}
             .withStringFromValueFunction(
                 [this](float value, int maximumStringLength) -> juce::String
-                { return std::to_string(fromParam(value, true)); })
+                { return std::to_string(fromVisitorParam(value)); })
             .withValueFromStringFunction([this](juce::String str)
-                                         { return toParam(str.getIntValue(), true); });
+                                         { return toVisitorParam(str.getIntValue()); });
 
     const juce::AudioParameterFloatAttributes frequencyReadout =
         juce::AudioParameterFloatAttributes{}

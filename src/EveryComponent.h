@@ -18,6 +18,7 @@
 #include "Components/LatticeComponent.h"
 #include "Components/MenuBarComponent.h"
 #include "Components/MTSWarningComponent.h"
+#include "melatonin_inspector/melatonin_inspector.h"
 
 //==============================================================================
 struct EveryComponent : public juce::Component, juce::MultiTimer
@@ -57,11 +58,11 @@ struct EveryComponent : public juce::Component, juce::MultiTimer
         if (inited)
         {
             auto h = 30;
-            if (menuComponent->visC->isVisible())
+            if (visOpen)
             {
                 h = 330;
             }
-            else if (menuComponent->settingsC->isVisible())
+            else if (setOpen)
             {
                 h = 240;
             }
@@ -78,6 +79,7 @@ struct EveryComponent : public juce::Component, juce::MultiTimer
 
   private:
     LatticesProcessor &processor;
+    // melatonin::Inspector inspector{*this, false};
     //    juce::ComponentBoundsConstrainer constraints;
 
     int width{0}, height{0};
@@ -120,18 +122,18 @@ struct EveryComponent : public juce::Component, juce::MultiTimer
 
             if (edvi != visOpen || edse != setOpen)
             {
-                resized();
                 visOpen = edvi;
                 setOpen = edse;
+                resized();
             }
 
             if (processor.editingVisitors != edvi)
             {
                 int g = menuComponent->visC->selectedGroup;
-                processor.editVisitors(edvi, g);
+                processor.editVisitorsFromUI(edvi, g);
                 latticeComponent->repaint();
             }
-            latticeComponent->setEnabled(!menuComponent->visC->isVisible());
+            latticeComponent->setEnabled(!edvi);
         }
     }
 };
