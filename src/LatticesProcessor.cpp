@@ -33,8 +33,6 @@ LatticesProcessor::LatticesProcessor()
     vParam->addListener(this);
     fParam->addListener(this);
 
-    syntonicGroup = std::make_unique<lattices::scaledata::SyntonicData>();
-
     numVisitorGroups = 1;
     lattices::scaledata::ScaleData dg{"Nobody Here"};
     visitorGroups.push_back(std::move(dg));
@@ -603,7 +601,7 @@ void LatticesProcessor::updateDegreeCoord(int d)
 }
 void LatticesProcessor::updateSyntonicCoord(int d)
 {
-    auto cd = syntonicGroup->getCoord(d);
+    auto cd = syntonicGroup.getCoord(d);
     coOrds[d].first = cd.first;
     coOrds[d].second = cd.second;
 }
@@ -629,24 +627,28 @@ void LatticesProcessor::returnToOrigin()
 {
     currentRefNote = originalRefNote;
     ratioToOriginal = 1.0;
-    positionXY = std::make_pair(0, 0);
-    updateAllCoords();
+    if (mode == Syntonic)
+    {
+        syntonicGroup.resetToDefault();
+    }
 
-    xParam->beginChangeGesture();
-    xParam->setValueNotifyingHost(0.5);
-    xParam->endChangeGesture();
-    yParam->beginChangeGesture();
-    yParam->setValueNotifyingHost(0.5);
-    yParam->endChangeGesture();
+    onOriginReturn = true;
     vParam->beginChangeGesture();
     vParam->setValueNotifyingHost(0.0);
     vParam->endChangeGesture();
-
-    updateTuning();
+    xParam->beginChangeGesture();
+    xParam->setValueNotifyingHost(0.5);
+    xParam->endChangeGesture();
+    onOriginReturn = false;
+    yParam->beginChangeGesture();
+    yParam->setValueNotifyingHost(0.5);
+    yParam->endChangeGesture();
 }
 
 void LatticesProcessor::parameterValueChanged(int parameterIndex, float newValue)
 {
+    if (onOriginReturn)
+        return;
     switch (parameterIndex)
     {
     case 0:
@@ -714,7 +716,7 @@ void LatticesProcessor::locate()
 
     if (mode == Syntonic)
     {
-        syntonicGroup->calculateSteps(positionXY.first, positionXY.second);
+        syntonicGroup.calculateSteps(positionXY.first, positionXY.second);
     }
     else
     {
@@ -783,7 +785,7 @@ void LatticesProcessor::updateTuning()
                 degree += 12;
             }
 
-            freqs[note] = originalRefFreq * syntonicGroup->getTuning(degree) * octaveShift;
+            freqs[note] = originalRefFreq * syntonicGroup.getTuning(degree) * octaveShift;
         }
     }
     else

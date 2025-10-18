@@ -109,8 +109,9 @@ class LatticesProcessor : public juce::AudioProcessor,
     bool editingVisitors{false};
     bool suspendedVisitors{false};
     uint8_t priorSelectedGroup{0};
+    bool onOriginReturn{false};
 
-    std::unique_ptr<lattices::scaledata::SyntonicData> syntonicGroup;
+    lattices::scaledata::SyntonicData syntonicGroup;
 
     bool loadedState{false};
 

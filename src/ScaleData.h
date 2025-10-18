@@ -219,55 +219,63 @@ struct ScaleData
 
 struct SyntonicData
 {
-    void reset()
+    SyntonicData() { resetToDefault(); }
+
+    void resetToDefault()
     {
         for (int d = 0; d < 12; ++d)
         {
             CT[d] = 1.0;
             CO[d] = {0, 0};
         }
+        priorX = 0;
+        priorY = 0;
     }
 
     void calculateSteps(const int sx, const int sy)
     {
-        reset();
-
-        auto sxit = sx;
-        auto sxsi = sx > 0 ? 1 : -1;
-        auto sxr = sx > 0 ? sRatio : 1 / sRatio;
-        while (sxit != 0)
+        if (priorX != sx)
         {
-            auto c = (sxsi > 0) ? -1 : 0;
-            c = ((c + sxit) % 4 + 4) % 4;
-            for (int r = 0; r < 3; ++r)
+            auto xdir = sx > priorX;
+            auto sxsi = xdir ? 1 : -1;
+            auto sxr = xdir ? sRatio : 1 / sRatio;
+            while (priorX != sx)
             {
-                int d = fDRC(r, c);
-                CT[d] *= sxr;
-                CO[d].first += 4 * sxsi;
-                CO[d].second += -1 * sxsi;
+                auto c = xdir ? -1 : 0;
+                c = ((sx + c) % 4 + 4) % 4;
+                for (int r = 0; r < 3; ++r)
+                {
+                    int d = fDRC(r, c);
+                    CT[d] *= sxr;
+                    CO[d].first += 4 * sxsi;
+                    CO[d].second += -1 * sxsi;
+                }
+                priorX += sxsi;
             }
-            sxit -= sxsi;
         }
 
-        auto syit = sy;
-        auto sysi = sy > 0 ? 1 : -1;
-        auto syr = sy > 0 ? dRatio : 1 / dRatio;
-        while (syit != 0)
+        if (priorY != sy)
         {
-            auto r = (sysi > 0) ? -1 : 0;
-            r = ((r + syit) % 3 + 3) % 3;
-            for (int c = 0; c < 4; ++c)
+            auto ydir = sy > priorY;
+            auto sysi = ydir ? 1 : -1;
+            auto syr = ydir ? dRatio : 1 / dRatio;
+            while (priorY != sy)
             {
-                int d = fDRC(r, c);
-                CT[d] *= syr;
-                CO[d].second += 3 * sysi;
+                auto r = ydir ? -1 : 0;
+                r = ((sy + r) % 3 + 3) % 3;
+                for (int c = 0; c < 4; ++c)
+                {
+                    int d = fDRC(r, c);
+                    CT[d] *= syr;
+                    CO[d].second += 3 * sysi;
+                }
+                priorY += sysi;
             }
-            syit -= sysi;
         }
     }
 
-    double getTuning(const int d) { return duoRatios[d] * CT[d]; }
-    coord_t getCoord(const int d)
+    double getTuning(const int d) const { return duoRatios[d] * CT[d]; }
+    coord_t getCoord(const int d) const
     {
         auto [cx, cy] = duoCoords[d];
         cx += CO[d].first;
@@ -278,23 +286,24 @@ struct SyntonicData
   protected:
     static constexpr double sRatio = 81.0 / 80.0;
     static constexpr double dRatio = 125.0 / 128.0;
-    // int priorX{0}, priorY{0};
+    int priorX{0}, priorY{0};
 
     std::array<double, 12> CT;  // Current Tuning offsets
     std::array<coord_t, 12> CO; // Current Co-Ordinates
 
-    double duoRatios[12]{1.0,         16.0 / 15.0, 9.0 / 8.0, 6.0 / 5.0, 5.0 / 4.0, 4.0 / 3.0,
-                         45.0 / 32.0, 3.0 / 2.0,   8.0 / 5.0, 5.0 / 3.0, 9.0 / 5.0, 15.0 / 8.0};
-    coord_t duoCoords[12]{{0, 0}, {-1, -1}, {2, 0},  {1, -1}, {0, 1},  {-1, 0},
-                          {2, 1}, {1, 0},   {0, -1}, {-1, 1}, {2, -1}, {1, 1}};
+    static constexpr double duoRatios[12]{1.0,       16.0 / 15.0, 9.0 / 8.0,   6.0 / 5.0,
+                                          5.0 / 4.0, 4.0 / 3.0,   45.0 / 32.0, 3.0 / 2.0,
+                                          8.0 / 5.0, 5.0 / 3.0,   9.0 / 5.0,   15.0 / 8.0};
+    static constexpr coord_t duoCoords[12]{{0, 0}, {-1, -1}, {2, 0},  {1, -1}, {0, 1},  {-1, 0},
+                                           {2, 1}, {1, 0},   {0, -1}, {-1, 1}, {2, -1}, {1, 1}};
 
-    int DRC[3][4] = {
+    static constexpr int DRC[3][4] = {
         {1, 8, 3, 10},
         {5, 0, 7, 2},
         {9, 4, 11, 6},
     };
     // find degree by row/column
-    int fDRC(const int r, const int c) const { return DRC[r][c]; }
+    static int fDRC(const int r, const int c) { return DRC[r][c]; }
 };
 
 } // namespace lattices::scaledata
