@@ -240,6 +240,8 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
                         continue;
 
                     int degree = ((7 * w + 4 * v) % 12 + 12) % 12;
+                    int degreeTransposed{0};
+                    int vis{0};
                     if (enabled) // get our bearings so we know how brightly to draw stuff
                     {
                         std::pair<int, int> C = {w, v};         // current sphere
@@ -253,6 +255,16 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
                         hDist = std::max(dist, calcDist(H));
                         uDist = std::max(dist, calcDist(U));
                         dDist = std::max(dist, calcDist(D));
+
+                        for (int d = 0; d < 12; ++d)
+                        {
+                            if (proc->coOrds[d] == C)
+                            {
+                                degreeTransposed = d;
+                                vis = proc->currentVisitors->CC[d].nameIndex;
+                                break;
+                            }
+                        }
                     }
                     else // if we're disabled everything is kinda dim
                     {
@@ -296,18 +308,20 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
                                  2 * ellipseRadius + shadowSpacing2, 2 * JIRadius + shadowSpacing2);
 
                     // Select gradient colour
-                    int vis = proc->currentVisitors->CC[degree].nameIndex;
                     juce::ColourGradient gradient{};
 
                     bool rcs = (vis > 1 && vis != 17);
-
-                    if (!(enabled && dist == 0 && rcs))
+                    if (degree == 0)
                     {
-                        gradient = Gradients.latticeGrad(v, x, degree);
+                        gradient = Gradients.rootGrad(x);
+                    }
+                    else if (enabled && dist == 0 && rcs)
+                    {
+                        gradient = Gradients.commaGrad(vis, x);
                     }
                     else
                     {
-                        gradient = Gradients.commaGrad(vis, x);
+                        gradient = Gradients.latticeGrad(v, x);
                     }
 
                     alpha = 1.f / (std::sqrt(dist) + 1);
@@ -333,7 +347,7 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
                     // }
                     // auto s = std::to_string(n) + "/" + std::to_string(d);
 
-                    auto s = nameNoteOnLattice(w, v, degree, dist == 0);
+                    auto s = nameNoteOnLattice(w, v, degreeTransposed, dist == 0);
                     tG.setColour(juce::Colours::ghostwhite.withAlpha(alpha));
                     tG.setFont(stoke);
 
@@ -612,11 +626,11 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
 
     void paint(juce::Graphics &g) override
     {
-        auto b = this->getLocalBounds();
+        auto bounds = this->getLocalBounds();
         g.setColour(juce::Colour{.475f, 1.f, 0.05f, 1.f});
-        g.fillRect(b);
+        g.fillRect(bounds);
         g.setColour(juce::Colours::ghostwhite);
-        g.drawRect(b);
+        g.drawRect(bounds);
 
         bool enabled = this->isEnabled();
         for (int d = 0; d < 12; ++d)

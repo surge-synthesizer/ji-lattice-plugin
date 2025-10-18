@@ -632,10 +632,10 @@ void LatticesProcessor::returnToOrigin()
         syntonicGroup.resetToDefault();
     }
 
-    onOriginReturn = true;
     vParam->beginChangeGesture();
     vParam->setValueNotifyingHost(0.0);
     vParam->endChangeGesture();
+    onOriginReturn = true;
     xParam->beginChangeGesture();
     xParam->setValueNotifyingHost(0.5);
     xParam->endChangeGesture();
