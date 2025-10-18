@@ -79,7 +79,7 @@ struct EveryComponent : public juce::Component, juce::MultiTimer
 
   private:
     LatticesProcessor &processor;
-    melatonin::Inspector inspector{*this, false};
+    // melatonin::Inspector inspector{*this, false};
     //    juce::ComponentBoundsConstrainer constraints;
 
     int width{0}, height{0};
