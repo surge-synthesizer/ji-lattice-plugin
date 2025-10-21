@@ -64,7 +64,7 @@ class LatticesProcessor : public juce::AudioProcessor,
     bool newVisitorGroup();
     void resetVisitorGroup();
     void deleteVisitorGroup(int idx);
-    void selectVisitorGroup(int g);
+    void selectVisitorGroup(int g, bool toggle = false);
     void editVisitorsFromUI(bool editing, int g);
     void updateVisitor(int d, int v);
     void updateDegreeCoord(int d);
@@ -87,7 +87,7 @@ class LatticesProcessor : public juce::AudioProcessor,
     std::atomic<bool> changed{false};
     std::atomic<int> numClients{0};
 
-    int homeCC = 5;
+    int homeCC = 14;
     int listenOnChannel = 1;
 
     // key, frequency and name of the origin note

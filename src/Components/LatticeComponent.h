@@ -23,6 +23,7 @@
 #include <array>
 #include <cmath>
 #include <climits>
+#include <string>
 
 #include <juce_animation/juce_animation.h>
 #include <melatonin_blur/melatonin_blur.h>
@@ -120,37 +121,45 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
 
     bool keyPressed(const juce::KeyPress &key) override
     {
-        if (key == juce::KeyPress::returnKey)
+        if (key == juce::KeyPress::returnKey && !homeFlag)
         {
+            homeFlag = true;
             proc->shift(0);
             return true;
         }
-
         if (key == juce::KeyPress::leftKey && !westFlag)
         {
             westFlag = true;
             proc->shift(1);
             return true;
         }
-
         if (key == juce::KeyPress::rightKey && !eastFlag)
         {
             eastFlag = true;
             proc->shift(2);
             return true;
         }
-
         if (key == juce::KeyPress::upKey && !northFlag)
         {
             northFlag = true;
             proc->shift(3);
             return true;
         }
-
         if (key == juce::KeyPress::downKey && !southFlag)
         {
             southFlag = true;
             proc->shift(4);
+            return true;
+        }
+
+        auto k = std::to_wstring(key.getTextCharacter());
+        auto n = std::stoi(k) - 48;
+        if (n >= 0 && n <= 9 && !visitorFlag)
+        {
+            visitorFlag = true;
+            if (n == 0)
+                n += 10;
+            proc->selectVisitorGroup(n, true);
             return true;
         }
 
@@ -161,10 +170,12 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
     {
         if (timerID == 0)
         {
+            homeFlag = false;
             westFlag = false;
             eastFlag = false;
             northFlag = false;
             southFlag = false;
+            visitorFlag = false;
         }
 
         if (timerID == 1)
@@ -586,7 +597,8 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
     std::unique_ptr<juce::ArrowButton> northButton;
     std::unique_ptr<juce::ArrowButton> southButton;
 
-    bool westFlag{false}, eastFlag{false}, northFlag{false}, southFlag{false};
+    bool homeFlag{false}, westFlag{false}, eastFlag{false}, northFlag{false}, southFlag{false},
+        visitorFlag{false};
 
     std::unique_ptr<juce::ShapeButton> homeButton;
 };
@@ -640,7 +652,7 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
 
         int shadowSpacing1 = JIRadius / 20;
         int shadowSpacing2 = JIRadius / 10;
-        auto a = enabled ? 75.f : .5f;
+        auto a = enabled ? .75f : .5f;
 
         whiteShadow.setColor(juce::Colours::ghostwhite.withAlpha(a));
         blackShadow.setColor(juce::Colours::black.withAlpha(a));

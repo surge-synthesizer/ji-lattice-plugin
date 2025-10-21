@@ -549,7 +549,7 @@ void LatticesProcessor::resetVisitorGroup()
 }
 void LatticesProcessor::deleteVisitorGroup(int idx)
 {
-    if (idx == 0 || mode == Syntonic)
+    if (idx <= 0 || idx >= numVisitorGroups || mode == Syntonic)
         return; // illegal, shouldn't happen
 
     currentVisitors = &visitorGroups[idx - 1];
@@ -563,12 +563,20 @@ void LatticesProcessor::deleteVisitorGroup(int idx)
 
     locate();
 }
-void LatticesProcessor::selectVisitorGroup(int g)
+void LatticesProcessor::selectVisitorGroup(int g, bool toggle)
 {
-    if (mode == Syntonic)
+    if (mode == Syntonic || g <= 0 || g >= numVisitorGroups)
         return;
 
-    currentVisitors = &visitorGroups[g];
+    int index = currentVisitors - &visitorGroups[0];
+    if (toggle && index == g)
+    {
+        currentVisitors = &visitorGroups[0];
+    }
+    else
+    {
+        currentVisitors = &visitorGroups[g];
+    }
 
     locate();
 }
