@@ -262,8 +262,9 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
         int nV = std::ceil(getHeight() / vhDistance) + yS;
         int nW = std::ceil(getWidth() / vhDistance) + xS;
 
-        int dist{0}, hDist{0}, uDist{0}, dDist{0}, hVis{0}, uVis{0}, dVis{0};
-
+        int dist{0}, hDist{0}, uDist{0}, dDist{0};
+        float thickness = JIRadius / 9.f;
+        float alpha{0.f};
 
         juce::Image Lines{juce::Image::ARGB, getWidth(), getHeight(), true};
         juce::Image Spheres{juce::Image::ARGB, getWidth(), getHeight(), true};
@@ -288,7 +289,7 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
 
                     int degree = ((7 * w + 4 * v) % 12 + 12) % 12;
                     int degreeTransposed{0};
-                    int vis{0};
+                    int vis{0}, hVis{0}, uVis{0}, dVis{0};
                     if (enabled) // get our bearings so we know how brightly to draw stuff
                     {
                         std::pair<int, int> C = {w, v};         // current sphere
@@ -347,16 +348,11 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
                     }
                     else // if we're disabled everything is kinda dim
                     {
-                        dist = 2;
-                        hDist = 2;
-                        uDist = 2;
-                        dDist = 2;
+                        dist = 3;
+                        hDist = 3;
+                        uDist = 3;
+                        dDist = 3;
                     }
-
-                    // those numbers will set this
-                    float alpha{};
-
-                    float thickness = JIRadius / 9.f;
 
                     // Horizontal Line
                     alpha = 1.f / (std::sqrt(hDist) + 1);
