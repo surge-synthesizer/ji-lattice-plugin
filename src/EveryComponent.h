@@ -133,13 +133,9 @@ struct EveryComponent : public juce::Component, juce::MultiTimer
                 visOpen = edvi;
                 setOpen = edse;
                 resized();
-            }
-
-            if (processor.stopVisitorChanges != edvi)
-            {
+                latticeComponent->setEnabled(!edvi && !edse);
                 latticeComponent->repaint();
             }
-            latticeComponent->setEnabled(!edvi);
         }
     }
 };
