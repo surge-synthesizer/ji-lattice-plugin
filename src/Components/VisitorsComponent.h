@@ -33,9 +33,9 @@ struct VisitorsComponent : public juce::Component
 
         for (int i = 0; i < 7; ++i)
         {
-            commaButtons.add(new juce::ShapeButton("option" + std::to_string(i), n, o, o));
+            commaButtons.push_back(std::make_unique<juce::ShapeButton>("option" + std::to_string(i), n, o, o));
             commaButtons[i]->setShape(circle, true, true, false);
-            addAndMakeVisible(commaButtons[i]);
+            addAndMakeVisible(*commaButtons[i]);
             commaButtons[i]->setRadioGroupId(2);
             commaButtons[i]->onClick = [this] { selectComma(); };
             commaButtons[i]->setClickingTogglesState(true);
@@ -247,7 +247,7 @@ struct VisitorsComponent : public juce::Component
     std::unique_ptr<lattice_t> miniLattice;
 
     juce::Path circle;
-    juce::OwnedArray<juce::ShapeButton> commaButtons;
+    std::vector<std::unique_ptr<juce::ShapeButton>> commaButtons;
 
     juce::Colour menuColour{.475f, .5f, 0.2f, 1.f};
     juce::Colour outlineColour{juce::Colours::ghostwhite};

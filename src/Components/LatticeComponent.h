@@ -695,9 +695,9 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
 
         for (int d = 0; d < 12; ++d)
         {
-            buttons.add(new juce::ShapeButton(std::to_string(d), n, o, o));
+            buttons.push_back(std::make_unique<juce::ShapeButton>(std::to_string(d), n, o, o));
             buttons[d]->setShape(circleShape, true, true, false);
-            addAndMakeVisible(buttons[d]);
+            addAndMakeVisible(*buttons[d]);
             buttons[d]->setRadioGroupId(1);
             buttons[d]->onClick = [this] { whichNote(); };
             buttons[d]->setClickingTogglesState(true);
@@ -864,7 +864,7 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
   protected:
     buttonUser *buttonParent;
     juce::Path circleShape;
-    juce::OwnedArray<juce::ShapeButton> buttons;
+    std::vector<std::unique_ptr<juce::ShapeButton>> buttons;
 
     melatonin::DropShadow selectedHighlight = {juce::Colours::ghostwhite, 18};
 
