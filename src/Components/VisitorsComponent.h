@@ -33,7 +33,8 @@ struct VisitorsComponent : public juce::Component
 
         for (int i = 0; i < 7; ++i)
         {
-            commaButtons.push_back(std::make_unique<juce::ShapeButton>("option" + std::to_string(i), n, o, o));
+            commaButtons.push_back(
+                std::make_unique<juce::ShapeButton>("option" + std::to_string(i), n, o, o));
             commaButtons[i]->setShape(circle, true, true, false);
             addAndMakeVisible(*commaButtons[i]);
             commaButtons[i]->setRadioGroupId(2);

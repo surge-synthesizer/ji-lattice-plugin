@@ -24,7 +24,8 @@ struct OriginComponent : public juce::Component, juce::Timer
 
         for (int i = 0; i < 12; ++i)
         {
-            key.push_back(std::make_unique<juce::ShapeButton>(std::to_string(i), trans, over, over));
+            key.push_back(
+                std::make_unique<juce::ShapeButton>(std::to_string(i), trans, over, over));
             key[i]->setShape(keyshape, true, true, false);
             addAndMakeVisible(*key[i]);
             key[i]->setRadioGroupId(1);
