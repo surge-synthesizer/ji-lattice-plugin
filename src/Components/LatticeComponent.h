@@ -41,30 +41,46 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
         juce::Path circle{};
         circle.addEllipse(0, 0, 24, 24);
         homeButton->setShape(circle, true, true, false);
+        homeButton->setWantsKeyboardFocus(false);
 
         westButton = std::make_unique<juce::ArrowButton>("West", .5f, gwc);
         addAndMakeVisible(*westButton);
         westButton->onClick = [this] { proc->shift(1); };
+        westButton->setWantsKeyboardFocus(false);
 
         eastButton = std::make_unique<juce::ArrowButton>("East", 0.f, gwc);
         addAndMakeVisible(*eastButton);
         eastButton->onClick = [this] { proc->shift(2); };
+        eastButton->setWantsKeyboardFocus(false);
 
         northButton = std::make_unique<juce::ArrowButton>("North", .75f, gwc);
         addAndMakeVisible(*northButton);
         northButton->onClick = [this] { proc->shift(3); };
+        northButton->setWantsKeyboardFocus(false);
 
         southButton = std::make_unique<juce::ArrowButton>("South", .25f, gwc);
         addAndMakeVisible(*southButton);
         southButton->onClick = [this] { proc->shift(4); };
+        southButton->setWantsKeyboardFocus(false);
 
         zoomOutButton = std::make_unique<juce::TextButton>("-");
         addAndMakeVisible(*zoomOutButton);
         zoomOutButton->onClick = [this] { zoomOut(); };
+        zoomOutButton->setWantsKeyboardFocus(false);
 
         zoomInButton = std::make_unique<juce::TextButton>("+");
         addAndMakeVisible(*zoomInButton);
         zoomInButton->onClick = [this] { zoomIn(); };
+        zoomInButton->setWantsKeyboardFocus(false);
+
+        for (int i = 0; i < 32; ++i)
+        {
+            visButtons.emplace_back(std::make_unique<juce::TextButton>(std::to_string(i + 1)));
+            addAndMakeVisible(*visButtons[i]);
+            visButtons[i]->setClickingTogglesState(true);
+            visButtons[i]->onClick = [this, i] { proc->selectVisitorGroup(i + 1, true); };
+            visButtons[i]->setWantsKeyboardFocus(false);
+        }
 
         updater.addAnimator(follow);
         setWantsKeyboardFocus(true);
@@ -115,8 +131,13 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
         northButton->setBounds(b.getRight() - 71, b.getBottom() - 104, 24, 24);
         southButton->setBounds(b.getRight() - 71, b.getBottom() - 38, 24, 24);
 
-        zoomOutButton->setBounds(20, b.getBottom() - 55, 35, 35);
-        zoomInButton->setBounds(60, b.getBottom() - 55, 35, 35);
+        for (int i = 0; i < visButtons.size(); ++i)
+        {
+            visButtons[i]->setBounds(10 + i * 40, b.getBottom() - 45, 35, 35);
+        }
+
+        zoomOutButton->setBounds(b.getRight() - 90, 45, 35, 35);
+        zoomInButton->setBounds(b.getRight() - 50, 45, 35, 35);
     }
 
     bool keyPressed(const juce::KeyPress &key) override
@@ -210,6 +231,20 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
     void paint(juce::Graphics &g) override
     {
         bool enabled = this->isEnabled();
+
+        if (enabled)
+        {
+            int cv= proc->getCurrentVisitorGroupIndex();
+            int idx{1};
+            int nv = static_cast<int>(proc->visitorGroups.size());
+            for (const auto &v : visButtons)
+            {
+                v->setToggleState(idx == cv, juce::dontSendNotification);
+                v->setEnabled(idx < nv);
+                v->setVisible(idx < nv);
+                idx++;
+            }
+        }
 
         int shadowSpacing1 = JIRadius / 20;
         int shadowSpacing2 = JIRadius / 10;
@@ -489,7 +524,7 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
     std::unique_ptr<juce::ArrowButton> northButton;
     std::unique_ptr<juce::ArrowButton> southButton;
 
-    const std::vector<std::unique_ptr<juce::TextButton>> visButtons;
+    std::vector<std::unique_ptr<juce::TextButton>> visButtons;
 
     juce::VBlankAnimatorUpdater updater{this};
     juce::Animator follow =

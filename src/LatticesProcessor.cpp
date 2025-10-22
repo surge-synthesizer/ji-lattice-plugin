@@ -576,8 +576,7 @@ void LatticesProcessor::selectVisitorGroup(int g, bool toggle)
     if (mode == Syntonic || g < 0 || g >= numVisitorGroups)
         return;
 
-    int index = currentVisitors - &visitorGroups[0];
-    if (index == g)
+    if (g == getCurrentVisitorGroupIndex())
     {
         vParam->beginChangeGesture();
         vParam->setValueNotifyingHost(toVisitorParam(0));
@@ -589,6 +588,10 @@ void LatticesProcessor::selectVisitorGroup(int g, bool toggle)
         vParam->setValueNotifyingHost(toVisitorParam(g));
         vParam->endChangeGesture();
     }
+}
+int LatticesProcessor::getCurrentVisitorGroupIndex()
+{
+    return currentVisitors - &visitorGroups[0];
 }
 void LatticesProcessor::preventVisitorChangesFromProcessor(bool prevent)
 {

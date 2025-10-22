@@ -66,6 +66,7 @@ class LatticesProcessor : public juce::AudioProcessor,
     void deleteVisitorGroup(int idx);
     void selectVisitorGroup(int g);
     void selectVisitorGroup(int g, bool toggle);
+    int getCurrentVisitorGroupIndex();
     void preventVisitorChangesFromProcessor(bool editing);
     void updateVisitor(int d, int v);
     void updateDegreeCoord(int d);
