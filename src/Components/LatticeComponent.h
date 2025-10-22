@@ -262,7 +262,8 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
         int nV = std::ceil(getHeight() / vhDistance) + yS;
         int nW = std::ceil(getWidth() / vhDistance) + xS;
 
-        int dist{0}, hDist{0}, uDist{0}, dDist{0};
+        int dist{0}, hDist{0}, uDist{0}, dDist{0}, hVis{0}, uVis{0}, dVis{0};
+
 
         juce::Image Lines{juce::Image::ARGB, getWidth(), getHeight(), true};
         juce::Image Spheres{juce::Image::ARGB, getWidth(), getHeight(), true};
@@ -295,21 +296,53 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
                         std::pair<int, int> U = {w, v + 1};     // next one up
                         std::pair<int, int> D = {w + 1, v - 1}; // next one down
 
+                        for (int d = 0; d < 12; ++d)
+                        {
+                            auto dco = proc->coOrds[d];
+                            if (C == dco)
+                            {
+                                degreeTransposed = d;
+                                vis = proc->currentVisitors->CC[d].nameIndex;
+                                continue;
+                            }
+                            if (H == dco)
+                            {
+                                hVis = proc->currentVisitors->CC[d].nameIndex;
+                                continue;
+                            }
+                            if (U == dco)
+                            {
+                                uVis = proc->currentVisitors->CC[d].nameIndex;
+                                continue;
+                            }
+                            if (D == dco)
+                            {
+                                dVis = proc->currentVisitors->CC[d].nameIndex;
+                            }
+                        }
                         // ok, so how far is this sphere from a lit up one?
                         dist = calcDist(C);
-                        // and what about its lines?
+                        // and what about its neighbors?
                         hDist = std::max(dist, calcDist(H));
                         uDist = std::max(dist, calcDist(U));
                         dDist = std::max(dist, calcDist(D));
 
-                        for (int d = 0; d < 12; ++d)
+                        // If NOT (this sphere and its neighbor are both normal,
+                        // or they have the same visitor).
+                        // In other words: If one of these has a visitor from
+                        // some dimension, and the other does not.
+                        // We will then draw the lines dimmer to emphasize the disconnect.
+                        if (!((vis < 2 && hVis < 2) || vis == hVis))
                         {
-                            if (proc->coOrds[d] == C)
-                            {
-                                degreeTransposed = d;
-                                vis = proc->currentVisitors->CC[d].nameIndex;
-                                break;
-                            }
+                            hDist += 5;
+                        }
+                        if (!((vis < 2 && uVis < 2) || vis == uVis))
+                        {
+                            uDist += 5;
+                        }
+                        if (!((vis < 2 && dVis < 2) || vis == dVis))
+                        {
+                            dDist += 5;
                         }
                     }
                     else // if we're disabled everything is kinda dim
