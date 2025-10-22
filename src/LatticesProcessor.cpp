@@ -589,10 +589,7 @@ void LatticesProcessor::selectVisitorGroup(int g, bool toggle)
         vParam->endChangeGesture();
     }
 }
-int LatticesProcessor::getCurrentVisitorGroupIndex()
-{
-    return currentVisitors - &visitorGroups[0];
-}
+int LatticesProcessor::getCurrentVisitorGroupIndex() { return currentVisitors - &visitorGroups[0]; }
 void LatticesProcessor::preventVisitorChangesFromProcessor(bool prevent)
 {
     if (prevent == stopVisitorChanges)

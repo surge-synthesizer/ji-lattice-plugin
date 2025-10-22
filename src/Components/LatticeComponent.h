@@ -50,10 +50,9 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
         for (int i = 0; i < 4; ++i)
         {
             addAndMakeVisible(*arrowButtons[i]);
-            arrowButtons[i]->onClick = [this, i] { proc->shift(i+1); };
+            arrowButtons[i]->onClick = [this, i] { proc->shift(i + 1); };
             arrowButtons[i]->setWantsKeyboardFocus(false);
         }
-
 
         zoomOutButton = std::make_unique<juce::TextButton>("-");
         addAndMakeVisible(*zoomOutButton);
@@ -237,7 +236,7 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
         zoomOutButton->setVisible(enabled);
         if (enabled)
         {
-            int cv= proc->getCurrentVisitorGroupIndex();
+            int cv = proc->getCurrentVisitorGroupIndex();
             int idx{1};
             int nv = static_cast<int>(proc->visitorGroups.size());
             for (const auto &v : visButtons)
