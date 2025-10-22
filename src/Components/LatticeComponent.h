@@ -374,15 +374,122 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
 
         auto b = this->getLocalBounds();
 
-        g.setColour(bg);
+        g.setColour(lattices::colours::background);
         g.fillRect(b.getRight() - 110, b.getBottom() - 110, 101, 101);
         g.setColour(juce::Colours::ghostwhite);
         g.drawRect(b.getRight() - 110, b.getBottom() - 110, 101, 101);
     }
 
+  protected:
+    LatticesProcessor *proc;
+    JIMath jim;
+
+    int JIRadius{26};
+    int ellipseRadius = JIRadius * 1.15;
+
+    juce::ReferenceCountedObjectPtr<juce::Typeface> Stoke{juce::Typeface::createSystemTypefaceFor(
+        LatticesBinary::Stoke_otf, LatticesBinary::Stoke_otfSize)};
+    juce::Font stoke{juce::FontOptions(Stoke).withPointHeight(JIRadius)};
+
+    lattices::colours::GradientProvider Gradients;
+    melatonin::DropShadow blackShadow = {juce::Colours::black, JIRadius / 3};
+    melatonin::DropShadow whiteShadow = {juce::Colours::ghostwhite, JIRadius / 2};
+
+    // how far is a given coordinate from the currently active ones?
+    virtual int calcDist(std::pair<int, int> xy)
+    {
+        int res{INT_MAX};
+
+        for (int i = 0; i < 12; ++i)
+        {
+            int tx = std::abs(xy.first - proc->coOrds[i].first);
+            int ty = std::abs(xy.second - proc->coOrds[i].second);
+            int sum = tx + ty;
+            if (sum < res)
+                res = sum;
+        }
+
+        return res;
+    }
+
+    std::pair<uint64_t, uint64_t> calculateCell(int fifths, int thirds)
+    {
+        uint64_t n{1}, d{1};
+
+        while (thirds > 0)
+        {
+            auto [nn, dd] = jim.multiplyRatio(n, d, 5, 4);
+            n = nn;
+            d = dd;
+            thirds--;
+        }
+
+        while (thirds < 0)
+        {
+            auto [nn, dd] = jim.divideRatio(n, d, 5, 4);
+            n = nn;
+            d = dd;
+            thirds++;
+        }
+
+        while (fifths > 0)
+        {
+            auto [nn, dd] = jim.multiplyRatio(n, d, 3, 2);
+            n = nn;
+            d = dd;
+            fifths--;
+        }
+
+        while (fifths < 0)
+        {
+            auto [nn, dd] = jim.divideRatio(n, d, 3, 2);
+            n = nn;
+            d = dd;
+            fifths++;
+        }
+
+        auto g = std::gcd(n, d);
+        n = n / g;
+        d = d / g;
+
+        return {n, d};
+    }
+
+    virtual void reCalculateCell(uint64_t &n, uint64_t &d, int degree)
+    {
+        auto major = lattices::scaledata::isDegreeMajor[degree];
+
+        // take out one syntonic comma, add in the visiting, reduce by GDC
+        auto synt = lattices::scaledata::commas[lattices::scaledata::syntonic].getFraction(!major);
+        n *= synt.first;
+        d *= synt.second;
+        auto vc = proc->currentVisitors->CC[degree].getFraction(degree);
+        auto [nn, nd] = jim.multiplyRatio(n, d, vc.first, vc.second);
+        auto gcd = std::gcd(nn, nd);
+
+        n = nn / gcd;
+        d = nd / gcd;
+    }
+
   private:
     int syntonicDrift{0}, diesisDrift{0}, procX{0}, procY{0};
     float xShift{0}, yShift{0}, priorX{0}, priorY{0}, goalX{0}, goalY{0};
+
+    bool homeFlag{false}, westFlag{false}, eastFlag{false}, northFlag{false}, southFlag{false},
+        visitorFlag{false};
+
+    const std::string noteNames[7] = {"F", "C", "G", "D", "A", "E", "B"};
+
+    std::unique_ptr<juce::TextButton> zoomOutButton;
+    std::unique_ptr<juce::TextButton> zoomInButton;
+
+    std::unique_ptr<juce::ShapeButton> homeButton;
+    std::unique_ptr<juce::ArrowButton> westButton;
+    std::unique_ptr<juce::ArrowButton> eastButton;
+    std::unique_ptr<juce::ArrowButton> northButton;
+    std::unique_ptr<juce::ArrowButton> southButton;
+
+    const std::vector<std::unique_ptr<juce::TextButton>> visButtons;
 
     juce::VBlankAnimatorUpdater updater{this};
     juce::Animator follow =
@@ -404,8 +511,6 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
 
         // if (follow.isComplete())
     }
-
-    std::string noteNames[7] = {"F", "C", "G", "D", "A", "E", "B"};
 
     std::string nameNoteOnLattice(int x, int y, int degree, bool lit = false)
     {
@@ -494,113 +599,6 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
 
         return name;
     }
-
-  protected:
-    LatticesProcessor *proc;
-
-    int JIRadius{26};
-    int ellipseRadius = JIRadius * 1.15;
-    lattices::colours::GradientProvider Gradients;
-    JIMath jim;
-
-    juce::ReferenceCountedObjectPtr<juce::Typeface> Stoke{juce::Typeface::createSystemTypefaceFor(
-        LatticesBinary::Stoke_otf, LatticesBinary::Stoke_otfSize)};
-    juce::Font stoke{juce::FontOptions(Stoke).withPointHeight(JIRadius)};
-
-    melatonin::DropShadow blackShadow = {juce::Colours::black, JIRadius / 3};
-    melatonin::DropShadow whiteShadow = {juce::Colours::ghostwhite, JIRadius / 2};
-
-    // how far is a given coordinate from the currently active ones?
-    virtual int calcDist(std::pair<int, int> xy)
-    {
-        int res{INT_MAX};
-
-        for (int i = 0; i < 12; ++i)
-        {
-            int tx = std::abs(xy.first - proc->coOrds[i].first);
-            int ty = std::abs(xy.second - proc->coOrds[i].second);
-            int sum = tx + ty;
-            if (sum < res)
-                res = sum;
-        }
-
-        return res;
-    }
-
-    juce::Colour bg = juce::Colour{.475f, 1.f, 0.05f, 1.f};
-
-    std::pair<uint64_t, uint64_t> calculateCell(int fifths, int thirds)
-    {
-        uint64_t n{1}, d{1};
-
-        while (thirds > 0)
-        {
-            auto [nn, dd] = jim.multiplyRatio(n, d, 5, 4);
-            n = nn;
-            d = dd;
-            thirds--;
-        }
-
-        while (thirds < 0)
-        {
-            auto [nn, dd] = jim.divideRatio(n, d, 5, 4);
-            n = nn;
-            d = dd;
-            thirds++;
-        }
-
-        while (fifths > 0)
-        {
-            auto [nn, dd] = jim.multiplyRatio(n, d, 3, 2);
-            n = nn;
-            d = dd;
-            fifths--;
-        }
-
-        while (fifths < 0)
-        {
-            auto [nn, dd] = jim.divideRatio(n, d, 3, 2);
-            n = nn;
-            d = dd;
-            fifths++;
-        }
-
-        auto g = std::gcd(n, d);
-        n = n / g;
-        d = d / g;
-
-        return {n, d};
-    }
-
-    virtual void reCalculateCell(uint64_t &n, uint64_t &d, int degree)
-    {
-        auto major = lattices::scaledata::isDegreeMajor[degree];
-
-        // take out one syntonic comma, add in the visiting, reduce by GDC
-        auto synt = lattices::scaledata::commas[lattices::scaledata::syntonic].getFraction(!major);
-        n *= synt.first;
-        d *= synt.second;
-        auto vc = proc->currentVisitors->CC[degree].getFraction(degree);
-        auto [nn, nd] = jim.multiplyRatio(n, d, vc.first, vc.second);
-        auto gcd = std::gcd(nn, nd);
-
-        n = nn / gcd;
-        d = nd / gcd;
-    }
-
-  private:
-    std::unique_ptr<juce::TextButton> zoomOutButton;
-    std::unique_ptr<juce::TextButton> zoomInButton;
-
-    std::unique_ptr<juce::ArrowButton> westButton;
-    std::unique_ptr<juce::ArrowButton> eastButton;
-    std::unique_ptr<juce::ArrowButton> northButton;
-    std::unique_ptr<juce::ArrowButton> southButton;
-
-    bool homeFlag{false}, westFlag{false}, eastFlag{false}, northFlag{false}, southFlag{false},
-        visitorFlag{false};
-
-    std::unique_ptr<juce::ShapeButton> homeButton;
 };
 
 // =================================================================================================
