@@ -65,7 +65,9 @@ class LatticesProcessor : public juce::AudioProcessor,
     void resetVisitorGroup();
     void deleteVisitorGroup(int idx);
     void selectVisitorGroup(int g);
-    void editVisitorsFromUI(bool editing, int g);
+    void selectVisitorGroup(int g, bool toggle);
+    int getCurrentVisitorGroupIndex();
+    void preventVisitorChangesFromProcessor(bool editing);
     void updateVisitor(int d, int v);
     void updateDegreeCoord(int d);
     void updateSyntonicCoord(int d);
@@ -87,7 +89,7 @@ class LatticesProcessor : public juce::AudioProcessor,
     std::atomic<bool> changed{false};
     std::atomic<int> numClients{0};
 
-    int homeCC = 5;
+    int homeCC = 14;
     int listenOnChannel = 1;
 
     // key, frequency and name of the origin note
@@ -106,8 +108,7 @@ class LatticesProcessor : public juce::AudioProcessor,
     std::vector<lattices::scaledata::ScaleData> visitorGroups;
     lattices::scaledata::ScaleData *currentVisitors;
     uint8_t numVisitorGroups{0};
-    bool editingVisitors{false};
-    bool suspendedVisitors{false};
+    bool stopVisitorChanges{false};
     uint8_t priorSelectedGroup{0};
     bool onOriginReturn{false};
 
@@ -154,26 +155,26 @@ class LatticesProcessor : public juce::AudioProcessor,
     // define these here lest the lambda functions
     // below throw an annoying "not defined" warning
 
-    double toVisitorParam(int input)
+    double toVisitorParam(int input) const
     {
         if (visitorGroups.size() <= 1)
             return 0.0;
         return static_cast<double>(input) / (visitorGroups.size() - 1);
     }
 
-    inline int fromVisitorParam(float input)
+    inline int fromVisitorParam(float input) const
     {
         if (visitorGroups.size() <= 1)
             return 0;
         return static_cast<int>(std::round(input * (visitorGroups.size() - 1)));
     }
 
-    inline double toXYParam(int input, bool v = false)
+    inline double toXYParam(int input, bool v = false) const
     {
         return static_cast<double>(input + maxDistance) / (2.0 * maxDistance);
     }
 
-    inline int fromXYParam(float input, bool v = false)
+    inline int fromXYParam(float input, bool v = false) const
     {
         return static_cast<int>(std::round((input - 0.5) * 2 * maxDistance));
     }
@@ -253,12 +254,12 @@ class LatticesProcessor : public juce::AudioProcessor,
     static constexpr double minFreq{100.0};
     static constexpr double maxFreq{1000.0};
 
-    inline float toFreqParam(double input)
+    static float toFreqParam(double input)
     {
         return std::sqrt((input - minFreq) / (maxFreq - minFreq));
     }
 
-    inline double fromFreqParam(float input)
+    static double fromFreqParam(float input)
     {
         return minFreq + (maxFreq - minFreq) * input * input;
     }

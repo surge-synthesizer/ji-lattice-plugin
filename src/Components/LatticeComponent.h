@@ -23,6 +23,7 @@
 #include <array>
 #include <cmath>
 #include <climits>
+#include <string>
 
 #include <juce_animation/juce_animation.h>
 #include <melatonin_blur/melatonin_blur.h>
@@ -40,30 +41,37 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
         juce::Path circle{};
         circle.addEllipse(0, 0, 24, 24);
         homeButton->setShape(circle, true, true, false);
+        homeButton->setWantsKeyboardFocus(false);
 
-        westButton = std::make_unique<juce::ArrowButton>("West", .5f, gwc);
-        addAndMakeVisible(*westButton);
-        westButton->onClick = [this] { proc->shift(1); };
-
-        eastButton = std::make_unique<juce::ArrowButton>("East", 0.f, gwc);
-        addAndMakeVisible(*eastButton);
-        eastButton->onClick = [this] { proc->shift(2); };
-
-        northButton = std::make_unique<juce::ArrowButton>("North", .75f, gwc);
-        addAndMakeVisible(*northButton);
-        northButton->onClick = [this] { proc->shift(3); };
-
-        southButton = std::make_unique<juce::ArrowButton>("South", .25f, gwc);
-        addAndMakeVisible(*southButton);
-        southButton->onClick = [this] { proc->shift(4); };
+        arrowButtons.push_back(std::make_unique<juce::ArrowButton>("West", .5f, gwc));
+        arrowButtons.push_back(std::make_unique<juce::ArrowButton>("East", 0.f, gwc));
+        arrowButtons.push_back(std::make_unique<juce::ArrowButton>("North", .75f, gwc));
+        arrowButtons.push_back(std::make_unique<juce::ArrowButton>("South", .25f, gwc));
+        for (int i = 0; i < 4; ++i)
+        {
+            addAndMakeVisible(*arrowButtons[i]);
+            arrowButtons[i]->onClick = [this, i] { proc->shift(i + 1); };
+            arrowButtons[i]->setWantsKeyboardFocus(false);
+        }
 
         zoomOutButton = std::make_unique<juce::TextButton>("-");
         addAndMakeVisible(*zoomOutButton);
         zoomOutButton->onClick = [this] { zoomOut(); };
+        zoomOutButton->setWantsKeyboardFocus(false);
 
         zoomInButton = std::make_unique<juce::TextButton>("+");
         addAndMakeVisible(*zoomInButton);
         zoomInButton->onClick = [this] { zoomIn(); };
+        zoomInButton->setWantsKeyboardFocus(false);
+
+        for (int i = 0; i < 32; ++i)
+        {
+            visButtons.emplace_back(std::make_unique<juce::TextButton>(std::to_string(i + 1)));
+            addAndMakeVisible(*visButtons[i]);
+            visButtons[i]->setClickingTogglesState(true);
+            visButtons[i]->onClick = [this, i] { proc->selectVisitorGroup(i + 1, true); };
+            visButtons[i]->setWantsKeyboardFocus(false);
+        }
 
         updater.addAnimator(follow);
         setWantsKeyboardFocus(true);
@@ -109,48 +117,61 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
         auto b = this->getLocalBounds();
 
         homeButton->setBounds(b.getRight() - 72, b.getBottom() - 72, 24, 24);
-        westButton->setBounds(b.getRight() - 104, b.getBottom() - 71, 24, 24);
-        eastButton->setBounds(b.getRight() - 38, b.getBottom() - 71, 24, 24);
-        northButton->setBounds(b.getRight() - 71, b.getBottom() - 104, 24, 24);
-        southButton->setBounds(b.getRight() - 71, b.getBottom() - 38, 24, 24);
+        arrowButtons[0]->setBounds(b.getRight() - 104, b.getBottom() - 71, 24, 24);
+        arrowButtons[1]->setBounds(b.getRight() - 38, b.getBottom() - 71, 24, 24);
+        arrowButtons[2]->setBounds(b.getRight() - 71, b.getBottom() - 104, 24, 24);
+        arrowButtons[3]->setBounds(b.getRight() - 71, b.getBottom() - 38, 24, 24);
 
-        zoomOutButton->setBounds(20, b.getBottom() - 55, 35, 35);
-        zoomInButton->setBounds(60, b.getBottom() - 55, 35, 35);
+        for (int i = 0; i < visButtons.size(); ++i)
+        {
+            visButtons[i]->setBounds(10 + i * 40, b.getBottom() - 45, 35, 35);
+        }
+
+        zoomOutButton->setBounds(b.getRight() - 90, 45, 35, 35);
+        zoomInButton->setBounds(b.getRight() - 50, 45, 35, 35);
     }
 
     bool keyPressed(const juce::KeyPress &key) override
     {
-        if (key == juce::KeyPress::returnKey)
+        if (key == juce::KeyPress::returnKey && !homeFlag)
         {
+            homeFlag = true;
             proc->shift(0);
             return true;
         }
-
         if (key == juce::KeyPress::leftKey && !westFlag)
         {
             westFlag = true;
             proc->shift(1);
             return true;
         }
-
         if (key == juce::KeyPress::rightKey && !eastFlag)
         {
             eastFlag = true;
             proc->shift(2);
             return true;
         }
-
         if (key == juce::KeyPress::upKey && !northFlag)
         {
             northFlag = true;
             proc->shift(3);
             return true;
         }
-
         if (key == juce::KeyPress::downKey && !southFlag)
         {
             southFlag = true;
             proc->shift(4);
+            return true;
+        }
+
+        auto k = std::to_wstring(key.getTextCharacter());
+        auto n = std::stoi(k) - 48;
+        if (n >= 0 && n <= 9 && !visitorFlag)
+        {
+            visitorFlag = true;
+            if (n == 0)
+                n += 10;
+            proc->selectVisitorGroup(n, true);
             return true;
         }
 
@@ -161,10 +182,12 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
     {
         if (timerID == 0)
         {
+            homeFlag = false;
             westFlag = false;
             eastFlag = false;
             northFlag = false;
             southFlag = false;
+            visitorFlag = false;
         }
 
         if (timerID == 1)
@@ -200,6 +223,39 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
     {
         bool enabled = this->isEnabled();
 
+        homeButton->setEnabled(enabled);
+        homeButton->setVisible(enabled);
+        for (const auto &a : arrowButtons)
+        {
+            a->setEnabled(enabled);
+            a->setVisible(enabled);
+        }
+        zoomInButton->setEnabled(enabled);
+        zoomInButton->setVisible(enabled);
+        zoomOutButton->setEnabled(enabled);
+        zoomOutButton->setVisible(enabled);
+        if (enabled)
+        {
+            int cv = proc->getCurrentVisitorGroupIndex();
+            int idx{1};
+            int nv = static_cast<int>(proc->visitorGroups.size());
+            for (const auto &v : visButtons)
+            {
+                v->setToggleState(idx == cv, juce::dontSendNotification);
+                v->setEnabled(idx < nv);
+                v->setVisible(idx < nv);
+                idx++;
+            }
+        }
+        else
+        {
+            for (const auto &v : visButtons)
+            {
+                v->setEnabled(false);
+                v->setVisible(false);
+            }
+        }
+
         int shadowSpacing1 = JIRadius / 20;
         int shadowSpacing2 = JIRadius / 10;
 
@@ -217,6 +273,8 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
         int nW = std::ceil(getWidth() / vhDistance) + xS;
 
         int dist{0}, hDist{0}, uDist{0}, dDist{0};
+        float thickness = JIRadius / 9.f;
+        float alpha{0.f};
 
         juce::Image Lines{juce::Image::ARGB, getWidth(), getHeight(), true};
         juce::Image Spheres{juce::Image::ARGB, getWidth(), getHeight(), true};
@@ -241,7 +299,7 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
 
                     int degree = ((7 * w + 4 * v) % 12 + 12) % 12;
                     int degreeTransposed{0};
-                    int vis{0};
+                    int vis{0}, hVis{0}, uVis{0}, dVis{0};
                     if (enabled) // get our bearings so we know how brightly to draw stuff
                     {
                         std::pair<int, int> C = {w, v};         // current sphere
@@ -249,35 +307,62 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
                         std::pair<int, int> U = {w, v + 1};     // next one up
                         std::pair<int, int> D = {w + 1, v - 1}; // next one down
 
+                        for (int d = 0; d < 12; ++d)
+                        {
+                            auto dco = proc->coOrds[d];
+                            if (C == dco)
+                            {
+                                degreeTransposed = d;
+                                vis = proc->currentVisitors->CC[d].nameIndex;
+                                continue;
+                            }
+                            if (H == dco)
+                            {
+                                hVis = proc->currentVisitors->CC[d].nameIndex;
+                                continue;
+                            }
+                            if (U == dco)
+                            {
+                                uVis = proc->currentVisitors->CC[d].nameIndex;
+                                continue;
+                            }
+                            if (D == dco)
+                            {
+                                dVis = proc->currentVisitors->CC[d].nameIndex;
+                            }
+                        }
                         // ok, so how far is this sphere from a lit up one?
                         dist = calcDist(C);
-                        // and what about its lines?
+                        // and what about its neighbors?
                         hDist = std::max(dist, calcDist(H));
                         uDist = std::max(dist, calcDist(U));
                         dDist = std::max(dist, calcDist(D));
 
-                        for (int d = 0; d < 12; ++d)
+                        // If NOT (this sphere and its neighbor are both normal,
+                        // or they have the same visitor).
+                        // In other words: If one of these has a visitor from
+                        // some dimension, and the other does not.
+                        // We will then draw the lines dimmer to emphasize the disconnect.
+                        if (!((vis < 2 && hVis < 2) || vis == hVis))
                         {
-                            if (proc->coOrds[d] == C)
-                            {
-                                degreeTransposed = d;
-                                vis = proc->currentVisitors->CC[d].nameIndex;
-                                break;
-                            }
+                            hDist += 5;
+                        }
+                        if (!((vis < 2 && uVis < 2) || vis == uVis))
+                        {
+                            uDist += 5;
+                        }
+                        if (!((vis < 2 && dVis < 2) || vis == dVis))
+                        {
+                            dDist += 5;
                         }
                     }
                     else // if we're disabled everything is kinda dim
                     {
-                        dist = 2;
-                        hDist = 2;
-                        uDist = 2;
-                        dDist = 2;
+                        dist = 3;
+                        hDist = 3;
+                        uDist = 3;
+                        dDist = 3;
                     }
-
-                    // those numbers will set this
-                    float alpha{};
-
-                    float thickness = JIRadius / 9.f;
 
                     // Horizontal Line
                     alpha = 1.f / (std::sqrt(hDist) + 1);
@@ -361,17 +446,123 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
         g.drawImageAt(Spheres, 0, 0, false);
         g.drawImageAt(Text, 0, 0, false);
 
-        auto b = this->getLocalBounds();
+        if (enabled)
+        {
+            auto b = this->getLocalBounds();
 
-        g.setColour(bg);
-        g.fillRect(b.getRight() - 110, b.getBottom() - 110, 101, 101);
-        g.setColour(juce::Colours::ghostwhite);
-        g.drawRect(b.getRight() - 110, b.getBottom() - 110, 101, 101);
+            g.setColour(lattices::colours::background);
+            g.fillRect(b.getRight() - 110, b.getBottom() - 110, 101, 101);
+            g.setColour(juce::Colours::ghostwhite);
+            g.drawRect(b.getRight() - 110, b.getBottom() - 110, 101, 101);
+        }
+    }
+
+  protected:
+    LatticesProcessor *proc;
+    JIMath jim;
+
+    int JIRadius{26};
+    int ellipseRadius = JIRadius * 1.15;
+
+    juce::ReferenceCountedObjectPtr<juce::Typeface> Stoke{juce::Typeface::createSystemTypefaceFor(
+        LatticesBinary::Stoke_otf, LatticesBinary::Stoke_otfSize)};
+    juce::Font stoke{juce::FontOptions(Stoke).withPointHeight(JIRadius)};
+
+    lattices::colours::GradientProvider Gradients;
+    melatonin::DropShadow blackShadow = {juce::Colours::black, JIRadius / 3};
+    melatonin::DropShadow whiteShadow = {juce::Colours::ghostwhite, JIRadius / 2};
+
+    // how far is a given coordinate from the currently active ones?
+    virtual int calcDist(std::pair<int, int> xy)
+    {
+        int res{INT_MAX};
+
+        for (int i = 0; i < 12; ++i)
+        {
+            int tx = std::abs(xy.first - proc->coOrds[i].first);
+            int ty = std::abs(xy.second - proc->coOrds[i].second);
+            int sum = tx + ty;
+            if (sum < res)
+                res = sum;
+        }
+
+        return res;
+    }
+
+    std::pair<uint64_t, uint64_t> calculateCell(int fifths, int thirds)
+    {
+        uint64_t n{1}, d{1};
+
+        while (thirds > 0)
+        {
+            auto [nn, dd] = jim.multiplyRatio(n, d, 5, 4);
+            n = nn;
+            d = dd;
+            thirds--;
+        }
+
+        while (thirds < 0)
+        {
+            auto [nn, dd] = jim.divideRatio(n, d, 5, 4);
+            n = nn;
+            d = dd;
+            thirds++;
+        }
+
+        while (fifths > 0)
+        {
+            auto [nn, dd] = jim.multiplyRatio(n, d, 3, 2);
+            n = nn;
+            d = dd;
+            fifths--;
+        }
+
+        while (fifths < 0)
+        {
+            auto [nn, dd] = jim.divideRatio(n, d, 3, 2);
+            n = nn;
+            d = dd;
+            fifths++;
+        }
+
+        auto g = std::gcd(n, d);
+        n = n / g;
+        d = d / g;
+
+        return {n, d};
+    }
+
+    virtual void reCalculateCell(uint64_t &n, uint64_t &d, int degree)
+    {
+        auto major = lattices::scaledata::isDegreeMajor[degree];
+
+        // take out one syntonic comma, add in the visiting, reduce by GDC
+        auto synt = lattices::scaledata::commas[lattices::scaledata::syntonic].getFraction(!major);
+        n *= synt.first;
+        d *= synt.second;
+        auto vc = proc->currentVisitors->CC[degree].getFraction(degree);
+        auto [nn, nd] = jim.multiplyRatio(n, d, vc.first, vc.second);
+        auto gcd = std::gcd(nn, nd);
+
+        n = nn / gcd;
+        d = nd / gcd;
     }
 
   private:
     int syntonicDrift{0}, diesisDrift{0}, procX{0}, procY{0};
     float xShift{0}, yShift{0}, priorX{0}, priorY{0}, goalX{0}, goalY{0};
+
+    bool homeFlag{false}, westFlag{false}, eastFlag{false}, northFlag{false}, southFlag{false},
+        visitorFlag{false};
+
+    const std::string noteNames[7] = {"F", "C", "G", "D", "A", "E", "B"};
+
+    std::unique_ptr<juce::TextButton> zoomOutButton;
+    std::unique_ptr<juce::TextButton> zoomInButton;
+
+    std::unique_ptr<juce::ShapeButton> homeButton;
+    std::vector<std::unique_ptr<juce::ArrowButton>> arrowButtons;
+    std::vector<std::unique_ptr<juce::TextButton>> visButtons;
 
     juce::VBlankAnimatorUpdater updater{this};
     juce::Animator follow =
@@ -393,8 +584,6 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
 
         // if (follow.isComplete())
     }
-
-    std::string noteNames[7] = {"F", "C", "G", "D", "A", "E", "B"};
 
     std::string nameNoteOnLattice(int x, int y, int degree, bool lit = false)
     {
@@ -483,112 +672,6 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
 
         return name;
     }
-
-  protected:
-    LatticesProcessor *proc;
-
-    int JIRadius{26};
-    int ellipseRadius = JIRadius * 1.15;
-    lattices::colours::GradientProvider Gradients;
-    JIMath jim;
-
-    juce::ReferenceCountedObjectPtr<juce::Typeface> Stoke{juce::Typeface::createSystemTypefaceFor(
-        LatticesBinary::Stoke_otf, LatticesBinary::Stoke_otfSize)};
-    juce::Font stoke{juce::FontOptions(Stoke).withPointHeight(JIRadius)};
-
-    melatonin::DropShadow blackShadow = {juce::Colours::black, JIRadius / 3};
-    melatonin::DropShadow whiteShadow = {juce::Colours::ghostwhite, JIRadius / 2};
-
-    // how far is a given coordinate from the currently active ones?
-    virtual int calcDist(std::pair<int, int> xy)
-    {
-        int res{INT_MAX};
-
-        for (int i = 0; i < 12; ++i)
-        {
-            int tx = std::abs(xy.first - proc->coOrds[i].first);
-            int ty = std::abs(xy.second - proc->coOrds[i].second);
-            int sum = tx + ty;
-            if (sum < res)
-                res = sum;
-        }
-
-        return res;
-    }
-
-    juce::Colour bg = juce::Colour{.475f, 1.f, 0.05f, 1.f};
-
-    std::pair<uint64_t, uint64_t> calculateCell(int fifths, int thirds)
-    {
-        uint64_t n{1}, d{1};
-
-        while (thirds > 0)
-        {
-            auto [nn, dd] = jim.multiplyRatio(n, d, 5, 4);
-            n = nn;
-            d = dd;
-            thirds--;
-        }
-
-        while (thirds < 0)
-        {
-            auto [nn, dd] = jim.divideRatio(n, d, 5, 4);
-            n = nn;
-            d = dd;
-            thirds++;
-        }
-
-        while (fifths > 0)
-        {
-            auto [nn, dd] = jim.multiplyRatio(n, d, 3, 2);
-            n = nn;
-            d = dd;
-            fifths--;
-        }
-
-        while (fifths < 0)
-        {
-            auto [nn, dd] = jim.divideRatio(n, d, 3, 2);
-            n = nn;
-            d = dd;
-            fifths++;
-        }
-
-        auto g = std::gcd(n, d);
-        n = n / g;
-        d = d / g;
-
-        return {n, d};
-    }
-
-    virtual void reCalculateCell(uint64_t &n, uint64_t &d, int degree)
-    {
-        auto major = lattices::scaledata::isDegreeMajor[degree];
-
-        // take out one syntonic comma, add in the visiting, reduce by GDC
-        auto synt = lattices::scaledata::commas[lattices::scaledata::syntonic].getFraction(!major);
-        n *= synt.first;
-        d *= synt.second;
-        auto vc = proc->currentVisitors->CC[degree].getFraction(degree);
-        auto [nn, nd] = jim.multiplyRatio(n, d, vc.first, vc.second);
-        auto gcd = std::gcd(nn, nd);
-
-        n = nn / gcd;
-        d = nd / gcd;
-    }
-
-  private:
-    std::unique_ptr<juce::TextButton> zoomOutButton;
-    std::unique_ptr<juce::TextButton> zoomInButton;
-
-    std::unique_ptr<juce::ArrowButton> westButton;
-    std::unique_ptr<juce::ArrowButton> eastButton;
-    std::unique_ptr<juce::ArrowButton> northButton;
-    std::unique_ptr<juce::ArrowButton> southButton;
-
-    bool westFlag{false}, eastFlag{false}, northFlag{false}, southFlag{false};
-
-    std::unique_ptr<juce::ShapeButton> homeButton;
 };
 
 // =================================================================================================
@@ -612,9 +695,9 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
 
         for (int d = 0; d < 12; ++d)
         {
-            buttons.add(new juce::ShapeButton(std::to_string(d), n, o, o));
+            buttons.push_back(std::make_unique<juce::ShapeButton>(std::to_string(d), n, o, o));
             buttons[d]->setShape(circleShape, true, true, false);
-            addAndMakeVisible(buttons[d]);
+            addAndMakeVisible(*buttons[d]);
             buttons[d]->setRadioGroupId(1);
             buttons[d]->onClick = [this] { whichNote(); };
             buttons[d]->setClickingTogglesState(true);
@@ -640,7 +723,7 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
 
         int shadowSpacing1 = JIRadius / 20;
         int shadowSpacing2 = JIRadius / 10;
-        auto a = enabled ? 75.f : .5f;
+        auto a = enabled ? .75f : .5f;
 
         whiteShadow.setColor(juce::Colours::ghostwhite.withAlpha(a));
         blackShadow.setColor(juce::Colours::black.withAlpha(a));
@@ -781,7 +864,7 @@ template <typename buttonUser> struct SmallLatticeComponent : LatticeComponent
   protected:
     buttonUser *buttonParent;
     juce::Path circleShape;
-    juce::OwnedArray<juce::ShapeButton> buttons;
+    std::vector<std::unique_ptr<juce::ShapeButton>> buttons;
 
     melatonin::DropShadow selectedHighlight = {juce::Colours::ghostwhite, 18};
 

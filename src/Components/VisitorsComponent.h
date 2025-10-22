@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <string>
 #include <memory>
+#include <vector>
 
 #include "ScaleData.h"
 #include "LatticeComponent.h"
@@ -32,9 +33,10 @@ struct VisitorsComponent : public juce::Component
 
         for (int i = 0; i < 7; ++i)
         {
-            commaButtons.add(new juce::ShapeButton("option" + std::to_string(i), n, o, o));
+            commaButtons.push_back(
+                std::make_unique<juce::ShapeButton>("option" + std::to_string(i), n, o, o));
             commaButtons[i]->setShape(circle, true, true, false);
-            addAndMakeVisible(commaButtons[i]);
+            addAndMakeVisible(*commaButtons[i]);
             commaButtons[i]->setRadioGroupId(2);
             commaButtons[i]->onClick = [this] { selectComma(); };
             commaButtons[i]->setClickingTogglesState(true);
@@ -53,8 +55,8 @@ struct VisitorsComponent : public juce::Component
 
         for (int g = 0; g < proc->numVisitorGroups; ++g)
         {
-            groups.add(new juce::TextButton(std::to_string(g)));
-            addAndMakeVisible(groups[g]);
+            groups.push_back(std::make_unique<juce::TextButton>(std::to_string(g)));
+            addAndMakeVisible(*groups[g]);
             groups[g]->setRadioGroupId(3);
             groups[g]->onClick = [this] { selectGroup(); };
             groups[g]->setClickingTogglesState(true);
@@ -103,17 +105,6 @@ struct VisitorsComponent : public juce::Component
         int L = scrollPosition;
         int R = L + 16;
 
-        if (selectedGroup < L)
-        {
-            groups[selectedGroup + 1]->setToggleState(true, juce::sendNotification);
-            selectGroup();
-        }
-        else if (selectedGroup > R)
-        {
-            groups[selectedGroup - 1]->setToggleState(true, juce::sendNotification);
-            selectGroup();
-        }
-
         for (int i = 0; i < proc->numVisitorGroups; ++i)
         {
             if (i >= L && i <= R)
@@ -135,6 +126,19 @@ struct VisitorsComponent : public juce::Component
         deleteButton->setEnabled(proc->numVisitorGroups > 1 && selectedGroup != 0);
         resetButton->setBounds(5, diameter + 35, 50, 25);
         resetButton->setEnabled(proc->numVisitorGroups > 1 && selectedGroup != 0);
+    }
+
+    void visibilityChanged() override
+    {
+        if (isVisible())
+        {
+            proc->preventVisitorChangesFromProcessor(true);
+            proc->selectVisitorGroup(selectedGroup);
+        }
+        else
+        {
+            proc->preventVisitorChangesFromProcessor(false);
+        }
     }
 
     void paint(juce::Graphics &g) override
@@ -182,8 +186,8 @@ struct VisitorsComponent : public juce::Component
 
         for (int g = 0; g < proc->numVisitorGroups; ++g)
         {
-            groups.add(new juce::TextButton(std::to_string(g)));
-            addAndMakeVisible(groups[g]);
+            groups.push_back(std::make_unique<juce::TextButton>(std::to_string(g)));
+            addAndMakeVisible(*groups[g]);
             groups[g]->setRadioGroupId(3);
             groups[g]->onClick = [this] { selectGroup(); };
             groups[g]->setClickingTogglesState(true);
@@ -229,7 +233,7 @@ struct VisitorsComponent : public juce::Component
 
     std::array<std::string, 7> names = {"3", "5", "7", "11", "13", "17", "19"};
 
-    juce::OwnedArray<juce::TextButton> groups;
+    std::vector<std::unique_ptr<juce::TextButton>> groups;
 
     std::unique_ptr<juce::TextButton> deleteButton;
     std::unique_ptr<juce::TextButton> resetButton;
@@ -244,7 +248,7 @@ struct VisitorsComponent : public juce::Component
     std::unique_ptr<lattice_t> miniLattice;
 
     juce::Path circle;
-    juce::OwnedArray<juce::ShapeButton> commaButtons;
+    std::vector<std::unique_ptr<juce::ShapeButton>> commaButtons;
 
     juce::Colour menuColour{.475f, .5f, 0.2f, 1.f};
     juce::Colour outlineColour{juce::Colours::ghostwhite};
@@ -298,8 +302,8 @@ struct VisitorsComponent : public juce::Component
         if (proc->newVisitorGroup())
         {
             int newidx = groups.size();
-            groups.add(new juce::TextButton(std::to_string(newidx)));
-            addAndMakeVisible(groups[newidx]);
+            groups.push_back(std::make_unique<juce::TextButton>(std::to_string(newidx)));
+            addAndMakeVisible(*groups[newidx]);
             groups[newidx]->setRadioGroupId(3);
             groups[newidx]->onClick = [this] { selectGroup(); };
             groups[newidx]->setClickingTogglesState(true);
@@ -319,7 +323,7 @@ struct VisitorsComponent : public juce::Component
         {
             groups[i]->setButtonText(std::to_string(i - 1));
         }
-        groups.remove(selectedGroup, true);
+        groups.erase(groups.begin() + selectedGroup);
 
         if (scrollPosition != 0)
         {
@@ -339,6 +343,21 @@ struct VisitorsComponent : public juce::Component
         {
             scrollPosition--;
         }
-        resized();
+
+        int L = scrollPosition;
+        int R = L + 16;
+
+        if (selectedGroup < L)
+        {
+            groups[selectedGroup + 1]->setToggleState(true, juce::sendNotification);
+            selectGroup();
+        }
+        else if (selectedGroup > R)
+        {
+            groups[selectedGroup - 1]->setToggleState(true, juce::sendNotification);
+            selectGroup();
+        }
+        else
+            resized();
     }
 };

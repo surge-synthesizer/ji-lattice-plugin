@@ -12,6 +12,8 @@ namespace lattices::colours
 using JC_t = juce::Colour;
 using JCG_t = juce::ColourGradient;
 
+static JC_t background = JC_t{.475f, 1.f, 0.05f, 1.f};
+
 static std::vector<std::pair<JC_t, JC_t>> basic = {
     std::make_pair(JC_t{.5f, .51f, .3f, 1.f}, JC_t{.5277778f, .79f, .41f, .25f}),
     std::make_pair(JC_t{.35f, .75f, .98f, 1.f}, JC_t{.5277778f, .79f, .41f, .25f}),

@@ -50,6 +50,14 @@ struct EveryComponent : public juce::Component, juce::MultiTimer
         }
     }
 
+    ~EveryComponent() override
+    {
+        if (processor.stopVisitorChanges)
+        {
+            processor.preventVisitorChangesFromProcessor(false);
+        }
+    }
+
     void resized() override
     {
         auto b = this->getLocalBounds();
@@ -125,15 +133,9 @@ struct EveryComponent : public juce::Component, juce::MultiTimer
                 visOpen = edvi;
                 setOpen = edse;
                 resized();
-            }
-
-            if (processor.editingVisitors != edvi)
-            {
-                int g = menuComponent->visC->selectedGroup;
-                processor.editVisitorsFromUI(edvi, g);
+                latticeComponent->setEnabled(!edvi && !edse);
                 latticeComponent->repaint();
             }
-            latticeComponent->setEnabled(!edvi);
         }
     }
 };

@@ -301,7 +301,7 @@ void LatticesProcessor::processBlock(juce::AudioBuffer<float> &buffer,
 
 void LatticesProcessor::respondToMidi(const juce::MidiMessage &m)
 {
-    if (editingVisitors)
+    if (stopVisitorChanges)
         return;
 
     if (m.isController() && m.getChannel() == listenOnChannel)
@@ -406,12 +406,12 @@ void LatticesProcessor::modeSwitch(int m)
     {
     case Syntonic:
         mode = Syntonic;
-        editVisitorsFromUI(true, 0);
+        preventVisitorChangesFromProcessor(true);
         returnToOrigin();
         break;
     case Duodene:
         mode = Duodene;
-        editVisitorsFromUI(false, 0);
+        preventVisitorChangesFromProcessor(false);
         returnToOrigin();
         break;
     default:
@@ -549,7 +549,7 @@ void LatticesProcessor::resetVisitorGroup()
 }
 void LatticesProcessor::deleteVisitorGroup(int idx)
 {
-    if (idx == 0 || mode == Syntonic)
+    if (idx <= 0 || idx >= numVisitorGroups || mode == Syntonic)
         return; // illegal, shouldn't happen
 
     currentVisitors = &visitorGroups[idx - 1];
@@ -565,26 +565,49 @@ void LatticesProcessor::deleteVisitorGroup(int idx)
 }
 void LatticesProcessor::selectVisitorGroup(int g)
 {
-    if (mode == Syntonic)
+    if (mode == Syntonic || g < 0 || g >= numVisitorGroups)
         return;
 
     currentVisitors = &visitorGroups[g];
-
     locate();
 }
-void LatticesProcessor::editVisitorsFromUI(bool editing, int g)
+void LatticesProcessor::selectVisitorGroup(int g, bool toggle)
 {
-    editingVisitors = editing;
+    if (mode == Syntonic || g < 0 || g >= numVisitorGroups)
+        return;
 
-    if (editing)
+    if (g == getCurrentVisitorGroupIndex())
     {
-        priorSelectedGroup = fromVisitorParam(vParam->get());
-        selectVisitorGroup(g);
+        vParam->beginChangeGesture();
+        vParam->setValueNotifyingHost(toVisitorParam(0));
+        vParam->endChangeGesture();
     }
     else
     {
+        vParam->beginChangeGesture();
+        vParam->setValueNotifyingHost(toVisitorParam(g));
+        vParam->endChangeGesture();
+    }
+}
+int LatticesProcessor::getCurrentVisitorGroupIndex() { return currentVisitors - &visitorGroups[0]; }
+void LatticesProcessor::preventVisitorChangesFromProcessor(bool prevent)
+{
+    if (prevent == stopVisitorChanges)
+    {
+        return;
+    }
+
+    if (!stopVisitorChanges)
+    {
+        priorSelectedGroup = fromVisitorParam(vParam->get());
+        stopVisitorChanges = prevent; // true
+    }
+    else
+    {
+        stopVisitorChanges = prevent; // false
+        vParam->beginChangeGesture();
         vParam->setValueNotifyingHost(toVisitorParam(priorSelectedGroup));
-        changed = true;
+        vParam->endChangeGesture();
     }
 }
 void LatticesProcessor::updateVisitor(int d, int v)
@@ -656,7 +679,7 @@ void LatticesProcessor::parameterValueChanged(int parameterIndex, float newValue
         locate();
         break;
     case 2:
-        if (!editingVisitors)
+        if (!stopVisitorChanges)
         {
             int vis = fromVisitorParam(vParam->get());
             currentVisitors = &visitorGroups[vis];
@@ -720,7 +743,7 @@ void LatticesProcessor::locate()
     }
     else
     {
-        if (editingVisitors)
+        if (stopVisitorChanges)
         {
             currentRefNote = originalRefNote;
             ratioToOriginal = 1.0;
