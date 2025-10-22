@@ -43,25 +43,17 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
         homeButton->setShape(circle, true, true, false);
         homeButton->setWantsKeyboardFocus(false);
 
-        westButton = std::make_unique<juce::ArrowButton>("West", .5f, gwc);
-        addAndMakeVisible(*westButton);
-        westButton->onClick = [this] { proc->shift(1); };
-        westButton->setWantsKeyboardFocus(false);
+        arrowButtons.push_back(std::make_unique<juce::ArrowButton>("West", .5f, gwc));
+        arrowButtons.push_back(std::make_unique<juce::ArrowButton>("East", 0.f, gwc));
+        arrowButtons.push_back(std::make_unique<juce::ArrowButton>("North", .75f, gwc));
+        arrowButtons.push_back(std::make_unique<juce::ArrowButton>("South", .25f, gwc));
+        for (int i = 0; i < 4; ++i)
+        {
+            addAndMakeVisible(*arrowButtons[i]);
+            arrowButtons[i]->onClick = [this, i] { proc->shift(i+1); };
+            arrowButtons[i]->setWantsKeyboardFocus(false);
+        }
 
-        eastButton = std::make_unique<juce::ArrowButton>("East", 0.f, gwc);
-        addAndMakeVisible(*eastButton);
-        eastButton->onClick = [this] { proc->shift(2); };
-        eastButton->setWantsKeyboardFocus(false);
-
-        northButton = std::make_unique<juce::ArrowButton>("North", .75f, gwc);
-        addAndMakeVisible(*northButton);
-        northButton->onClick = [this] { proc->shift(3); };
-        northButton->setWantsKeyboardFocus(false);
-
-        southButton = std::make_unique<juce::ArrowButton>("South", .25f, gwc);
-        addAndMakeVisible(*southButton);
-        southButton->onClick = [this] { proc->shift(4); };
-        southButton->setWantsKeyboardFocus(false);
 
         zoomOutButton = std::make_unique<juce::TextButton>("-");
         addAndMakeVisible(*zoomOutButton);
@@ -126,10 +118,10 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
         auto b = this->getLocalBounds();
 
         homeButton->setBounds(b.getRight() - 72, b.getBottom() - 72, 24, 24);
-        westButton->setBounds(b.getRight() - 104, b.getBottom() - 71, 24, 24);
-        eastButton->setBounds(b.getRight() - 38, b.getBottom() - 71, 24, 24);
-        northButton->setBounds(b.getRight() - 71, b.getBottom() - 104, 24, 24);
-        southButton->setBounds(b.getRight() - 71, b.getBottom() - 38, 24, 24);
+        arrowButtons[0]->setBounds(b.getRight() - 104, b.getBottom() - 71, 24, 24);
+        arrowButtons[1]->setBounds(b.getRight() - 38, b.getBottom() - 71, 24, 24);
+        arrowButtons[2]->setBounds(b.getRight() - 71, b.getBottom() - 104, 24, 24);
+        arrowButtons[3]->setBounds(b.getRight() - 71, b.getBottom() - 38, 24, 24);
 
         for (int i = 0; i < visButtons.size(); ++i)
         {
@@ -232,6 +224,17 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
     {
         bool enabled = this->isEnabled();
 
+        homeButton->setEnabled(enabled);
+        homeButton->setVisible(enabled);
+        for (const auto &a : arrowButtons)
+        {
+            a->setEnabled(enabled);
+            a->setVisible(enabled);
+        }
+        zoomInButton->setEnabled(enabled);
+        zoomInButton->setVisible(enabled);
+        zoomOutButton->setEnabled(enabled);
+        zoomOutButton->setVisible(enabled);
         if (enabled)
         {
             int cv= proc->getCurrentVisitorGroupIndex();
@@ -243,6 +246,14 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
                 v->setEnabled(idx < nv);
                 v->setVisible(idx < nv);
                 idx++;
+            }
+        }
+        else
+        {
+            for (const auto &v : visButtons)
+            {
+                v->setEnabled(false);
+                v->setVisible(false);
             }
         }
 
@@ -436,12 +447,15 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
         g.drawImageAt(Spheres, 0, 0, false);
         g.drawImageAt(Text, 0, 0, false);
 
-        auto b = this->getLocalBounds();
+        if (enabled)
+        {
+            auto b = this->getLocalBounds();
 
-        g.setColour(lattices::colours::background);
-        g.fillRect(b.getRight() - 110, b.getBottom() - 110, 101, 101);
-        g.setColour(juce::Colours::ghostwhite);
-        g.drawRect(b.getRight() - 110, b.getBottom() - 110, 101, 101);
+            g.setColour(lattices::colours::background);
+            g.fillRect(b.getRight() - 110, b.getBottom() - 110, 101, 101);
+            g.setColour(juce::Colours::ghostwhite);
+            g.drawRect(b.getRight() - 110, b.getBottom() - 110, 101, 101);
+        }
     }
 
   protected:
@@ -548,11 +562,7 @@ struct LatticeComponent : juce::Component, private juce::MultiTimer
     std::unique_ptr<juce::TextButton> zoomInButton;
 
     std::unique_ptr<juce::ShapeButton> homeButton;
-    std::unique_ptr<juce::ArrowButton> westButton;
-    std::unique_ptr<juce::ArrowButton> eastButton;
-    std::unique_ptr<juce::ArrowButton> northButton;
-    std::unique_ptr<juce::ArrowButton> southButton;
-
+    std::vector<std::unique_ptr<juce::ArrowButton>> arrowButtons;
     std::vector<std::unique_ptr<juce::TextButton>> visButtons;
 
     juce::VBlankAnimatorUpdater updater{this};
