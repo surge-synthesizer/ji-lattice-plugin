@@ -1,6 +1,6 @@
 # Lattices: A JI MTS Source
 
-The code in this repo builds a microtonal control plugin which makes extended Just Intonation easy to explore on regular 12-note interfaces. A baseline was put down by BaconPaul in early 2023, which I (Andreya) have been building on in the second half of 2024. It is currently in Alpha. More on that below.
+The code in this repo builds a microtonal control plugin which makes extended Just Intonation easy to explore on regular 12-note interfaces. A baseline was put down by BaconPaul in early 2023, which I (Andreya) have been periodically working on during 2024 and 2025. While it's fairly feature complete, I have chosen to keep it marked Alpha. More on that below.
 
 ![A screenshot of the plugin](resources/LatticesSegmentScreenshot.png)
 
@@ -17,11 +17,11 @@ I recommend using it with a regular ordinary MIDI keyboard, plus any MIDI contro
 Load Lattices in your DAW, alongside some compatible instrument of your choice. Many are listed in the link above. If you don't have any, I recommend [Surge](https://surge-synthesizer.github.io/).
 
 By default, Lattices will tune your synths to a Just Intonation scale known in many places in the world under different names, but which I'm calling [Duodene]( http://www.tonalsoft.com/enc/d/duodene.aspx). 
-The graphic you see represents the infinite pitch space of (5-limit) Just Intonation. The red sphere reading 1/1, represents the tonic (C, by default). Horizontal neighbors are a fifth apart, diagonally up-right is always a major third up, down-right a minor third up. (Octave-reduced... blablablabla, this text will be improved eventually)
+The graphic you see represents the infinite pitch space of (5-limit) Just Intonation. The red sphere reading 1/1, represents the tonic (C, by default). Horizontal neighbors are a fifth apart, diagonally up-right is always a major third up, down-right a minor third up. (Octave-reduced... etc etc etc, this text will be improved eventually, the lack of documentation is one reason it's still Alpha)
 
 You should see a pattern of twelve spheres near the middle which are lit up (while the rest are dimmed). That's the 12-note (octave-repeating) Duodene scale which currently will be sent to your synths. If you've never played in it before, you can quickly discover the (subjective) upside and downside it has over the common 12-equal tuning: Play a C major chord followed by a Bb major chord. Assuming everything has loaded and connected correctly, the C should sound extremely stable and the Bb should sound distinctly challenged. 
 
-Send Lattices a momentary trigger message (max value for a short moment) at MIDI CC 7 on channel 1. The lit-up section on the lattice should move one step to the east. Now the Bb chord will sound stable! :) 
+Send Lattices a momentary trigger message (max value for a short moment) at MIDI CC 17 on channel 1. The lit-up section on the lattice should move one step to the east. Now the Bb chord will sound stable! :) 
 
 Some other chord will now sound out-of-tune instead, but that's ok! The point is, in anticipation of a sour chord, we can shift the mapping around. This way we can make perfectly in-tune 5-limit music, in any key we want, modulating to any key we want. Even though this requires more than 12 notes per octave, we will be able to do this easily using common 12-note tools. This invites new ways to explore harmony. Etc etc blablabla. More to come. :) 
 
@@ -37,15 +37,19 @@ Other usage notes:
 ## Lattices is currently in Alpha. 
 Here's what that means in this case: 
 
-- The overall design is pretty finished, but most features are still very half-baked. 
-- The process of baking them is still pretty volatile! Stuff is subject to change (though features won't be removed).
-- Streaming stability is a definite maybe. This is not as dangerous with an MTS-ESP plug as with a synth (and no current features will be outright removed), but still, know that stuff will change and loading an old project with a new version may not work.
-- Many planned features are missing. The issue list here has the planned features mostly sketched out. Check that before making feature requests (feature requests are welcome though). 
+- The overall design is pretty finished, but some features may change somewhat before it's finished. 
+- We'll try to keep it "streaming stable", meaning loading old projects with a new version should still give the same results. But I don't dare promise total success.  This is not as dangerous with an MTS-ESP plug as with a synth, but still, if you use it to make something lovely, make notes of the settings you used so you can recreate them in case (god forbid) I break something. 
+- Some planned features are missing. The issue list here has the planned features mostly sketched out. Check that before making feature requests (feature requests are welcome though).
+- And yeah, it needs a real user manual of course.
+
+Other than that it's already really useful, and I'm happy to receive feature requests or bug reports if you try it!
 
 
 ## Building
 
-This works on Mac and Linux and probably Windows. If you just wanna use it you can grab a nightly build from releases.
+This has been tested to work on Mac, Windows and Linux. If you just wanna use it, simply grab a nightly build from the releases link on the right.
+If you wanna build it from source, you'll need git and cmake installed, possibly other things too (lemme know if I've missed something). 
+Then in your CLI tool, navigate to a fitting folder and run this: 
 
 ```
 git clone https://github.com/surge-synthesizer/ji-lattice-plugin.git
@@ -54,6 +58,7 @@ git submodule update --init --recursive
 cmake -Bignore/build -DCMAKE_BUILD_TYPE=RELEASE
 cmake --build ignore/build
 ```
+You should get a build in yourFolder/ji-lattice-plugin/ignore/build/lattices-artifacts or something like that. 
 
 ## Contributing
 
